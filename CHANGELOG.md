@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A false percolation warning on linear polymers.**  The end-of-cure check
+  warned that too few residues had reacted at every site to assume the system
+  percolates, and it fired on chain-growth systems like example 1's
+  polystyrene -- "only 902 of 1000 STY (90.2%) ... below the 100.0% ... at its
+  gel point".  For a difunctional monomer that threshold, `(1/(f-1))^f`, is
+  exactly 100%, and a fully reacted difunctional unit is a chain interior
+  rather than a crosslink junction, so neither the warning nor its premise
+  applied.  The check now runs only when some residue has at least three
+  reactive sites.
+
+- **Bondless MOL2 files for symmetry-sibling molecules.**  A molecule built by
+  copying a parent's topology (for example `GMAS-4`, from `GMA`) has its bonds
+  in the topology but no MOL2 bond table, so writing it as MOL2 produced a file
+  with no bonds and a "Cannot write any bonds to MOL2 file" warning -- twelve
+  times in example 2 on a fresh parameterization.  Those writes are now filled
+  from the topology's bonds, as single bonds.  In every shipped example the
+  affected files were diagnostic `*-prebonding.mol2` outputs that nothing reads,
+  so no parameterization input was ever affected.
+
 - **The CPU container image failed to build for 2.8.0**, so
   `ghcr.io/cameronabrams/htpolynet:v2.8.0` was never published (the CUDA image
   was).  The base image `condaforge/miniforge3:latest` moved to mamba 2.9.0,

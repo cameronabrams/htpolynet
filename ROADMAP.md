@@ -905,6 +905,23 @@ Coverage as of the last measurement: **38.8%** overall.
   docs describe only the GAFF-scoped form. base.yaml declares both, marking the
   top-level spelling deprecated; pick one before the schema goes live.
 
+- **A parameterized molecule built from a symmetry-sibling reactant would
+  hand antechamber an incomplete bond table.**  Found while fixing the
+  bondless-MOL2 writes reported by the 2026-09-13 example sweep. Symmetry
+  siblings are loaded from the parent's top+gro and carry no `mol2_bonds`.
+  When topologies merge (`Topology.merge` via `_myconcat(... 'mol2_bonds')`),
+  a reactant without that table contributes nothing to the product's, so the
+  product's `{name}.mol2`, which `Molecule.parameterize` gives to antechamber
+  for atom typing, would silently lack that reactant's internal bonds.
+  `TopoCoord.write_mol2` now falls back to topology bonds only when the table
+  is absent entirely, which does not cover this partial case. Not exercised by
+  any shipped example: the fresh-cache 2026-09-13 sweep had zero bondless
+  writes outside diagnostic `-prebonding` files, and every sibling product
+  copied its parent's topology rather than being parameterized. The fix, if
+  a case ever appears, is for `merge` to synthesize `mol2_bonds` from `bonds`
+  for any operand that lacks the table, rather than concatenating a partial
+  table. Bond orders would then need the same single-bond assumption.
+
 ## Simulation defaults
 
 - **The halogen constraint failure is fixed but not explained.** v2.7.0

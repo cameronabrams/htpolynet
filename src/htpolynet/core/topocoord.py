@@ -1097,6 +1097,17 @@ class TopoCoord:
         # logger.debug(f'write_mol2, other_attributes:\n{other_attributes.to_string()}')
         if 'mol2_bonds' in self.Topology.D:
             self.Coordinates.write_mol2(filename,molname=molname,bondsDF=self.Topology.D['mol2_bonds'],other_attributes=other_attributes)
+        elif 'bonds' in self.Topology.D and not self.Topology.D['bonds'].empty:
+            # A molecule built by copying a parent's topology -- a symmetry
+            # sibling such as GMAS-4 -- is loaded from top+gro and never gets a
+            # mol2 bond table, so this used to write a bondless MOL2 and warn.
+            # Its topology does carry every bond; write those instead.  Bond
+            # orders are not in a GROMACS topology, so they are written as single,
+            # the same assumption Topology.add_bonds makes for a new bond.
+            b=self.Topology.D['bonds'][['ai','aj']].reset_index(drop=True)
+            topo_bonds=pd.DataFrame({'bondIdx':range(1,len(b)+1),'ai':b['ai'],'aj':b['aj'],'order':'1'})
+            logger.debug(f'{filename}: no mol2 bond table; writing {len(b)} bonds from the topology as single bonds')
+            self.Coordinates.write_mol2(filename,molname=molname,bondsDF=topo_bonds,other_attributes=other_attributes)
         else:
             self.Coordinates.write_mol2(filename,molname=molname,other_attributes=other_attributes)
 

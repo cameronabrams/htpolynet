@@ -197,6 +197,39 @@ class TestIterationsVsFunctionality(unittest.TestCase):
                              'z': 0 if done else 1, 'nreactions': 1 if done else 0})
         return pd.DataFrame(rows)
 
+    def styrene_chains(self, n_sty, n_interior):
+        """n_sty difunctional STY, n_interior of them reacted at both sites."""
+        rows = []
+        for i in range(n_sty):
+            done = i < n_interior
+            for _ in range(2):
+                rows.append({'resNum': i + 1, 'resName': 'STY',
+                             'z': 0 if done else 1, 'nreactions': 1 if done else 0})
+        return pd.DataFrame(rows)
+
+    def test_silent_for_a_linear_system_that_is_not_fully_reacted(self):
+        # the example-1 false positive: 902 of 1000 STY mid-chain.  The
+        # gel-point threshold (1/(f-1))**f is 100% at f=2, and a difunctional
+        # unit is a chain interior, not a junction, so neither check applies
+        cc = self.controller(20)
+        with self.assertNoLogs('htpolynet.cure.curecontroller', level='WARNING'):
+            cc.check_iterations_vs_functionality(self.FakeTC(self.styrene_chains(1000, 902)))
+
+    def test_silent_for_a_linear_system_with_too_few_iterations(self):
+        cc = self.controller(1)
+        with self.assertNoLogs('htpolynet.cure.curecontroller', level='WARNING'):
+            cc.check_iterations_vs_functionality(self.FakeTC(self.styrene_chains(10, 0)))
+
+    def test_a_trifunctional_residue_still_triggers_the_check(self):
+        # a difunctional monomer alongside a trifunctional crosslinker is a
+        # network system; the f>=3 residue decides, and it is still checked
+        adf = pd.concat([self.styrene_chains(4, 4), self.taz_population(40, 1)
+                         .assign(resNum=lambda d: d.resNum + 100)], ignore_index=True)
+        cc = self.controller(20)
+        with self.assertLogs('htpolynet.cure.curecontroller', level='WARNING') as cm:
+            cc.check_iterations_vs_functionality(self.FakeTC(adf))
+        self.assertIn('do not assume this system percolates', ''.join(cm.output))
+
     def test_warns_when_iterations_are_below_functionality(self):
         cc = self.controller(2)
         with self.assertLogs('htpolynet.cure.curecontroller', level='WARNING') as cm:

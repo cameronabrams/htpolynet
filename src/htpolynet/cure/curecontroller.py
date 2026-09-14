@@ -836,7 +836,14 @@ class CureController:
         func=residue_functionality(adf)
         if func.empty: return
         fmax=int(func.max())
-        if fmax<2: return
+        # A crosslink junction needs a residue with at least three reactive
+        # sites.  When the most functional residue has two, every chain is linear
+        # (chain-growth polystyrene, say): a fully reacted difunctional unit is a
+        # chain interior, not a junction, and nothing can percolate however far
+        # the cure goes.  Both checks below would then misfire -- the gel-point
+        # threshold (1/(f-1))**f is exactly 100% at f=2, so it fired unless every
+        # monomer was mid-chain.
+        if fmax<3: return
         names=adf.loc[adf['resNum']==func.idxmax(),'resName']
         resname=names.iloc[0] if len(names) else f'residue {func.idxmax()}'
         iterations=self.state.iter
