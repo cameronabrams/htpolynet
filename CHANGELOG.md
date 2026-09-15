@@ -54,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- **The installation page now recommends the container as the default way to
+  run htpolynet**, in a callout at the top with the two commands you need on a
+  desktop (Docker Compose) or on a cluster (Singularity/Apptainer), plus the
+  note that the default image is CPU-only and GPU users want the `:cuda` tag.
+  Installing htpolynet and its tools natively is still documented below it,
+  for development and for systems without containers.
+
 - **The documentation has a logo and a landing-page illustration.**  The
   logo appears in every page's sidebar, in black-on-transparent for the light
   theme and white-on-transparent for the dark one, so it never shows as a white

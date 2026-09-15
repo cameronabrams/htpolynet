@@ -2,12 +2,39 @@
 Installation and Prerequisites
 ##############################
 
-A pre-built container image is available that bundles all required
-software (Gromacs, AmberTools, OpenBabel, RDKit, and ``htpolynet``).  If
-you have Docker or Singularity/Apptainer available, this is the easiest
-way to get started — see :ref:`container_usage` for instructions.  The
-remainder of this page describes how to install ``htpolynet`` and its
-prerequisites directly on your system.
+.. admonition:: Recommended: run htpolynet from the container
+   :class: tip
+
+   The easiest way to use ``htpolynet`` is the pre-built container image,
+   ``ghcr.io/cameronabrams/htpolynet``.  It bundles everything ``htpolynet``
+   needs --- Gromacs, AmberTools, OpenBabel, RDKit, and ``htpolynet`` itself
+   --- so there is nothing else to install and no versions to line up.
+
+   **On a desktop** (Docker), fetch the Compose file once, then run
+   ``htpolynet`` through it:
+
+   .. code-block:: console
+
+      $ curl -O https://raw.githubusercontent.com/cameronabrams/htpolynet/main/docker/compose.yml
+      $ docker compose run --rm htpolynet run config.yaml
+
+   **On a cluster** (Singularity/Apptainer), pull the image once, then run it
+   with your working directory bound in:
+
+   .. code-block:: console
+
+      $ singularity pull htpolynet.sif docker://ghcr.io/cameronabrams/htpolynet:latest
+      $ singularity run --bind $(pwd):/work --pwd /work htpolynet.sif run config.yaml
+
+   The default image runs Gromacs on CPUs only.  To use an NVIDIA GPU, use
+   the ``:cuda`` tag instead.
+
+   See :ref:`container_usage` for the details: persistent caches, GPU setup,
+   and pinning a release.
+
+The rest of this page covers installing ``htpolynet`` and its prerequisites
+directly on your system, which you'll want for development or wherever
+containers aren't available.
 
 Software Prerequisites
 ----------------------
