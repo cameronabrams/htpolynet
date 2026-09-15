@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The build log reports molecules that carry net charge.**  After cure,
+  after postcure repair, and when the final results are written, htpolynet
+  checks every covalently bonded molecule.  It logs one line when all are
+  neutral to within 0.01 e, and a warning naming the count and the largest
+  charge when some are not.  The system total is zero by construction, so
+  until now a template or repair step that moved charge from one molecule to
+  another left no trace.  The check can't see charge misplaced *inside* a
+  percolated network, because the whole network is a single molecule.
+
 ### Fixed
 
 - **Later bonds on a triazine reset the charges of its earlier ones.**

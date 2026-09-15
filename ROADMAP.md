@@ -213,15 +213,6 @@ Coverage as of the last measurement: **38.8%** overall.
   bonded to the bonding atom (it leaves those to the C=C chain machinery), and
   atoms that aren't declared symmetry-equivalent.
 
-- **Build output does not report per-molecule charge.**  A charged molecule is
-  silent, because the system total is exactly zero.  A check at the end of
-  cure, repair and `save_data` could log the distribution of molecule charges,
-  and warn above about 0.01 e.  It would not see local defects inside a
-  percolated network, which is a single molecule and neutral by
-  construction; a template that mischarges ring atoms is an example.  It
-  would, however, have caught the cyanate-cap repair bug at once in any melt
-  or low-conversion box.
-
 - **`cap_min_clearance` has never been calibrated against a working metric.**
   The 0.150 nm default was chosen in 2.6.0 against a clearance that was pinned
   at 0.136 nm by a bug, so it fired on 100 % of caps for a reason that had

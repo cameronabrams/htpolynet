@@ -460,6 +460,7 @@ class Runtime:
         pfs.go_to(pfs.Dirs.systems_capping)
         with profiling.stage('capping'):
             cc.do_capping(TC,RL,MD,gromacs_dict=gromacs_dict)
+        self._report_molecule_charges('after cure')
         my_logger('Connect-Update-Relax-Equilibrate (CURE) ends',logger.info)
 
     @cp.enableCheckpoint
@@ -487,6 +488,7 @@ class Runtime:
         n_repaired, repair_stats = run_repair(TC, self.molecules, specs, self.reactions)
         my_logger(f'Postcure repair performed {n_repaired} dismantle operations', logger.info)
         self._report_repair_conversion(repair_stats)
+        self._report_molecule_charges('after repair')
         # Write out the repaired system so the relaxation can pick it up
         TC.write_grx_attributes('repaired.grx')
         TC.write_gro('repaired.gro')
@@ -576,12 +578,44 @@ class Runtime:
         dropped = TC.Topology.prune_stale_14_pairs()
         if dropped:
             logger.info(f'Pruned {dropped} stale [ pairs ] entries left over from cure-induced path shortening')
+        self._report_molecule_charges(f'in {result_name}')
         TC.write_grx_attributes(f'{result_name}.grx')
         TC.write_gro(f'{result_name}.gro')
         TC.write_top(f'{result_name}.top')
         TC.write_tpx(f'{result_name}.tpx')
         self._write_vmd_viz_files(result_name)
         return {c:os.path.basename(x) for c,x in TC.files.items() if c!='mol2'}
+
+    def _report_molecule_charges(self, when, tol=0.01):
+        """Logs whether every covalently bonded molecule in the system is neutral.
+
+        The system total is zero by construction, so a charged molecule is
+        otherwise invisible: a template or repair step that moves charge
+        between molecules leaves no other trace.  A percolated network is one
+        molecule and neutral by construction, so this cannot see charge
+        misplaced inside it.
+
+        Args:
+            when (str): stage label for the message, e.g. 'after cure'
+            tol (float): largest net charge, in e, treated as neutral, defaults to 0.01
+
+        Returns:
+            list: (number of atoms, net charge) of each molecule carrying more than tol
+        """
+        molecules = self.TopoCoord.Topology.molecule_charges()
+        if not molecules:
+            return []
+        charged = [m for m in molecules if abs(m[1]) > tol]
+        ess = '' if len(molecules) == 1 else 's'
+        if not charged:
+            logger.info(f'Molecule charges {when}: all {len(molecules)} molecule{ess} neutral to within {tol} e')
+            return charged
+        worst = max(charged, key=lambda m: abs(m[1]))
+        logger.warning(f'Molecule charges {when}: {len(charged)} of {len(molecules)} molecule{ess} carry more than '
+                       f'{tol} e of net charge; the largest is {worst[1]:+.3f} e on a {worst[0]}-atom molecule.  '
+                       f'The system total is {self.TopoCoord.Topology.total_charge():+.4f} e, so this is charge '
+                       f'moved between molecules, which parameterization does not intend.')
+        return charged
 
     def _write_vmd_viz_files(self, result_name='final'):
         """Writes a PSF (real bond topology for VMD) and a TCL helper that

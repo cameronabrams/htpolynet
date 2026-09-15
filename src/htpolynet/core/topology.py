@@ -502,6 +502,24 @@ class Topology:
         logger.debug(f'New total charge after adjustment: {self.total_charge():.6f}')
         return self
         
+    def molecule_charges(self):
+        """Returns the size and net charge of every covalently bonded molecule.
+
+        Returns:
+            list: (number of atoms, net charge) tuples, one per connected component of the bond
+                graph, largest molecule first
+        """
+        if 'atoms' not in self.D or self.D['atoms'].empty:
+            return []
+        atoms = self.D['atoms']
+        charge = dict(zip(atoms['nr'].astype(int), atoms['charge'].astype(float)))
+        g = nx.Graph()
+        g.add_nodes_from(charge)
+        if 'bonds' in self.D and not self.D['bonds'].empty:
+            g.add_edges_from(zip(self.D['bonds']['ai'].astype(int), self.D['bonds']['aj'].astype(int)))
+        result = [(len(c), sum(charge[a] for a in c)) for c in nx.connected_components(g)]
+        return sorted(result, key=lambda x: -x[0])
+
     def total_mass(self, units='gromacs'):
         """Returns total mass of all atoms in the Topology.
 
