@@ -288,7 +288,7 @@ class TopoCoord:
             bystander_resids, bystander_resnames, bystander_atomidx, bystander_atomnames = self.get_bystanders(bb)
             oneaway_resids, oneaway_resnames, oneaway_atomidx, oneaway_atomnames = self.get_oneaways(bb, chain_manager=chain_manager)
             intraresidue = resids[0] == resids[1]
-            BT = BondTemplate(names, resnames, intraresidue, order, bystander_resnames, bystander_atomnames, oneaway_resnames, oneaway_atomnames)
+            BT = BondTemplate(names, resnames, intraresidue, order, bystander_resnames, bystander_atomnames, oneaway_resnames, oneaway_atomnames, siblings=self.get_siblings(bb))
             RB = ReactionBond(bb, resids, order, bystander_resids, bystander_atomidx, oneaway_resids, oneaway_atomidx)
             logger.debug(f'apparent bond template {str(BT)}')
             logger.debug(f'apparent bond instance {str(RB)}')
@@ -299,7 +299,7 @@ class TopoCoord:
             # copy all bond records matching these two bonds; should be only one!!
             d = d[((d.ai == temp_i_idx) & (d.aj == temp_j_idx)) |
                 ((d.ai == temp_j_idx) & (d.aj == temp_i_idx))].copy()
-            assert d.shape[0] == 1, f'Using {T.name} is sent inst-bond {i_idx}-{j_idx} which is claimed to map to {temp_i_idx}-{temp_j_idx}, but no such unique bond is found:\n{T.TopoCoord.Topology.D["bonds"].to_string()}'
+            assert d.shape[0] == 1, f'Using {T.name} is sent inst-bond {RB.idx[0]}-{RB.idx[1]} which is claimed to map to {temp_i_idx}-{temp_j_idx}, but no such unique bond is found:\n{T.TopoCoord.Topology.D["bonds"].to_string()}'
             ''' check passed '''
             temp_angles, temp_dihedrals, temp_pairs = T.get_angles_dihedrals((temp_i_idx, temp_j_idx))
             logger.debug(f'Mapping {temp_angles.shape[0]} angles, {temp_dihedrals.shape[0]} dihedrals, and {temp_pairs.shape[0]} pairs from template {T.name}')
@@ -323,7 +323,8 @@ class TopoCoord:
             assert check,f'Error: bidirectional dicts are incompatible; bug\n{inst2temp}\b{temp2inst}'
             # logger.debug(f'inst2temp {inst2temp}')
             # logger.debug(f'temp2inst {temp2inst}')
-            i_idx, j_idx = bb
+            # RB, not bb: a template that matched the reversed bond has reversed RB to line up with it
+            i_idx, j_idx = RB.idx
             _temp_i_idx, _temp_j_idx = inst2temp[i_idx], inst2temp[j_idx]
             assert temp_i_idx == _temp_i_idx, f'mapping mismatch -- bug'
             assert temp_j_idx == _temp_j_idx, f'mapping mismatch -- bug'
@@ -892,6 +893,52 @@ class TopoCoord:
             theirresid=self.Coordinates.A.iloc[j-1]['resNum']
             if theirresid!=myresid:
                 result.append(j)
+        return result
+
+    def get_siblings(self, atom_idx):
+        """Identifies already-reacted atoms two bonds from each atom of a bond, inside its own residue.
+
+        A template splice overwrites the charges of every template atom that
+        shares an angle, dihedral or 1-4 pair with the new bond, which reaches
+        two bonds into each residue.  If one of those atoms has already bonded
+        to another residue, a template that shows it unreacted gives it the
+        wrong charge: in a triazine, the second and third ring carbons to react
+        each reset the carbons that reacted before them.  Recording these
+        atoms lets find_template prefer a template that shows them reacted.
+
+        Only the second shell counts.  A reacted atom directly bonded to the
+        bonding atom is the C=C chain case, which the one-away context already
+        describes; counting it too would change which template every chain
+        polymerization uses.
+
+        Args:
+            atom_idx: container of two global atom indices specifying a bond
+
+        Returns:
+            list: two sorted lists of (atomName, partner resName) tuples, one per atom in
+                atom_idx, excluding the bond itself
+        """
+        A = self.Coordinates.A
+        bl = self.Topology.bondlist
+        result = [[], []]
+        for x in (0, 1):
+            a, b = atom_idx[x], atom_idx[1 - x]
+            resnum = A.iloc[a - 1]['resNum']
+            seen = {a}
+            frontier = [a]
+            for _ in range(2):
+                reached = []
+                for i in frontier:
+                    for j in bl.partners_of(i):
+                        if j not in seen and A.iloc[j - 1]['resNum'] == resnum:
+                            seen.add(j)
+                            reached.append(j)
+                frontier = reached
+            for sib in frontier:
+                for j in bl.partners_of(sib):
+                    if j != b and A.iloc[j - 1]['resNum'] != resnum:
+                        result[x].append((A.iloc[sib - 1]['atomName'], A.iloc[j - 1]['resName']))
+            result[x].sort()
         return result
 
     def minimum_distance(self, other, self_excludes=None, other_excludes=None):

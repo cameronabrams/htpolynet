@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Later bonds on a triazine reset the charges of its earlier ones.**
+  Each cure template shows a single BPA on the ring, and splicing it in
+  rewrites the charges of atoms up to two bonds from the new bond, which
+  includes the other ring carbons.  So every ring carbon that reacted before
+  the last one got its *unreacted* charge back.  Example 6's fully reacted
+  rings had carbons anywhere from 0.14 to 0.31 e, where the template value is
+  0.28.  A cured bisphenol-A dicyanate network showed a clean 2:1 split,
+  +0.70 against +0.90 e.  htpolynet now builds extra templates at setup for
+  rings that already carry one or two BPAs; example 6 gets 18 of them.  Each
+  cure bond picks the one that matches the ring as it stands: templates
+  record which atoms two bonds from the bonding atom have already reacted,
+  and matching prefers the one that records the most.  This applies to any
+  reactive atom whose `symmetry_equivalent_atoms` partners sit two bonds
+  away.  None of the other shipped examples has one, and example 5's
+  build-stage molecules are unchanged, charge for charge.
+
+  Replaying example 6's recorded cure bonds offline puts every bonded ring
+  carbon at its template value: 0.275, 0.277 or 0.279 e for one, two or
+  three BPAs.  All 13 molecules after cure are now neutral, where before
+  they ranged from -0.37 to +0.29 e.  Cyanate-ester builds should be
+  rebuilt.
+
+- **A template that matched a bond only in reverse crashed the cure** with
+  `mapping mismatch -- bug`.  After reversing the bond to line up with the
+  template, the mapping check still compared it the original way round.  No
+  shipped example had reached this path.
+
 - **Cyanate-cap repair left molecules charged.**  `triazine_to_cyanate_cap`
   kept the system neutral, but not each molecule.  It settled charge twice,
   both times system-wide:

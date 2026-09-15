@@ -5,7 +5,7 @@ Author: Cameron F. Abrams <cfa22@drexel.edu>
 import logging
 
 from copy import deepcopy
-from itertools import product
+from itertools import combinations, product
 
 from ..core.molecule import Molecule, MoleculeList, MoleculeDict
 from ..cure.reaction import reaction_stage, Reaction, ReactionList, generate_product_name, reactant_resid_to_presid
@@ -292,3 +292,117 @@ def generate_symmetry_reactions(RL:ReactionList,MD:MoleculeDict):
 
     RL.extend(terminal_reactions)
     return len(terminal_reactions)+tail_adds
+
+
+def _second_shell_symmetry_siblings(M:Molecule, atom_name:str):
+    """Names of the atoms symmetry-equivalent to atom_name that sit exactly two bonds from it in M.
+
+    Args:
+        M (Molecule): a generated monomer
+        atom_name (str): name of a cure-reactive atom of M
+
+    Returns:
+        list: sorted atom names; empty if atom_name has no such siblings
+    """
+    candidates = set()
+    for symm_set in M.symmetry_relateds:
+        if atom_name in symm_set:
+            candidates.update(x for x in symm_set if x != atom_name)
+    if not candidates:
+        return []
+    TC = M.TopoCoord
+    A = TC.Coordinates.A
+    idx_of = dict(zip(A['atomName'], A['globalIdx'].astype(int)))
+    if atom_name not in idx_of:
+        return []
+    bl = TC.Topology.bondlist
+    a = idx_of[atom_name]
+    first = set(bl.partners_of(a))
+    second = {j for i in first for j in bl.partners_of(i)} - first - {a}
+    return sorted(n for n in candidates if n in idx_of and idx_of[n] in second)
+
+
+def sibling_expand_reactions(molecules:MoleculeDict, reactions:ReactionList):
+    """Generates templates for cure bonds that form next to atoms of the same residue that have already reacted.
+
+    A cure template is the product of one bond, so it shows every other
+    reactive atom of the residue unreacted.  Where such an atom is close
+    enough to the bonding atom that the template splice overwrites its charge,
+    as the ring carbons of a triazine are, each later bond on the residue
+    resets the charges of the atoms that reacted before it.  For every cure
+    reaction whose monomer reactant has symmetry-equivalent reactive atoms two
+    bonds from its bonding atom, this builds one product per non-empty set of
+    those atoms already bonded to the same partner, with the bond of interest
+    formed last so that it is the product's template bond.  The templates'
+    sibling context (see TopoCoord.get_siblings) lets find_template pick them.
+
+    Note:
+        Must be called after the monomers and the cure products are generated.
+
+    Args:
+        molecules (MoleculeDict): all molecules generated so far
+        reactions (ReactionList): all reactions, symmetry-expanded
+
+    Returns:
+        tuple(ReactionList, MoleculeDict): the new param-stage reactions, and their products
+            in the order they must be generated
+    """
+    extra_reactions:ReactionList = []
+    extra_molecules:MoleculeDict = {}
+    cure = [R for R in reactions if R.stage == reaction_stage.cure and len(R.reactants) == 2 and len(R.bonds) == 1]
+    for R in cure:
+        bond_keys = R.bonds[0]['atoms']
+        for s_key, o_key in (bond_keys, bond_keys[::-1]):
+            s_rec, o_rec = R.atoms[s_key], R.atoms[o_key]
+            if s_rec['reactant'] == o_rec['reactant']:
+                continue
+            s_name = R.reactants[s_rec['reactant']]
+            o_name = R.reactants[o_rec['reactant']]
+            if s_name not in molecules or len(molecules[s_name].sequence) != 1:
+                continue
+            siblings = _second_shell_symmetry_siblings(molecules[s_name], s_rec['atom'])
+            if not siblings:
+                continue
+            order = list(R.reactants.keys())
+            s_resid = sum(len(molecules[R.reactants[k]].sequence) for k in order[:order.index(s_rec['reactant'])]) + s_rec['resid']
+            for n in range(1, len(siblings) + 1):
+                for S in combinations(siblings, n):
+                    # start from the cure product that bonds the first sibling to the same partner atom
+                    base = [B for B in cure if B.reactants == R.reactants
+                            and B.atoms[s_key]['atom'] == S[0] and B.atoms[o_key]['atom'] == o_rec['atom']
+                            and B.atoms[s_key]['resid'] == s_rec['resid'] and B.atoms[o_key]['resid'] == o_rec['resid']]
+                    if not base:
+                        logger.debug(f'{R.name}: no cure product bonds {s_name} {S[0]} to {o_name} {o_rec["atom"]}; '
+                                     f'no sibling template for {S}')
+                        continue
+                    prev = base[0].product
+                    prev_s_resid = s_resid
+                    o_first = s_key == bond_keys[1]
+                    for site in list(S[1:]) + [s_rec['atom']]:
+                        # Molecule.prepare_new_bonds reads a bond's first atom from the first
+                        # reactant, so reactant order follows the cure bond's atom order; when
+                        # the partner comes first, it also shifts the bonding residue's resid
+                        s_atom = {'resid': prev_s_resid, 'atom': site, 'z': 1}
+                        o_atom = {'resid': o_rec['resid'], 'atom': o_rec['atom'], 'z': 1}
+                        newR = Reaction()
+                        if o_first:
+                            newR.reactants = {1: o_name, 2: prev}
+                            newR.atoms = {'A': {'reactant': 1, **o_atom}, 'B': {'reactant': 2, **s_atom}}
+                            prev_s_resid += len(molecules[o_name].sequence)
+                        else:
+                            newR.reactants = {1: prev, 2: o_name}
+                            newR.atoms = {'A': {'reactant': 1, **s_atom}, 'B': {'reactant': 2, **o_atom}}
+                        newR.bonds = [{'atoms': ['A', 'B'], 'order': R.bonds[0].get('order', 1)}]
+                        newR.stage = reaction_stage.param
+                        newR.product = generate_product_name(newR)
+                        newR.name = f'sibling:{newR.product}'
+                        prev = newR.product
+                        if newR.product in molecules or newR.product in extra_molecules:
+                            continue
+                        P = Molecule.New(newR.product, newR)
+                        P.set_sequence_from_moldict({**molecules, **extra_molecules})
+                        P.origin = 'unparameterized'
+                        extra_molecules[newR.product] = P
+                        extra_reactions.append(newR)
+                        logger.debug(f'sibling template {newR.product}: {s_name} {site} bonds {o_name} {o_rec["atom"]}')
+    return extra_reactions, extra_molecules

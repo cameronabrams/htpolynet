@@ -23,7 +23,7 @@ from ..core.topocoord import TopoCoord
 from ..core.topology import select_topology_type_option
 from ..cure.chain import ChainManager
 from ..cure.curecontroller import CureController, CureState
-from ..cure.expandreactions import bondchain_expand_reactions, generate_stereo_reactions, generate_symmetry_reactions
+from ..cure.expandreactions import bondchain_expand_reactions, generate_stereo_reactions, generate_symmetry_reactions, sibling_expand_reactions
 from ..cure.reaction import Reaction, ReactionList, parse_reaction_list, extract_molecule_reactions, is_reactant, reaction_stage
 from ..external import software as software
 from ..external.gromacs import insert_molecules, mdp_modify, mdp_get
@@ -315,6 +315,17 @@ class Runtime:
             self.reactions.extend(new_reactions)
             make_molecules={k:v for k,v in new_molecules.items() if k not in self.molecules}
             for mname,M in make_molecules.items():
+                self._generate_molecule(M,force_parameterization=force_parameterization,force_checkin=force_checkin)
+                assert M.origin!='unparameterized'
+                self.molecules[mname]=M
+                logger.debug(f'Generated {mname}')
+
+        new_reactions,new_molecules=sibling_expand_reactions(self.molecules,self.reactions)
+        if len(new_molecules)>0:
+            ess='' if len(new_molecules)==1 else 's'
+            logger.info(f'{len(new_molecules)} molecule{ess} implied by cure bonds next to already-reacted atoms')
+            self.reactions.extend(new_reactions)
+            for mname,M in new_molecules.items():
                 self._generate_molecule(M,force_parameterization=force_parameterization,force_checkin=force_checkin)
                 assert M.origin!='unparameterized'
                 self.molecules[mname]=M

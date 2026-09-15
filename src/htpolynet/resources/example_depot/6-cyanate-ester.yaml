@@ -198,7 +198,10 @@ reactions:
   # A2+B3 step-growth: BPA's phenolic O forms an aryl ether with one of the
   # triazine ring carbons, each side losing one H.  The single reaction
   # below is auto-expanded by htpolynet (via symmetry_equivalent_atoms on
-  # both monomers) into all 2 x 3 = 6 (O, C) permutations.
+  # both monomers) into all 2 x 3 = 6 (O, C) permutations.  htpolynet also
+  # builds 18 templates for bonds to rings that already carry one or two
+  # BPAs, so later bonds on a ring do not reset the charges of its
+  # already-reacted carbons.
   - name: etherify
     stage: cure
     reactants: {1: BPA, 2: TAZ}

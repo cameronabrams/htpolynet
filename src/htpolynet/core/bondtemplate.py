@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class BondTemplate:
-    def __init__(self, names, resnames, intraresidue, order, bystander_resnames, bystander_atomnames, oneaway_resnames, oneaway_atomnames):
+    def __init__(self, names, resnames, intraresidue, order, bystander_resnames, bystander_atomnames, oneaway_resnames, oneaway_atomnames, siblings=None):
         """Creates a BondTemplate object.
 
         Args:
@@ -27,6 +27,10 @@ class BondTemplate:
             bystander_atomnames (list of two list-like containers of strs): lists of names of atoms in bystander residues (parallel to bystander_resnames)
             oneaway_resnames (list-like container of strs): names of one-away residues (residues bound one bond away from the new interresidue bond; only relevant for C=C free-radical polymerization)
             oneaway_atomnames (list-like container of strs): names of atoms in one-away residues
+            siblings (list of two lists of (str, str) tuples): for each atom in names, the
+                (atomName, partner resName) of every other atom in its residue, within two
+                intraresidue bonds, that is already bonded to another residue; defaults to
+                none on either side.  See TopoCoord.get_siblings.
         """
         self.names = names
         self.resnames = resnames
@@ -36,6 +40,7 @@ class BondTemplate:
         self.oneaway_resnames = oneaway_resnames
         self.oneaway_atomnames = oneaway_atomnames
         self.order = order
+        self.siblings = [sorted(tuple(t) for t in x) for x in siblings] if siblings else [[], []]
 
     def reverse(self):
         """Reverses the order of all parallel lists in a BondTemplate object."""
@@ -45,9 +50,10 @@ class BondTemplate:
         self.bystander_atomnames = self.bystander_atomnames[::-1]
         self.oneaway_resnames = self.oneaway_resnames[::-1]
         self.oneaway_atomnames = self.oneaway_atomnames[::-1]
+        self.siblings = self.siblings[::-1]
 
     def __str__(self):
-        return f'BondTemplate {self.names} resnames {self.resnames} intraresidue? {self.intraresidue} order {self.order} bystander-resnames {self.bystander_resnames} bystander-atomnames {self.bystander_atomnames} oneaway-resnames {self.oneaway_resnames} oneaway-atomnames {self.oneaway_atomnames}'
+        return f'BondTemplate {self.names} resnames {self.resnames} intraresidue? {self.intraresidue} order {self.order} bystander-resnames {self.bystander_resnames} bystander-atomnames {self.bystander_atomnames} oneaway-resnames {self.oneaway_resnames} oneaway-atomnames {self.oneaway_atomnames} siblings {self.siblings}'
 
     def __eq__(self,other):
         check = self.names == other.names
@@ -57,6 +63,7 @@ class BondTemplate:
         check = check and self.bystander_atomnames == other.bystander_atomnames
         check = check and self.oneaway_resnames == other.oneaway_resnames
         check = check and self.oneaway_atomnames == other.oneaway_atomnames
+        check = check and self.siblings == other.siblings
         return check
 
     def is_reverse_of(self,other):
@@ -73,13 +80,15 @@ class BondTemplate:
         return self == rb
 
     def bystander_count(self):
-        """Total number of bystander (resname, atomname) pairs across both sides.
+        """Total number of bystander (resname, atomname) pairs and siblings across both sides.
 
-        Used by find_template's best-match selection: more bystanders = more
+        Used by find_template's best-match selection: more context = more
         specific template, which should win when multiple templates can match
-        an instance under subset semantics.
+        an instance under subset semantics.  Siblings count here so that a
+        triazine template with two ring carbons already bonded beats the one
+        with one, which beats the bare one.
         """
-        return sum(len(s) for s in self.bystander_resnames)
+        return sum(len(s) for s in self.bystander_resnames) + sum(len(s) for s in self.siblings)
 
     def matches(self, other):
         """Return True if `self` (a parameterization-stage template) is a
@@ -111,6 +120,13 @@ class BondTemplate:
         force the cure reactant to mirror every inter-residue partner
         the instance carries, which forecloses the small-fragment idiom.
 
+        Subset semantics on siblings, for the same reason.  A sibling is
+        another atom of a bonding residue, close enough to the bonding atom
+        that the template overwrites its charge, that is already bonded to
+        another residue.  A template declaring a sibling describes that atom
+        as reacted, so it must not be used where the atom has not; a template
+        declaring none has always been used regardless, and still is.
+
         Args:
             other (BondTemplate): the instance bond to test for compatibility
 
@@ -131,6 +147,12 @@ class BondTemplate:
             for tp in t_pairs:
                 if tp in remaining:
                     remaining.remove(tp)
+                else:
+                    return False
+            remaining = list(other.siblings[side])
+            for sib in self.siblings[side]:
+                if sib in remaining:
+                    remaining.remove(sib)
                 else:
                     return False
         return True

@@ -506,7 +506,7 @@ class Molecule:
             # logger.debug(f'{self.name} oneaways {oneaway_resids} {oneaway_resnames} {oneaway_atomidx} {oneaway_atomnames}')
             self.reaction_bonds.append(ReactionBond(atom_idx, in_product_resids, order, bystander_resids, bystander_atomidx, oneaway_resids, oneaway_atomidx))
             intraresidue = in_product_resids[0] == in_product_resids[1]
-            self.bond_templates.append(BondTemplate(atom_names, in_product_resnames, intraresidue, order, bystander_resnames, bystander_atomnames, oneaway_resnames, oneaway_atomnames))
+            self.bond_templates.append(BondTemplate(atom_names, in_product_resnames, intraresidue, order, bystander_resnames, bystander_atomnames, oneaway_resnames, oneaway_atomnames, siblings=TC.get_siblings(atom_idx)))
 
     def idx_mappers(self, otherTC: TopoCoord, other_bond, bystanders, oneaways, uniq_atom_idx: set):
         """Computes the mapping dictionary from molecule template index to instance index in the other TopoCoord.

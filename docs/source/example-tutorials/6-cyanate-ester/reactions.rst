@@ -43,6 +43,21 @@ setup time, each as a separately parameterized linked-product
 template.  The cure machinery treats them as six distinct reactions in
 the iterative bond search, but the user only had to write one.
 
+Six templates are not enough to give the ring the right charges,
+though.  Each describes a triazine with one BPA attached, so it shows
+the other two ring carbons unreacted, and a template splice rewrites
+the charges of every atom within two bonds of the new bond, which
+includes those carbons.  Without more context, the second and third
+bonds on a ring would reset the carbons that reacted before them to
+their unreacted charge.  So htpolynet also builds, at setup time, one
+template for each bonding carbon, BPA oxygen, and set of ring carbons
+already bonded: 18 more, with names like
+``BPA~O1-C3~BPA~O1-C2~BPA~O1-C1~TAZ``.  At each bond, the cure picks
+the one that matches the ring as it stands.  Nothing in the
+configuration asks for these.  htpolynet generates them for any
+reactive atom whose ``symmetry_equivalent_atoms`` partners sit two
+bonds away, as a triazine's ring carbons do.
+
 What the cure stage produces, then, is an A2+B3 step-growth ether
 network: every formed bond is the same chemistry (an aryl O to a
 triazine ring C, replacing one H on each side with a new C-O bond),
