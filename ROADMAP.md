@@ -199,6 +199,50 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Cure and repair
 
+- **Cure overwrites charges on atoms that already reacted.**  Found by
+  htpolynet-study on 2026-09-15.  In complete triazines, the three ring
+  carbons have identical neighbours but split 2:1 in charge: 416 at +0.70 and
+  208 at +0.90 e across 208 rings in conv95/bpa-r1.  Example 6 shows the
+  cause.  The only product templates are `BPA~O1-Cn~TAZ`, each with a single
+  O on the ring.  `TopoCoord.map_from_templates` maps every template atom near
+  a new bond, including the ring's other carbons.  So the second and third
+  bonds on a ring reset the carbons bonded earlier to the template's
+  *unreacted* C-H value, 0.1213, and only the newest carbon gets the reacted
+  value, 0.2748.  In example 6's iter-1, each ring C position shows about 94
+  unreacted at 0.118, about 95 reset at 0.121, and about 50 reacted at 0.275.
+  Every later iteration adds the cure's system-wide overcharge correction on
+  top.  The same overwrite should hit any residue whose separate reactive
+  atoms share a template neighbourhood: di- and trifunctional rings, and
+  possibly diamines.
+
+  There are two ways to fix it:
+  - Skip charge (and type) assignment for mapped atoms whose reaction state
+    differs from the template's.  An atom with more `nreactions` in the
+    system than in the template keeps its charge.  Local neutrality then
+    needs a per-molecule settle like the one repair now uses
+    (`topology_surgery.neutralize_touched_fragments`).
+  - Parameterize multiply-substituted templates (`BPA2~TAZ`, `BPA3~TAZ`), as
+    the epoxy examples do with oligomer templates.  This is more faithful, but
+    it adds templates and configuration.
+
+  Either one changes charges in every cured system, so it needs a decision
+  and a rebuild of the affected examples.
+
+- **Cure also leaves small molecules slightly charged.**  Before repair,
+  example 6's iter-9 has 13 molecules, 8 neutral and the rest at -0.37,
+  -0.05, +0.07 (x2) and +0.29 e.  The source is the same system-wide
+  `adjust_charges` in `map_from_templates`, applied once per iteration.  A
+  per-molecule settle at the end of each cure iteration would fix it, and it
+  pairs with the item above.
+
+- **Build output does not report per-molecule charge.**  A charged molecule is
+  silent, because the system total is exactly zero.  A check at the end of
+  cure, repair and `save_data` could log the distribution of molecule charges,
+  and warn above about 0.01 e.  It would not see local defects inside a
+  percolated network (a single molecule, neutral by construction), such as the
+  triazine split above.  It would, however, have caught the repair bug at once
+  in any melt or low-conversion box.
+
 - **`cap_min_clearance` has never been calibrated against a working metric.**
   The 0.150 nm default was chosen in 2.6.0 against a clearance that was pinned
   at 0.136 nm by a bug, so it fired on 100 % of caps for a reason that had

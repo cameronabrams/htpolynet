@@ -229,7 +229,7 @@ class TopoCoord:
         anH = sum([int(x.upper().startswith('H')) for x in aneighnames])
         return anH
 
-    def map_from_templates(self, bdf, moldict, overcharge_threshhold=0.1, chain_manager=None):
+    def map_from_templates(self, bdf, moldict, overcharge_threshhold=0.1, chain_manager=None, adjust_charges=True):
         """Updates angles, pairs, dihedrals, atom types, and charges, based on product templates associated with each bond in 'bdf'.
 
         Args:
@@ -237,6 +237,12 @@ class TopoCoord:
             moldict (dict): dictionary of template Molecules keyed by name
             overcharge_threshhold (float): threshold for charge adjustment, defaults to 0.1
             chain_manager: optional ChainManager owned by the caller; passed to get_oneaways
+            adjust_charges (bool): if True (the default), spread any resulting system overcharge
+                uniformly over every mapped atom; a caller that deletes atoms afterwards, and so
+                can only settle the charge once those are gone, passes False
+
+        Returns:
+            list: global indices of every system atom that received template attributes
 
         Raises:
             Exception: if nan found in any attribute of any new system angle
@@ -442,7 +448,9 @@ class TopoCoord:
             # return temp_pairs
         mapped_inst_atoms = list(set(mapped_inst_atoms))
         logger.debug(f'System overcharge after mapping: {self.Topology.total_charge():.4f}')
-        self.Topology.adjust_charges(atoms=mapped_inst_atoms, overcharge_threshhold=overcharge_threshhold, msg=f'overcharge magnitude exceeds {overcharge_threshhold}')
+        if adjust_charges:
+            self.Topology.adjust_charges(atoms=mapped_inst_atoms, overcharge_threshhold=overcharge_threshhold, msg=f'overcharge magnitude exceeds {overcharge_threshhold}')
+        return mapped_inst_atoms
 
     def enumerate_1_4_pairs(self, at_idx):
         """Enumerates all 1-4 pair interactions resulting from new bonds in at_idx.

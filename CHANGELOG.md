@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Cyanate-cap repair left molecules charged.**  `triazine_to_cyanate_cap`
+  kept the system neutral, but not each molecule.  It settled charge twice,
+  both times system-wide:
+  - once while splicing the cap template, when the sacrificial H's still
+    existed;
+  - once after deleting them, onto only the atoms those H's had been bonded
+    to.
+
+  Caps formed in place and caps transferred to a free BPA-OH therefore ended
+  with charges 0.24 e apart on the phenolic O and the cap C.  In a
+  zero-conversion bisphenol-A dicyanate melt, every molecule came out at
+  either +0.21 or -0.27 e.  In example 6, the 27 molecules left after repair
+  ranged from -3.59 to +0.62 e.  Repair now brings each molecule it touched
+  back to neutral, and makes the correction only on the atoms it changed.
+  Example 6's molecules are all neutral, and its cap residues sit at
+  0.05-0.09 e, near the template's 0.069, instead of splitting between 0.04
+  and 0.20.  Builds that used `postcure_repair` should be rebuilt.
+
 - **A false percolation warning on linear polymers.**  The end-of-cure check
   warned that too few residues had reacted at every site to assume the system
   percolates, and it fired on chain-growth systems like example 1's

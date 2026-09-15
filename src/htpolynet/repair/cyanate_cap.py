@@ -672,8 +672,13 @@ def triazine_to_cyanate_cap(TC, moldict, spec, reactions):
     # ---- Phase 4: splice template params (forms BPA-O-C bond with full
     # angle/dihedral/pair entries from the cap_template molecule) ----
     pairs_to_add = [(int(rec['o']), int(rec['c']), 1) for rec in cap_records]
+    # Charge is settled once, per molecule, after phase 5's deletions.  The
+    # splice's own system-wide adjustment would run while the sacrificial H's
+    # still exist, and phase 5 would then have to undo it on other atoms.
+    touched = set()
     if pairs_to_add:
-        ts.add_bonds_with_template(TC, pairs_to_add, moldict, cap_template)
+        touched |= {int(a) for a in ts.add_bonds_with_template(TC, pairs_to_add, moldict, cap_template,
+                                                               adjust_charges=False)}
 
     # Refresh the C-N triple-bond parameters: map_from_templates updated the
     # CYN atom types (CA -> c1, NB -> n1) but only re-resolved the bond it
@@ -690,30 +695,22 @@ def triazine_to_cyanate_cap(TC, moldict, spec, reactions):
     # ---- Phase 5: batched H + orphan-atom deletion (reindexes) ----
     if h_to_delete:
         logger.debug(f'triazine_to_cyanate_cap: deleting {len(h_to_delete)} sacrificial/orphan atoms')
-        # Collect the heavy-atom neighbors of every deleted atom *before*
-        # delete_atoms reindexes; we'll redistribute the deleted atoms'
-        # missing charge back across these neighbors so the system stays
-        # net-neutral.  Otherwise the lost (typically positive) H charges
-        # leave the system with a several-electron net charge that gmx
-        # refuses to run with Ewald electrostatics.
-        affected_neighbors = set()
+        # the heavy atoms that lose a bonded H are touched too; collect them
+        # before delete_atoms reindexes
         for d_idx in h_to_delete:
             for nbr in TC.Topology.bondlist.partners_of(int(d_idx)):
-                if int(nbr) not in h_to_delete:
-                    affected_neighbors.add(int(nbr))
+                touched.add(int(nbr))
+        touched -= {int(x) for x in h_to_delete}
         idx_mapper = TC.delete_atoms(sorted(h_to_delete))
-        remapped = [idx_mapper[a] for a in affected_neighbors if a in idx_mapper]
-        residual = TC.Topology.total_charge()
-        if remapped and abs(residual) > 1e-6:
-            logger.info(
-                f'triazine_to_cyanate_cap: redistributing residual charge '
-                f'{residual:+.4f} across {len(remapped)} repaired-residue neighbours'
-            )
-            TC.Topology.adjust_charges(
-                atoms=remapped,
-                desired_charge=0.0,
-                msg='triazine_to_cyanate_cap post-deletion rebalance',
-            )
+        touched = {idx_mapper[a] for a in touched if a in idx_mapper}
+    # Each repaired molecule must end neutral, not just the system.  A single
+    # system-wide rebalance left every molecule of a zero-conversion melt
+    # carrying +0.21 or -0.27 e, depending on which of its caps were formed
+    # in place and which were transferred.
+    neutral = ts.neutralize_touched_fragments(TC, touched)
+    if neutral['n_fragments']:
+        logger.info(f'triazine_to_cyanate_cap: neutralized {neutral["n_fragments"]} repaired molecule(s); '
+                    f'largest excess before correction {neutral["max_excess"]:.4f} e')
 
     return _completion_stats(cl['residue'], len(cl_residues), len(incomplete_plans),
                              placement=placement_summary,

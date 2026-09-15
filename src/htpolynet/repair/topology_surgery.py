@@ -8,6 +8,7 @@ reindexes everything); callers should batch deletions to the end of a
 surgery pass so intermediate index references remain valid.
 """
 import logging
+import networkx as nx
 import numpy as np
 import pandas as pd
 
@@ -166,7 +167,70 @@ def refresh_bond_params(TC, pairs):
             logger.debug(f'refresh_bond_params({ai},{aj}) failed: {e}')
 
 
-def add_bonds_with_template(TC, pairs, moldict, product_name, chain_manager=None):
+def neutralize_touched_fragments(TC, touched, tol=1e-6):
+    """Make every molecule the repair changed neutral again, correcting it
+    only on the atoms the repair changed.
+
+    A template splice writes exact template charges onto the atoms it maps,
+    but the rest of each molecule keeps charges from its earlier context,
+    and atoms deleted afterwards take their charge with them.  So a
+    repaired molecule is left slightly off neutral.  Settling that with one
+    system-wide adjustment keeps the total at zero, which is all Ewald
+    needs, but it moves charge between molecules: a zero-conversion
+    cyanate melt came out of repair as a liquid of +/-0.2 e ions.
+
+    Here each connected component that contains a touched atom is brought
+    to zero by an equal shift on its touched atoms.  A component with no
+    touched atom is left alone.  Whatever total that leaves (non-zero only
+    if an untouched component was already charged) is spread over all
+    touched atoms, so the system stays neutral for Ewald.
+
+    Args:
+        TC: TopoCoord, after all atom deletions
+        touched (Iterable[int]): current global indices of the atoms whose
+            charges the repair set, or whose bonded neighbours it deleted
+        tol (float): excess charge below which a component is left as is
+
+    Returns:
+        dict: ``n_fragments`` corrected and ``max_excess``, the largest
+            absolute component charge found before correcting
+    """
+    T = TC.Topology
+    atoms = T.D['atoms']
+    touched = set(int(i) for i in touched) & set(atoms['nr'].astype(int))
+    stats = {'n_fragments': 0, 'max_excess': 0.0}
+    if not touched:
+        return stats
+    g = Bondlist.fromDataFrame(T.D['bonds']).graph()
+    g.add_nodes_from(touched)
+    charge = dict(zip(atoms['nr'].astype(int), atoms['charge'].astype(float)))
+    shift = {}
+    seen = set()
+    for i in sorted(touched):
+        if i in seen:
+            continue
+        component = nx.node_connected_component(g, i)
+        seen |= component
+        excess = sum(charge[a] for a in component)
+        stats['max_excess'] = max(stats['max_excess'], abs(excess))
+        if abs(excess) <= tol:
+            continue
+        here = [a for a in component if a in touched]
+        for a in here:
+            shift[a] = shift.get(a, 0.0) - excess / len(here)
+        stats['n_fragments'] += 1
+    if shift:
+        nr = atoms['nr'].astype(int)
+        atoms['charge'] = atoms['charge'] + nr.map(shift).fillna(0.0)
+    residual = T.total_charge()
+    if abs(residual) > tol:
+        logger.info(f'{residual:+.4f} e of net charge sits on molecules the repair did not touch; '
+                    f'spreading it over the {len(touched)} repaired atoms to keep the system neutral')
+        T.adjust_charges(atoms=sorted(touched), desired_charge=0.0)
+    return stats
+
+
+def add_bonds_with_template(TC, pairs, moldict, product_name, chain_manager=None, adjust_charges=True):
     """Add new bonds and splice angles/dihedrals/pairs/types/charges from a
     pre-parameterized linked-product template.
 
@@ -182,30 +246,32 @@ def add_bonds_with_template(TC, pairs, moldict, product_name, chain_manager=None
             template parameters should be spliced into the system around
             each new bond.
         chain_manager: optional ChainManager owned by the caller.
+        adjust_charges: passed to map_from_templates.  A caller that deletes
+            atoms afterwards passes False and settles the charge itself,
+            e.g. with neutralize_touched_fragments.
 
     Returns:
-        list: sacrificial-H indices that make_bonds would have deleted
-            (empty when explicit_sacH={[]} for all pairs).
+        list: global indices of the atoms that received template charges
     """
     if not pairs:
         return []
     explicit_sacH = {i: [] for i in range(len(pairs))}
-    idx_to_delete = TC.make_bonds(pairs, explicit_sacH=explicit_sacH,
-                                  chain_manager=chain_manager)
+    TC.make_bonds(pairs, explicit_sacH=explicit_sacH, chain_manager=chain_manager)
     bdf = pd.DataFrame([{
         'ai': int(ai),
         'aj': int(aj),
         'order': int(order),
         'reactantName': product_name,
     } for ai, aj, order in pairs])
-    TC.map_from_templates(bdf, moldict, chain_manager=chain_manager)
+    mapped = TC.map_from_templates(bdf, moldict, chain_manager=chain_manager,
+                                   adjust_charges=adjust_charges)
     # map_from_templates concats new rows that came from .map(temp2inst) onto
     # the existing angles/dihedrals/pairs frames.  Even with NaN-bearing rows
     # filtered out before the concat, pandas can upcast int atom-index columns
     # to float64 when intermediate rows held NaN. delete_atoms later asserts
     # int dtype on these columns, so coerce back here.
     _fix_atom_index_dtypes(TC)
-    return idx_to_delete
+    return mapped
 
 
 def _fix_atom_index_dtypes(TC):
