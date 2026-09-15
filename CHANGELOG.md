@@ -57,7 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The documentation has a logo and a landing-page illustration.**  The
   logo appears in every page's sidebar, in black-on-transparent for the light
   theme and white-on-transparent for the dark one, so it never shows as a white
-  box in dark mode.
+  box in dark mode.  The browser tab shows it too, as a favicon on a white disc
+  so it stays visible whether the tab bar is light or dark.
 
 ## [2.8.0] - 2026-09-12
 

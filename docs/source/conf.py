@@ -66,6 +66,11 @@ html_theme_options = {
     'dark_logo': 'htpolynet-logo-dark.png',
 }
 
+# The favicon, unlike the sidebar logo, keeps an opaque white disc: a browser's
+# tab bar may be light or dark, and transparent line art would vanish on one of
+# them.  16, 32 and 48 px in one .ico.
+html_favicon = '_static/htpolynet-favicon.ico'
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
