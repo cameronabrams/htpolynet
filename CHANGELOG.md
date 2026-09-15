@@ -19,6 +19,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   applied.  The check now runs only when some residue has at least three
   reactive sites.
 
+- **The percolation check counted sites the cure never uses.**  It summed
+  every reactive site a residue was built with, including bonds made while
+  assembling molecules and valences no cure reaction can consume.  Example 2
+  warned that "0 of 150 HIE" had reacted at all four sites, which was
+  impossible: two of those sites sit on an atom only the molecule-building
+  reactions touch.  Example 5's warning about TB was the same mistake, since
+  every TB site is a chain bond made before the cure.  In examples 3 and 4 the
+  diepoxide and the diamine tied at four sites, so the reported fraction
+  mixed both residue types ("83 of 300 DGE").  Functionality and completion are
+  now counted only on atoms a cure reaction can bond, taken from the
+  symmetry-expanded reaction list the bond search itself uses.  Example 3 now
+  reports "83 of 100 PAC", and example 6's check is unchanged.  When no
+  residue has three or more cure sites, the check says crosslink percolation
+  was not assessed, rather than staying silent: systems that crosslink through
+  a multi-residue molecule, such as a dimethacrylate, are outside what a
+  residue-level count can see.
+
 - **Bondless MOL2 files for symmetry-sibling molecules.**  A molecule built by
   copying a parent's topology (for example `GMAS-4`, from `GMA`) has its bonds
   in the topology but no MOL2 bond table, so writing it as MOL2 produced a file

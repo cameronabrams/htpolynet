@@ -38,6 +38,46 @@ def residue_reaction_counts(adf):
     """
     return adf.groupby('resNum')['nreactions'].sum()
 
+def cure_site_mask(adf,RL,MD):
+    """Marks the atoms a cure-stage reaction can ever bond.
+
+    A residue's ``z + nreactions`` counts every reactive site it was built
+    with, and that includes bonds made at the param and build stages and
+    valences no cure reaction can consume -- in example 2 each HIE carries a
+    param-stage bond and a leftover valence on C4, so its four "sites" include
+    two the cure never touches.  Functionality for asking whether the cure made
+    a network has to be counted on cure sites only.
+
+    The site set is read from the runtime reaction list, which has already been
+    symmetry- and stereo-expanded: a reaction written against ``TAZ:C1`` has
+    siblings for C2 and C3 there.  Reading the configuration's reactions instead
+    would name one atom per symmetry class and undercount -- that version was
+    tried and silenced example 6's genuine check.  Residue names are resolved the
+    way the bond search resolves them, through the reactant's sequence.
+
+    Args:
+        adf (pandas.DataFrame): the global atom dataframe; must carry 'resName' and 'atomName'
+        RL (ReactionList): the runtime, symmetry-expanded reaction list
+        MD (MoleculeDict): molecule templates, for resolving a reactant's residue names
+
+    Returns:
+        pandas.Series: boolean per atom, aligned to adf; None if no cure sites can be determined
+    """
+    if RL is None or MD is None or not all(c in adf.columns for c in ('resName','atomName')):
+        return None
+    sites=set()
+    for R in RL:
+        if R.stage!=reaction_stage.cure: continue
+        for rec in R.atoms.values():
+            try:
+                resname=MD[R.reactants[rec['reactant']]].get_resname(rec['resid'])
+            except (KeyError,IndexError,AttributeError,TypeError):
+                continue
+            sites.add((resname,rec['atom']))
+    if not sites:
+        return None
+    return pd.Series([k in sites for k in zip(adf['resName'],adf['atomName'])],index=adf.index)
+
 def residue_functionality(adf):
     """Counts, per residue, how many reactive sites it started with.
 
@@ -794,7 +834,7 @@ class CureController:
         self.state.current_stage[mode]=0
         self.state._to_yaml()
 
-    def check_iterations_vs_functionality(self,TC:TopoCoord):
+    def check_iterations_vs_functionality(self,TC:TopoCoord,RL:ReactionList=None,MD:MoleculeDict=None):
         """Warns if the cure produced few or no complete crosslinkers.
 
         A system whose crosslinkers did not complete has no junctions: it is a
@@ -830,10 +870,15 @@ class CureController:
 
         Args:
             TC (TopoCoord): global system topology and coordinates
+            RL (ReactionList): runtime reaction list; when given with MD, functionality and completion are counted on cure-reactive sites only (see :func:`cure_site_mask`)
+            MD (MoleculeDict): molecule templates, used with RL
         """
         adf=TC.gro_DataFrame('atoms')
         if adf is None or not all(c in adf.columns for c in ('resNum','resName','z','nreactions')): return
-        func=residue_functionality(adf)
+        mask=cure_site_mask(adf,RL,MD)
+        sites=adf if mask is None else adf[mask]
+        if sites.empty: return
+        func=residue_functionality(sites)
         if func.empty: return
         fmax=int(func.max())
         # A crosslink junction needs a residue with at least three reactive
@@ -843,7 +888,10 @@ class CureController:
         # the cure goes.  Both checks below would then misfire -- the gel-point
         # threshold (1/(f-1))**f is exactly 100% at f=2, so it fired unless every
         # monomer was mid-chain.
-        if fmax<3: return
+        if fmax<3:
+            if mask is not None:
+                logger.info('No residue carries three or more cure-reactive sites, so crosslink percolation is not assessed. That is correct for a linear polymer; a system that crosslinks through a multi-residue molecule -- a dimethacrylate, a multi-arm prepolymer -- is outside what this residue-level check can see.')
+            return
         names=adf.loc[adf['resNum']==func.idxmax(),'resName']
         resname=names.iloc[0] if len(names) else f'residue {func.idxmax()}'
         iterations=self.state.iter
@@ -852,7 +900,9 @@ class CureController:
             return
         crosslinkers=func[func==fmax].index
         if not len(crosslinkers): return
-        counts=residue_reaction_counts(adf).reindex(crosslinkers).fillna(0)
+        # completion counts cure-site bonds only, or a bond made at the param
+        # stage (HIE's C4) would make a half-reacted residue look complete
+        counts=residue_reaction_counts(sites).reindex(crosslinkers).fillna(0)
         complete=int((counts>=fmax).sum())
         fraction=complete/len(crosslinkers)
         logger.info(f'{complete} of {len(crosslinkers)} {resname} are fully reacted ({fraction:.1%})')
@@ -881,7 +931,7 @@ class CureController:
             return None
         return residue_reaction_counts(adf)
 
-    def _check_bias_side(self,adf,bdf):
+    def _check_bias_side(self,adf,bdf,RL=None,MD=None):
         """Warns, once per run, if the completion bias is ranking the less functional side.
 
         The bias ranks on the ``B`` reactant because htpolynet's A2+B3 idiom
@@ -901,7 +951,8 @@ class CureController:
         if self.bias_side_checked: return
         if not all(c in adf.columns for c in ('z','nreactions')): return
         self.bias_side_checked=True
-        func=residue_functionality(adf)
+        mask=cure_site_mask(adf,RL,MD)
+        func=residue_functionality(adf if mask is None else adf[mask])
         a=bdf['ri'].map(func).dropna()
         b=bdf['rj'].map(func).dropna()
         if a.empty or b.empty: return
@@ -1021,7 +1072,7 @@ class CureController:
             reaction_counts=self._completion_bias_counts(adf)
             bdf=rank_bond_candidates(bdf,reaction_counts)
             if reaction_counts is not None:
-                self._check_bias_side(adf,bdf)
+                self._check_bias_side(adf,bdf,RL=RL,MD=MD)
                 nrx=bdf['rj'].map(reaction_counts).fillna(0).astype(int)
                 logger.debug(f'Completion bias: {int((nrx>0).sum())} of {bdf.shape[0]} candidates extend an already-reacted B-side residue (most bonds already carried: {int(nrx.max())})')
             bdf['allowed']=[True for x in range(bdf.shape[0])]

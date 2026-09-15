@@ -443,7 +443,7 @@ class Runtime:
             cure_finished=cc.is_cured()
             if not cure_finished:
                 cure_finished=cc.next_iter()
-        cc.check_iterations_vs_functionality(TC)
+        cc.check_iterations_vs_functionality(TC,RL,MD)
         ''' perform capping if necessary '''
         my_logger(f'Capping begins',logger.info)
         pfs.go_to(pfs.Dirs.systems_capping)

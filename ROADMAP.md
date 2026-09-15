@@ -922,43 +922,18 @@ Coverage as of the last measurement: **38.8%** overall.
   for any operand that lacks the table, rather than concatenating a partial
   table. Bond orders would then need the same single-bond assumption.
 
-- **The end-of-cure percolation check counts functionality from sites the cure
-  never uses.**  Reported by htpolynet-sweep from the 2026-09-14 a40f48a sweep.
-  `residue_functionality` sums `z + nreactions` over every atom of a residue,
-  which includes bonds made at the param and build stages and valences that no
-  cure reaction can consume. Measured on the sweep's built systems:
-
-  - **Example 2, HIE: false positive.** Each of 150 HIE carries C1 (z 0, nr 1),
-    C2 (z 0, nr 1) and C4 (z 1, nr 1). C4 is declared `z: 2` for the param
-    reaction that builds GM1; one valence goes into GMA and the other stays
-    open forever, since no cure reaction touches C4. So "reacted at all 4
-    sites" is impossible by construction. On the cure sites C1+C2, 133 of 150
-    are fully reacted.
-  - **Example 5, TB: also a false positive, not a legitimate warning.** It was
-    earlier judged plausibly legitimate. TB's three counted sites are all
-    param/build-stage chain bonds; the cure uses only `TBO:O1` and
-    `IPD:C1`/`C2`.
-
-  In both, the real crosslinker is a multi-residue molecule (GMA; the
-  three-armed THT), which a residue-level check cannot see at all.
-
-  **The obvious fix is wrong, and was tested before being rejected.** Counting
-  only atoms named in cure reactions silences genuine checks: example 6's TAZ
-  (f=3, 100% complete, correctly quiet) drops to f=1, and examples 3 and 4
-  drop from f=4 to f=2. Reactions name one representative atom per symmetry
-  class (`TAZ:C1` stands for C1, C2 and C3), and htpolynet expands them
-  elsewhere. A correct count has to use the same symmetry-expanded eligibility
-  the bond search uses, not raw atom names. Likewise, `residue_reaction_counts`
-  must count only cure bonds, or C4's param-stage bond makes a half-reacted HIE
-  look complete. The same miscount also feeds `_check_bias_side`.
-
-  Before-and-after for all seven, from the a40f48a finals (current counting
-  vs. the rejected atom-name counting): ex2 HIE f=4 WARN -> skip; ex3 DGE f=4 ok
-  -> skip; ex4 FDE f=4 ok -> skip; ex5 TB f=3 WARN -> skip; ex6 TAZ f=3 ok -> f=1
-  skip; ex0/ex1 skip either way. A future fix should keep ex6 checked and quiet,
-  and keep ex3/ex4 checked, while silencing ex2 and ex5. The checks should also
-  decide whether multi-residue crosslinkers get a molecule-level count or an
-  explicit "not assessed" message.
+- **Two gaps left after the percolation check moved to cure sites
+  (2026-09-15).**  First, a system that crosslinks through a *multi-residue*
+  molecule -- example 2's GMA (two methacrylate HIE units), example 5's
+  three-armed THT -- is reported as "not assessed". A real assessment needs a
+  molecule-level count: sum cure sites per molecule and ask how many molecules
+  reacted at all of them. Second, `CureController._completion_bias_counts`
+  still ranks candidates by `residue_reaction_counts` over *all* atoms, so a
+  bond made while building a molecule (HIE's C4) counts as progress toward
+  completion. That only matters with `completion_bias` on, which no shipped
+  example uses. It was left alone because fixing it changes which bonds a
+  biased cure forms, not just a diagnostic; `cure_site_mask` is the tool when
+  that is wanted.
 
 ## Simulation defaults
 
