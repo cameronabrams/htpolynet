@@ -58,6 +58,14 @@ language = 'en'
 #
 html_theme = 'furo'
 
+# The logo is line art, so it ships as two transparent variants rather than one
+# opaque image: black ink for the light theme, white ink for the dark one.  An
+# opaque logo would show as a white square in furo's dark mode.
+html_theme_options = {
+    'light_logo': 'htpolynet-logo-light.png',
+    'dark_logo': 'htpolynet-logo-dark.png',
+}
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".

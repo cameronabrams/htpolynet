@@ -52,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   package.  The install was succeeding; only the cleanup step failed.  The
   Dockerfile now cleans with `conda clean`.
 
+### Documentation
+
+- **The documentation has a logo and a landing-page illustration.**  The
+  logo appears in every page's sidebar, in black-on-transparent for the light
+  theme and white-on-transparent for the dark one, so it never shows as a white
+  box in dark mode.
 
 ## [2.8.0] - 2026-09-12
 

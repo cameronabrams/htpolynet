@@ -41,6 +41,11 @@ htpolynet
    :target: https://doi.org/10.5281/zenodo.22070252
    :alt: DOI
 
+.. image:: _static/htpolynet-landing.jpg
+   :alt: A rusty robot in a straw hat sits on a driftwood log on a tropical beach, humming as it knots a net of ball-and-stick molecules strung between posts. A hand-painted sign beside it reads "HTPOLYNET: Stranded today. Better polymers tomorrow."
+   :align: center
+   :width: 100%
+
 htpolynet is a command-line tool for building atomic configurations of amorphous network polymers suitable for molecular dynamics (MD) simulations.
 It uses the General Amber Force Field and produces output that can be simulated 
 using Gromacs.
