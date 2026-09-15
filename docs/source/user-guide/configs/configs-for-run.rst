@@ -98,7 +98,34 @@ In this section we show all subdirectives for each of the five main directives i
     ``smiles``                               string             (optional) SMILES for in-config monomer generation; htpolynet runs ``obabel`` (or RDKit) to materialize ``lib/molecules/inputs/<NAME>.mol2`` before parameterization
     ``rename_atoms``                         dict               (optional) ``{1-based-mol2-index: atom-name}`` map applied after obabel writes the mol2 (obabel path; pairs with ``smiles``)
     ``reactive_atoms``                       dict               (optional) ``{smiles-atom-map-label: atom-name}`` map (RDKit path; pairs with a ``smiles`` that uses ``[*:N]`` atom-mapping tokens).  ``rdkit`` is a required runtime dependency and is pulled in by any normal ``htpolynet`` install
+    ``frcmod``                               string             (optional) path, relative to the configuration file, to an Amber ``frcmod`` of parameter overrides for this molecule; see below
     =====================================    =================  =====================
+
+    ``frcmod`` corrects GAFF for one monomer without touching the others, for
+    example a torsion refit against quantum-chemical scans.  ``tleap`` loads
+    the file after GAFF and ``parmchk2``, so its entries win.  It is loaded
+    for the molecule itself and for every template that contains it: cure
+    products, capping and repair templates, and the multiply-substituted
+    templates htpolynet derives.  The file's contents are part of each of
+    those parameterizations' cache records, so editing it re-parameterizes
+    them on the next run rather than reusing the old numbers.
+
+    .. code-block:: yaml
+
+       constituents:
+         BAF:
+           smiles: "FC(F)(F)C(c1ccc([OH:1])cc1)(c1ccc([OH:2])cc1)C(F)(F)F"
+           reactive_atoms: {1: O1, 2: O2}
+           frcmod: baf-torsion.frcmod
+
+    One restriction follows from how GROMACS topologies work.  A system holds
+    one parameter table per bonded *type* (four atom types, for a dihedral),
+    shared by every molecule in it.  So an override cannot apply to a type in
+    one molecule and leave the same type alone in another: if a molecule
+    built without the frcmod also contains the overridden type, with
+    different parameters, setup stops and names it.  Either load the same
+    frcmod for every constituent that contains the type, or give the atoms
+    you want to treat differently their own atom type.
 
     In the example below, we are requesting a system of 100 styrene molecules.  The key ``STY`` signals to ``htpolynet`` that it should look for either ``STY.mol2`` or ``STY.pdb`` in ``./lib/molecules/inputs`` **or** it should look for ``STY.gro``, ``STY.itp``, ``STY.top``, and ``STY.grx`` in ``./lib/molecules/parameterized``.  The latter is the case if either ``htpolynet run`` or ``htpolynet parameterized`` has already been run with ``STY.mol2`` or ``STY.pdb``.  If neither set of files is found but the constituent carries a ``smiles`` key, ``htpolynet`` generates the input ``mol2`` itself.  Multiple records in ``constituents`` should all have the "key":"record" syntax and be separated by commas.
 

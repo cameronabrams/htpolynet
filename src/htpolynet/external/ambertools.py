@@ -28,6 +28,15 @@ invocations below and the provenance record written beside their output; see
 """
 
 
+def leapsafe(name):
+    """Returns a tleap-safe file stem for name.
+
+    tleap reads a bare filename containing 'e' after a digit as a number, so
+    names are hashed, as GAFFParameterize does for its own files.
+    """
+    return 'u' + hashlib.shake_128(name.encode('utf-8')).hexdigest(8).replace('e', 'x')
+
+
 def GAFFParameterize(inputPrefix, outputPrefix, input_structure_format='mol2', ambertools=None):
     """Manages execution of antechamber, parmchk2, and tleap to generate GAFF parameters,
     then converts the result to Gromacs gro/top files via parmed.
@@ -36,7 +45,9 @@ def GAFFParameterize(inputPrefix, outputPrefix, input_structure_format='mol2', a
         inputPrefix (str): basename of input structure file
         outputPrefix (str): basename of output files
         input_structure_format (str): format of input structure file, defaults to 'mol2'; 'pdb' is other option
-        ambertools (dict | None): ambertools configuration directives, defaults to None
+        ambertools (dict | None): ambertools configuration directives, defaults to None; an
+            ``frcmod`` entry, a list of (label, text) tuples, names user frcmod files that
+            tleap loads after parmchk2's, so their parameters take precedence
 
     Raises:
         parmed.exceptions.GromacsError: if parmed fails to convert tleap output
@@ -65,6 +76,13 @@ def GAFFParameterize(inputPrefix, outputPrefix, input_structure_format='mol2', a
         f' -at {atomtype} -i {new_structin} -o {mol2out} -pf Y -nc {netcharge} -eq 1 -pl 10', quiet=False)
     logger.debug(f'AmberTools> Antechamber generated {mol2out}')
     run(f'parmchk2 -i {mol2out} -o {frcmodout} -f mol2 -s {atomtype}', quiet=False)
+    user_frcmods = []
+    for label, text in ambertools.get('frcmod') or []:
+        fn = f'{leapsafe(label)}-user.frcmod'
+        with open(fn, 'w') as f:
+            f.write(text)
+        user_frcmods.append(fn)
+        logger.info(f'AmberTools> loading user frcmod for {label} into {outputPrefix}')
 
     # Antechamber ignores SUBSTRUCTURE records, so patch the antechamber output
     # mol2 with the original resName/resNum before passing it to tleap.
@@ -92,6 +110,8 @@ def GAFFParameterize(inputPrefix, outputPrefix, input_structure_format='mol2', a
             # fires, and we abort even though tleap would have completed once
             # the frcmod was loaded.
             f'loadamberparams {leapprefix}.frcmod',
+            # user files last, so they override both GAFF and parmchk2's guesses
+            *[f'loadamberparams {fn}' for fn in user_frcmods],
             f'mymol = loadmol2 {leapprefix}.mol2',
             'check mymol',
             f'saveamberparm mymol {leapprefix}-tleap.top {leapprefix}-tleap.crd',
@@ -102,6 +122,8 @@ def GAFFParameterize(inputPrefix, outputPrefix, input_structure_format='mol2', a
     run(f'tleap -f {inputPrefix}-tleap.in', override=('Error!', 'Unspecified tleap error'))
 
     os.remove(f'{leapprefix}.frcmod')
+    for fn in user_frcmods:
+        os.remove(fn)
     shutil.move(f'{leapprefix}.mol2',      mol2out)
     shutil.move(f'{leapprefix}-tleap.top', f'{outputPrefix}-tleap.top')
     shutil.move(f'{leapprefix}-tleap.crd', f'{outputPrefix}-tleap.crd')

@@ -137,6 +137,49 @@ _GromacsTopologyDirectiveDefaults_ = {
     'defaults': [1, 2, 'yes', 0.5, 0.83333333]
 }
 
+def conflicting_types(topologies, typenames=('bondtypes', 'angletypes', 'dihedraltypes')):
+    """Finds bonded types that two groups of topologies parameterize differently.
+
+    A merged topology keeps one table per type, shared by every molecule in
+    it, so a type with different parameters in two molecules cannot be
+    honored for both: drop_duplicates keeps both sets, and GROMACS applies
+    them together.  A user frcmod loaded for some molecules and not others is
+    the usual way to create one.
+
+    Args:
+        topologies (dict): {name: (Topology, group)}; types are compared only between topologies
+            whose groups differ, e.g. a digest of the frcmod files each was built with
+        typenames (tuple): type sections to compare
+
+    Returns:
+        list: (typename, type key, name of one topology, name of another) tuples, one per conflicting
+            type; the key is the atom types followed by the function number
+    """
+    seen = {}
+    conflicts = []
+    for name, (T, group) in topologies.items():
+        for typename in typenames:
+            df = T.D.get(typename)
+            if df is None or df.empty:
+                continue
+            hashables = _GromacsTopologyHashables_[typename]
+            params = [c for c in df.columns if c not in hashables]
+            rows = {}
+            for r in df.itertuples(index=False):
+                r = r._asdict()
+                t = tuple(r[h] for h in hashables)
+                # a proper and an improper can share atom types; they are different types
+                key = (*min(t, t[::-1]), int(r['func']) if 'func' in r else 0)
+                rows.setdefault(key, []).append(tuple(round(float(r[p]), 4) if isinstance(r[p], (int, float)) else r[p]
+                                                      for p in params))
+            for key, values in rows.items():
+                values = tuple(sorted(values))
+                first = seen.setdefault((typename, key), (name, group, values))
+                if first[1] != group and first[2] != values:
+                    conflicts.append((typename, key, first[0], name))
+    return conflicts
+
+
 def select_topology_type_option(options, typename='dihedraltypes', rule='stiffest'):
     """Selects from a list of topological interaction options of type typename using the provided rule.
 

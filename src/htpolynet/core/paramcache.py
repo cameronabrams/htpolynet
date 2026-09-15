@@ -17,6 +17,7 @@ libraries keep working rather than silently re-parameterizing wholesale.
 
 Author: Cameron F. Abrams <cfa22@drexel.edu>
 """
+import hashlib
 import json
 import logging
 import os
@@ -32,6 +33,30 @@ _KEY_FIELDS = (
     ('atom_type',     'atom-type set'),
 )
 """Fields that determine the parameters, with human-readable labels."""
+
+FRCMOD_FIELD = 'frcmod'
+"""Record field holding a digest of the user frcmod files loaded after parmchk2's.
+
+Written only when a molecule has any, so records of molecules without one are
+unchanged; its absence means "none" when compared.
+"""
+
+
+def frcmod_digest(frcmods):
+    """Returns a digest identifying a list of user frcmod files by content.
+
+    Args:
+        frcmods (list): (label, text) tuples, in load order
+
+    Returns:
+        str or None: hex digest, or None if the list is empty
+    """
+    if not frcmods:
+        return None
+    h = hashlib.sha256()
+    for label, text in frcmods:
+        h.update(label.encode('utf-8') + b'\0' + text.encode('utf-8') + b'\0')
+    return h.hexdigest()[:16]
 
 
 def build_key(ambertools=None):
@@ -49,8 +74,12 @@ def build_key(ambertools=None):
     """
     from ..external.ambertools import AMBERTOOLS_DEFAULTS
     ambertools = ambertools or {}
-    return {field: ambertools.get(field, AMBERTOOLS_DEFAULTS[field])
-            for field, _ in _KEY_FIELDS}
+    key = {field: ambertools.get(field, AMBERTOOLS_DEFAULTS[field])
+           for field, _ in _KEY_FIELDS}
+    digest = frcmod_digest(ambertools.get(FRCMOD_FIELD))
+    if digest:
+        key[FRCMOD_FIELD] = digest
+    return key
 
 
 def key_filename(prefix):
@@ -129,4 +158,8 @@ def describe_mismatch(stored, requested):
             continue
         if stored[field] != requested.get(field):
             diffs.append(f'{label} {stored[field]!r} cached, {requested.get(field)!r} requested')
+    # unlike the fields above, an absent frcmod digest is a statement: none was loaded
+    if stored.get(FRCMOD_FIELD) != requested.get(FRCMOD_FIELD):
+        diffs.append(f'user frcmod {stored.get(FRCMOD_FIELD) or "none"} cached, '
+                     f'{requested.get(FRCMOD_FIELD) or "none"} requested')
     return diffs

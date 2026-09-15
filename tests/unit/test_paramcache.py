@@ -63,8 +63,10 @@ def _library_entry(library, name, **ambertools):
 
 def _runtime(**ambertools):
     """A stand-in for Runtime carrying only what the check reads off it."""
-    return SimpleNamespace(cfg=SimpleNamespace(ambertools=ambertools),
-                           unverified_parameterizations=[])
+    r = SimpleNamespace(cfg=SimpleNamespace(ambertools=ambertools),
+                        unverified_parameterizations=[], frcmods={})
+    r._ambertools_for = lambda M: Runtime._ambertools_for(r, M)
+    return r
 
 
 def _mismatch(name='TAZ', **ambertools):

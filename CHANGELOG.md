@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A constituent can carry its own frcmod.**  `frcmod: file.frcmod` on a
+  constituent loads that Amber parameter file into `tleap` after GAFF and
+  `parmchk2`, so its parameters override theirs.  It is loaded for the
+  molecule and for every template containing it, including cure, capping,
+  repair and multiply-substituted templates.  The file's contents are part of
+  the parameter cache record, so an edited frcmod re-parameterizes instead of
+  reusing stale numbers.  A system has one table per bonded type, so setup
+  stops with the type's name if an overridden type also appears, with other
+  parameters, in a molecule built without the file.
+
 ## [2.9.0] - 2026-09-15
 
 ### Added

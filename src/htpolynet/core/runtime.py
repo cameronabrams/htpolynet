@@ -20,7 +20,7 @@ from ..core import projectfilesystem as pfs
 from ..core.configuration import Configuration
 from ..core.molecule import Molecule, MoleculeDict
 from ..core.topocoord import TopoCoord
-from ..core.topology import select_topology_type_option
+from ..core.topology import conflicting_types, select_topology_type_option
 from ..cure.chain import ChainManager
 from ..cure.curecontroller import CureController, CureState
 from ..cure.expandreactions import bondchain_expand_reactions, generate_stereo_reactions, generate_symmetry_reactions, sibling_expand_reactions
@@ -150,6 +150,7 @@ class Runtime:
         self.restart=restart
         if restart:
             logger.info(f'Restarting in {pfs.proj()}')
+        self.frcmods=self._read_frcmods()
         self.molecules:MoleculeDict={}
         # molecules reused from a library entry that carries no provenance
         # record, collected for a stage-end summary; see generate_molecules
@@ -193,6 +194,66 @@ class Runtime:
                 for k,v in defaults.items():
                     if k not in current:
                         current[k]=v
+
+    def _read_frcmods(self):
+        """Reads the user frcmod file each constituent names, if any.
+
+        Returns:
+            dict: {constituent name: frcmod text}
+
+        Raises:
+            FileNotFoundError: if a named frcmod file does not exist
+        """
+        frcmods={}
+        for name,rec in (self.cfg.constituents or {}).items():
+            fn=(rec or {}).get('frcmod')
+            if not fn: continue
+            path=os.path.join(pfs.root(),fn)
+            if not os.path.isfile(path):
+                raise FileNotFoundError(f'frcmod {fn!r} for constituent {name} not found (looked for {path})')
+            with open(path) as f:
+                frcmods[name]=f.read()
+            logger.info(f'{name}: user frcmod {fn} will be loaded for {name} and every template containing it')
+        return frcmods
+
+    def _ambertools_for(self,M:Molecule):
+        """Returns the AmberTools directives for parameterizing M.
+
+        These are the configuration's, plus the user frcmod files of every
+        constituent residue M contains, so that a template built around a
+        monomer carries the same override as the monomer.
+
+        Args:
+            M (Molecule): molecule about to be parameterized, or checked against the cache
+
+        Returns:
+            dict: ambertools directives
+        """
+        amb=dict(self.cfg.ambertools or {})
+        residues=set(getattr(M,'sequence',None) or [M.name])
+        frc=[(n,t) for n,t in sorted(getattr(self,'frcmods',{}).items()) if n in residues]
+        if frc:
+            amb['frcmod']=frc
+        return amb
+
+    def _check_frcmod_type_conflicts(self):
+        """Refuses a set of molecules that a user frcmod leaves with conflicting bonded types.
+
+        Raises:
+            RuntimeError: if a type is parameterized differently in molecules built with and
+                without (or with different) user frcmod files
+        """
+        if not getattr(self,'frcmods',None): return
+        tops={n:(M.TopoCoord.Topology,paramcache.frcmod_digest(self._ambertools_for(M).get('frcmod')))
+              for n,M in self.molecules.items() if M.TopoCoord.Topology.D.get('atoms') is not None}
+        conflicts=conflicting_types(tops)
+        if not conflicts: return
+        for typename,key,a,b in conflicts[:10]:
+            logger.error(f'{typename} {"-".join(key[:-1])} (func {key[-1]}) differs between {a} and {b}')
+        raise RuntimeError(f'{len(conflicts)} bonded type(s) are parameterized differently in molecules built with and '
+                           f'without a user frcmod.  A system has one table per type, so the override cannot apply to '
+                           f'some molecules and not others.  Give the overridden atoms their own atom type, or apply '
+                           f'the frcmod to every constituent that contains the type.')
 
     def _build_molecules_and_reactions(self):
         """Builds Molecule and Reaction objects from the parsed configuration.
@@ -330,6 +391,8 @@ class Runtime:
                 assert M.origin!='unparameterized'
                 self.molecules[mname]=M
                 logger.debug(f'Generated {mname}')
+
+        self._check_frcmod_type_conflicts()
 
         for M in self.molecules:
             self.molecules[M].is_reactant=is_reactant(M,self.reactions,stage=reaction_stage.cure)
@@ -781,7 +844,7 @@ class Runtime:
             list: descriptions of the differing directives; empty if the cached
                 parameterization agrees with this run or carries no record
         """
-        requested = paramcache.build_key(self.cfg.ambertools)
+        requested = paramcache.build_key(self._ambertools_for(M))
         # Discard any record left in the project directory by an earlier run so
         # that what we check is the record belonging to the library entry that
         # previously_parameterized() just found.
@@ -829,7 +892,7 @@ class Runtime:
             generatable=(not M.generator) or (all([m in self.molecules for m in M.generator.reactants.values()]))
             if generatable:
                 logger.debug(f'Generating {mname}')
-                M.generate(available_molecules=self.molecules,gaff=self.cfg.gaff,ambertools=self.cfg.ambertools)
+                M.generate(available_molecules=self.molecules,gaff=self.cfg.gaff,ambertools=self._ambertools_for(M))
                 self._checkin_parameterization(mname, force_checkin)
                 M.origin='newly parameterized'
             else:
@@ -899,7 +962,7 @@ class Runtime:
                 # assert it matches what falls out of the merged dataframe).
                 M.set_sequence_from_moldict(self.molecules)
                 M.generate(available_molecules=self.molecules,
-                           gaff=self.cfg.gaff, ambertools=self.cfg.ambertools)
+                           gaff=self.cfg.gaff, ambertools=self._ambertools_for(M))
                 self._checkin_parameterization(mname, True)
                 M.origin='newly parameterized (stale cache refreshed)'
             else:

@@ -192,6 +192,18 @@ attributes:
       - name: symmetry_equivalent_atoms
         type: list
         text: Sets of symmetry-equivalent atom names, if any.
+      - name: frcmod
+        type: str
+        required: false
+        text: >
+          Path, relative to the configuration file, to an Amber frcmod file of
+          parameter overrides for this molecule.  tleap loads it after GAFF and
+          parmchk2, so its entries win.  It is loaded for this molecule and for
+          every template containing it, and it is part of each parameterization's
+          cache record, so editing the file re-parameterizes them.  A system
+          keeps one table per bonded type, so an overridden type must not also
+          occur, unoverridden, in a molecule without this residue; setup stops if
+          it does.
       - name: conformers
         type: dict
         required: false
