@@ -234,6 +234,35 @@ them.  Confirm from its GPU banner rather than assuming: if the banner still
 says ``unusable``, you are running the default image under a ``:cuda`` name,
 or the container was not given a device.
 
+Choosing mdrun GPU tasks
+""""""""""""""""""""""""
+
+``gromacs.mdrun_options`` in the configuration is passed to every ``mdrun``
+htpolynet runs for the system: densification, precure, every cure stage,
+repair, and postcure.  ``htpolynet postsim`` and ``htpolynet analyze`` use it
+too, but only when given the build's configuration with ``-ocfg``.  Each key
+becomes a flag, so this
+
+.. code-block:: yaml
+
+  gromacs:
+    mdrun_options:
+      nb: gpu
+      ntomp: 8
+
+runs ``mdrun -nb gpu -ntomp 8``.  With the short-range work on the GPU,
+Gromacs 2026 also puts PME, the bonded interactions, and the coordinate
+update there by default wherever it can, so ``nb: gpu`` is usually all you
+need.  The ``Update task`` and ``PME tasks`` lines near the top of each
+``md.log`` say where each task ran.
+
+Many of those runs are energy minimizations, and Gromacs refuses
+``-pme gpu`` and ``-update gpu`` for a minimizer.  htpolynet therefore passes
+``auto`` for those two whenever the stage's integrator is not a dynamical
+one, so asking for them explicitly is safe.  Everything the cure uses
+otherwise (Berendsen coupling, h-bond constraints with LINCS, simulated
+annealing) is supported with the update on the GPU.
+
 .. note::
 
   The ``:cuda`` image is substantially larger, because the CUDA build of

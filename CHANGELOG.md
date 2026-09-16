@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Asking for `pme: gpu` or `update: gpu` in `mdrun_options` stopped the
+  build at its first minimization.**  The same options go to every `mdrun`,
+  and GROMACS refuses both tasks on a GPU without a dynamical integrator.
+  They now become `auto` for minimization stages, which GROMACS resolves to
+  the CPU there, and are passed unchanged to dynamics.
+
+- **The parameterization summary undercounted and named the wrong place.**
+  It was printed before the symmetry-, chain- and second-shell-derived
+  templates were built, so a run that reused 29 templates reported 11.  It
+  also always named `~/.htpolynet`, even when `HTPOLYNET_CACHE` pointed
+  elsewhere.  It now comes after every template exists, reports "N of M
+  reused", and names the library and cache actually searched.
+
 ### Changed
 
 - **The "percolation not assessed" message says when it means "cannot

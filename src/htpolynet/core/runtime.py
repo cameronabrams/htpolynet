@@ -195,6 +195,28 @@ class Runtime:
                     if k not in current:
                         current[k]=v
 
+    def _report_parameterization_summary(self):
+        """Logs how many molecule templates were reused and how many were parameterized.
+
+        Counted after every derived template (symmetry, C=C chain, and
+        second-shell) exists, so the numbers cover everything this run needs;
+        a job that must not parameterize anything, e.g. one reading a
+        pre-filled read-only cache, can check for "0 freshly parameterized".
+        """
+        n_cached=sum(1 for M in self.molecules.values() if M.origin=='previously parameterized')
+        n_new=sum(1 for M in self.molecules.values() if (M.origin or '').startswith('newly parameterized'))
+        if not (n_cached or n_new): return
+        where=[]
+        if pfs._PFS_ and pfs._PFS_.userlibrary:
+            where.append(f'{pfs._PFS_.userlibrary.root}')
+        if pfs._USER_CACHE_ is not None:
+            where.append(f'{pfs._USER_CACHE_.root}')
+        logger.info(f'Parameterization summary: {n_cached} of {n_cached+n_new} molecule templates reused from the library '
+                    f'({" or ".join(where) or "unknown location"}), {n_new} freshly parameterized.')
+        if n_cached:
+            logger.info('  to force re-parameterization on the next run, use '
+                        '`htpolynet run --force-parameterization --force-checkin ...`')
+
     def _read_frcmods(self):
         """Reads the user frcmod file each constituent names, if any.
 
@@ -357,18 +379,6 @@ class Runtime:
         logger.debug(f'Generating: {list(self.molecules.keys())}')
         for mname,M in self.molecules.items():
             self._generate_molecule(M,force_parameterization=force_parameterization,force_checkin=force_checkin)
-        n_cached=sum(1 for M in self.molecules.values() if M.origin=='previously parameterized')
-        n_new=sum(1 for M in self.molecules.values() if M.origin=='newly parameterized')
-        if n_cached or n_new:
-            logger.info(
-                f'Parameterization summary: {n_cached} reused from cache '
-                f'(~/.htpolynet/molecules/parameterized/), {n_new} freshly parameterized.'
-            )
-            if n_cached:
-                logger.info(
-                    '  to force re-parameterization on the next run, use '
-                    '`htpolynet run --force-parameterization --force-checkin ...`'
-                )
         new_reactions,new_molecules=bondchain_expand_reactions(self.molecules)
         if len(new_molecules)>0:
             ess='' if len(new_molecules)==1 else 's'
@@ -392,6 +402,7 @@ class Runtime:
                 self.molecules[mname]=M
                 logger.debug(f'Generated {mname}')
 
+        self._report_parameterization_summary()
         self._check_frcmod_type_conflicts()
 
         for M in self.molecules:

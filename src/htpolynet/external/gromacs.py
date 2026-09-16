@@ -60,6 +60,52 @@ def insert_molecules(composition,boxSize,outName,inputs_dir='.',**kwargs):
                     logger.debug(l)
                 raise Exception('need bigger box')
 
+_DYNAMICAL_INTEGRATORS_ = ('md', 'md-vv', 'md-vv-avek', 'sd', 'bd')
+"""GROMACS integrators that do dynamics; the rest (steep, cg, l-bfgs, nm, tpi, ...) do not."""
+
+_DYNAMICS_ONLY_GPU_TASKS_ = ('pme', 'update')
+"""mdrun tasks that GROMACS refuses to put on a GPU without a dynamical integrator."""
+
+
+def mdp_integrator(mdp_filename):
+    """Returns the integrator an mdp file selects, lower-cased; 'md' if it does not say.
+
+    Args:
+        mdp_filename (str): mdp file name
+
+    Returns:
+        str: integrator name
+    """
+    value = mdp_to_dict(mdp_filename).get('integrator', 'md')
+    return value.split(';')[0].strip().lower() or 'md'
+
+
+def mdrun_options_for(mdrun_options, integrator):
+    """Returns the mdrun options to use with a given integrator.
+
+    One ``gromacs.mdrun_options`` serves every stage of a build, minimizations
+    included.  GROMACS stops with a fatal error when ``-pme gpu`` or
+    ``-update gpu`` is given with a minimizer, so for those these become
+    ``auto``, which GROMACS resolves to the CPU there and, with a dynamical
+    integrator, to the GPU wherever it can.
+
+    Args:
+        mdrun_options (dict): options from the configuration
+        integrator (str): the mdp's integrator
+
+    Returns:
+        dict: options to pass to mdrun
+    """
+    if integrator in _DYNAMICAL_INTEGRATORS_:
+        return mdrun_options
+    adjusted = dict(mdrun_options)
+    for task in _DYNAMICS_ONLY_GPU_TASKS_:
+        if str(adjusted.get(task, '')).lower() == 'gpu':
+            adjusted[task] = 'auto'
+            logger.debug(f'integrator {integrator} cannot run {task} on the GPU; passing -{task} auto for this run')
+    return adjusted
+
+
 def grompp_and_mdrun(gro='',top='',out='',mdp='',boxSize=[],single_molecule=False,**kwargs):
     """Launcher for grompp and mdrun.
 
@@ -75,7 +121,7 @@ def grompp_and_mdrun(gro='',top='',out='',mdp='',boxSize=[],single_molecule=Fals
     quiet=kwargs.get('quiet',True)
     ignore_codes=kwargs.get('ignore_codes',[-11])
     maxwarn=kwargs.get('maxwarn',4)
-    mdrun_options=kwargs.get('mdrun_options',{})
+    mdrun_options=dict(kwargs.get('mdrun_options',{}))
     for option in ['rdd','dds','dlb','npme','nt','ntpmi','ntomp','ntomp_pme','nb','tunepme','pme','pmefft','bonded','update']:
         if option in kwargs and not option in mdrun_options:
             mdrun_options[option]=kwargs[option]
@@ -91,6 +137,7 @@ def grompp_and_mdrun(gro='',top='',out='',mdp='',boxSize=[],single_molecule=Fals
         run(f'{sw.gmx} {sw.gmx_options} editconf -f {gro}.gro -o {gro} -box {box_str}', quiet=quiet)
     # nsteps=kwargs.get('nsteps',-2)
     run(f'{sw.gmx} {sw.gmx_options} grompp -f {mdp}.mdp -c {gro}.gro -p {top}.top -o {out}.tpr -maxwarn {maxwarn}', quiet=quiet)
+    mdrun_options = mdrun_options_for(mdrun_options, mdp_integrator(f'{mdp}.mdp'))
     if 'gpu_id' in mdrun_options:
         unusable = sw.gpu_unusable_reasons()
         if unusable:
