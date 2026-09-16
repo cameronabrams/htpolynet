@@ -199,6 +199,20 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Cure and repair
 
+- **Chain-growth cure leaves whole chains charged.**  The v2.10.0 sweep's new
+  molecule-charge check found example 1's polystyrene warning: 7 of 49 chains
+  over 0.01 e, the largest -0.040 e on the longest (1410-atom) chain, with the
+  system total exactly 0.  htpolynet-sweep measured the same scale in the two
+  preceding sweeps (9 of 49, largest -0.022 and -0.025 e), so it predates the
+  check, which merely exposed it.  It is about 2-3e-5 e per atom, i.e. a little
+  charge per chain-growth bond, which points at the same system-wide
+  `adjust_charges` as the item below.  Small enough not to matter much per
+  atom, but it scales with chain length, so the longest chain is the worst
+  off.  The fix is the per-molecule settle below; what is not yet known is
+  whether the residual comes from the templates disagreeing with their
+  instances (a `STY~C1-C2~STY` bond in a long chain is not quite the trimer
+  template) or only from the system-wide spread.  Measure before fixing.
+
 - **Cure still settles template overcharge system-wide.**
   `map_from_templates` ends each batch of bonds with one `adjust_charges`
   over every mapped atom in the system.  When the templates are consistent
@@ -950,6 +964,17 @@ Coverage as of the last measurement: **38.8%** overall.
   that is wanted.
 
 ## Simulation defaults
+
+- **The density-convergence tolerance may be tight for example 6.**  In the
+  v2.10.0 sweep, example 6 failed the gate for the first time in four sweeps:
+  "sem 1.070 exceeds tolerance 1.000" after 6 extensions, with the last window
+  at 1112.0 kg/m^3 against 1110.5 and 1111.6 in the two sweeps that converged
+  with no extension at all.  Monomer charges were byte-identical to the
+  previous sweep, so this is run-to-run noise rather than a change -- but the
+  build went on into the cure from a box the gate had just called unsettled,
+  and said so only in a warning.  Worth deciding whether the tolerance should
+  scale with system size or window length, and whether failing it should be
+  more than a warning.
 
 - **The halogen constraint failure is fixed but not explained.** v2.7.0
   switched the per-iteration equilibration to `constraints = h-bonds` with
