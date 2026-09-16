@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The "percolation not assessed" message says when it means "cannot
+  assess".**  It read as though the outcome were always the correct answer
+  for a linear polymer, with the multi-residue crosslinker case as an aside.
+  For example 2 that aside is the actual situation: bis-GMA crosslinks
+  through junctions a residue-level count cannot see.  Noticed by a sweep of
+  the shipped examples.
+
+
 ## [2.10.0] - 2026-09-15
 
 ### Added

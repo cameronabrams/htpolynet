@@ -890,7 +890,13 @@ class CureController:
         # monomer was mid-chain.
         if fmax<3:
             if mask is not None:
-                logger.info('No residue carries three or more cure-reactive sites, so crosslink percolation is not assessed. That is correct for a linear polymer; a system that crosslinks through a multi-residue molecule -- a dimethacrylate, a multi-arm prepolymer -- is outside what this residue-level check can see.')
+                logger.info('Crosslink percolation was not assessed: no residue carries three or more '
+                            'cure-reactive sites. For a chain polymer that is the answer -- a fully reacted '
+                            'difunctional unit is a chain interior, not a junction. But a system that '
+                            'crosslinks through a multi-residue molecule, such as a dimethacrylate built from '
+                            'a bisphenol and two methacrylates, does percolate through junctions this '
+                            'residue-level count cannot see, and there this line means "cannot assess", not '
+                            '"does not percolate".')
             return
         names=adf.loc[adf['resNum']==func.idxmax(),'resName']
         resname=names.iloc[0] if len(names) else f'residue {func.idxmax()}'
