@@ -251,15 +251,16 @@ becomes a flag, so this
       ntomp: 8
 
 runs ``mdrun -nb gpu -ntomp 8``.  With the short-range work on the GPU,
-Gromacs 2026 also puts PME, the bonded interactions, and the coordinate
-update there by default wherever it can, so ``nb: gpu`` is usually all you
-need.  The ``Update task`` and ``PME tasks`` lines near the top of each
-``md.log`` say where each task ran.
+Gromacs 2026's ``auto`` choices also put PME and the coordinate update on the
+GPU wherever they can.  Bonded interactions are the exception: ``auto`` keeps
+them on the CPU when PME is on the GPU, so add ``bonded: gpu`` to move them.
+The task-assignment lines near the top of each run's ``.log`` say where each
+task ran.
 
 Many of those runs are energy minimizations, and Gromacs refuses
 ``-pme gpu`` and ``-update gpu`` for a minimizer.  htpolynet therefore passes
-``auto`` for those two whenever the stage's integrator is not a dynamical
-one, so asking for them explicitly is safe.  Everything the cure uses
+``auto`` for ``pme``, ``update`` and ``bonded`` whenever the stage's
+integrator is not a dynamical one, so asking for them explicitly is safe.  Everything the cure uses
 otherwise (Berendsen coupling, h-bond constraints with LINCS, simulated
 annealing) is supported with the update on the GPU.
 

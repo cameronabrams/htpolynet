@@ -63,8 +63,13 @@ def insert_molecules(composition,boxSize,outName,inputs_dir='.',**kwargs):
 _DYNAMICAL_INTEGRATORS_ = ('md', 'md-vv', 'md-vv-avek', 'sd', 'bd')
 """GROMACS integrators that do dynamics; the rest (steep, cg, l-bfgs, nm, tpi, ...) do not."""
 
-_DYNAMICS_ONLY_GPU_TASKS_ = ('pme', 'update')
-"""mdrun tasks that GROMACS refuses to put on a GPU without a dynamical integrator."""
+_DYNAMICS_ONLY_GPU_TASKS_ = ('pme', 'update', 'bonded')
+"""mdrun tasks not forced onto a GPU without a dynamical integrator.
+
+GROMACS refuses ``-pme gpu`` and ``-update gpu`` with a minimizer.  Whether it
+accepts ``-bonded gpu`` there has not been checked, and a minimization is
+cheap enough that running its bonded work on the CPU costs nothing that matters.
+"""
 
 
 def mdp_integrator(mdp_filename):
@@ -85,9 +90,8 @@ def mdrun_options_for(mdrun_options, integrator):
 
     One ``gromacs.mdrun_options`` serves every stage of a build, minimizations
     included.  GROMACS stops with a fatal error when ``-pme gpu`` or
-    ``-update gpu`` is given with a minimizer, so for those these become
-    ``auto``, which GROMACS resolves to the CPU there and, with a dynamical
-    integrator, to the GPU wherever it can.
+    ``-update gpu`` is given with a minimizer, so for a minimizer these, and
+    ``-bonded gpu``, become ``auto``.  Dynamics gets the options unchanged.
 
     Args:
         mdrun_options (dict): options from the configuration

@@ -22,8 +22,8 @@ class TestMdrunOptionsFor:
     @pytest.mark.parametrize('integrator', ['steep', 'cg', 'l-bfgs'])
     def test_minimizer_downgrades_only_what_gromacs_rejects(self, integrator):
         got = mdrun_options_for(GPU, integrator)
-        assert got['pme'] == 'auto' and got['update'] == 'auto'
-        assert got['nb'] == 'gpu' and got['bonded'] == 'gpu' and got['ntomp'] == 8
+        assert got['pme'] == 'auto' and got['update'] == 'auto' and got['bonded'] == 'auto'
+        assert got['nb'] == 'gpu' and got['ntomp'] == 8
 
     def test_explicit_cpu_is_left_alone(self):
         assert mdrun_options_for({'pme': 'cpu', 'update': 'cpu'}, 'steep') == {'pme': 'cpu', 'update': 'cpu'}

@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Asking for `pme: gpu` or `update: gpu` in `mdrun_options` stopped the
   build at its first minimization.**  The same options go to every `mdrun`,
   and GROMACS refuses both tasks on a GPU without a dynamical integrator.
-  They now become `auto` for minimization stages, which GROMACS resolves to
-  the CPU there, and are passed unchanged to dynamics.
+  For minimization stages they now become `auto`, and so does `bonded`, which
+  hasn't been checked with a minimizer.  Dynamics gets the options unchanged.
 
 - **The parameterization summary undercounted and named the wrong place.**
   It was printed before the symmetry-, chain- and second-shell-derived
