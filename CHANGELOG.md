@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.2] - 2026-09-17
+
 ### Fixed
 
 - **Templates for crowded monomers could start with atoms on top of each
