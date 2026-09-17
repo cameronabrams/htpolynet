@@ -950,6 +950,16 @@ Coverage as of the last measurement: **38.8%** overall.
   for any operand that lacks the table, rather than concatenating a partial
   table. Bond orders would then need the same single-bond assumption.
 
+  **It has appeared (2026-09-17).** Example 2's stereoisomer copies `GMAS-*`
+  have 78 bonds in their topology but only 24 in their `.mol2`, in the
+  2026-09-14 sweep's files too. It shows up only when a cache is *reused*:
+  `bond_source_check` then logs "Gromacs/Mol2 bond inconsistency detected"
+  once per copy. Sweeps always start from an empty cache, so they never see
+  it. `generate_stereoisomers` deep-copies the parent's TopoCoord and writes
+  only a `.gro`; where the 24-bond `.mol2` comes from is not yet traced. What
+  a reused cache does with the wrong table (ring detection, system `.mol2`
+  output) is also unknown. No cyanate-ester molecule has stereoisomer copies.
+
 - **Two gaps left after the percolation check moved to cure sites
   (2026-09-15).**  First, a system that crosslinks through a *multi-residue*
   molecule -- example 2's GMA (two methacrylate HIE units), example 5's

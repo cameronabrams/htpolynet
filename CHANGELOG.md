@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Templates for crowded monomers could start with atoms on top of each
+  other, and AM1-BCC/ABCG2 charges then failed.**  When htpolynet built a
+  linked-product template, it attached the incoming molecule along the new
+  bond but never turned it about that bond. Its clash check also compared the
+  moved piece with its own pre-move position. With tetramethylbisphenol F
+  (TMB), whose methyls flank each reacting oxygen, every triazine template
+  started with a methyl hydrogen 0.65-1.26 A from a ring atom. On one triply
+  substituted template, AmberTools 26's sqm then failed to converge ("Cannot
+  properly run sqm"), which stopped parameterization.
+
+  The placement now scans turns about the new bond, in 10 degree steps, and
+  keeps the one farthest from the residues that stay put. Every TMB template
+  now starts at 1.50 A or more. The six triply substituted TMB templates
+  were run with ABCG2 on AmberTools 26: five, including the geometry that
+  failed before, completed, and the sixth converged its SCF and was still
+  optimizing when this was written. On these crowded molecules the
+  optimization is slow, 40 minutes to 2.6 hours each, run three at a time. Charges and atom types of all 123
+  templates in the shipped examples, which use gas charges, are unchanged. A
+  template that still starts with a contact under 1 A is now logged as a
+  warning.
+
 ## [2.10.1] - 2026-09-16
 
 ### Fixed

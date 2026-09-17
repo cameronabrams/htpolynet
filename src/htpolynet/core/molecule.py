@@ -51,6 +51,46 @@ def _yield_bonds_as_df(R: Reaction, TC: TopoCoord, resid_mapper) -> pd.DataFrame
                      'order': bondrec['order'], 'reactantName': R.product})
     return pd.DataFrame(rows)
 
+_TRANSROT_STEP_DEG_ = 10.0
+"""Angular step of the turn scan in Molecule.transrot."""
+
+_TRANSROT_WARN_NM_ = 0.10
+"""Closest approach, in nm, below which a template's starting geometry is reported as crowded.
+
+Contacts of 1.2-1.5 A between the new piece and the rest are routine before
+minimization; below 1 A they have been seen to stop sqm converging (a TMB ring
+methyl H 0.82 A from a triazine N).
+"""
+
+
+def _rotate_about_axis(xyz, point, axis, theta):
+    """Rotates points by theta about the line through point along unit vector axis (Rodrigues).
+
+    Args:
+        xyz (numpy.ndarray): (n, 3) positions
+        point (numpy.ndarray): a point on the axis
+        axis (numpy.ndarray): unit vector along the axis
+        theta (float): angle in radians
+
+    Returns:
+        numpy.ndarray: rotated (n, 3) positions
+    """
+    if theta == 0.0:
+        return xyz.copy()
+    k = axis / np.linalg.norm(axis)
+    K = np.array([[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]])
+    R = np.eye(3) + np.sin(theta) * K + (1.0 - np.cos(theta)) * (K @ K)
+    return (xyz - point) @ R.T + point
+
+
+def _min_distance(a, b):
+    """Smallest distance between any point of a and any point of b; inf if either is empty."""
+    if len(a) == 0 or len(b) == 0:
+        return np.inf
+    diff = a[:, np.newaxis, :] - b[np.newaxis, :, :]
+    return float(np.sqrt((diff * diff).sum(axis=2)).min())
+
+
 class Molecule:
     def __init__(self, name='', generator:Reaction=None, origin:str=None):
         self.name = name
@@ -830,7 +870,16 @@ class Molecule:
         Rj = TC.get_R(from_idx)
         logger.debug(f'Ri {at_idx} {Ri} {type(Ri)} {Ri.dtype}')
         logger.debug(f'Rj {from_idx} {Rj} {type(Rj)} {Rj.dtype}')
-        overall_maximum = (-1.e9, -1, -1)
+        # The two sacrificial H's are made to coincide, which puts at_idx, the H's
+        # and from_idx on one line.  The moving piece can still turn freely about
+        # that line, and that freedom is what clears a crowded site: a third
+        # tetramethyl bisphenol on a triazine lands its ortho methyl inside the
+        # ring at the unrotated placement.  So each H pairing is tried at a
+        # range of turns, and the one farthest from the residues that stay put
+        # wins.  (Measuring against all of TC would include the moving piece's
+        # own pre-move positions.)
+        fixed = C[~C['resNum'].isin(bresids)]
+        overall_maximum = (-1.e9, -1, -1, 0.0)
         coord_trials = {}
         for myH, myHnm in myHpartners.items():  # keys are globalIdx's, values are names
             coord_trials[myH] = {}
@@ -838,17 +887,13 @@ class Molecule:
             logger.debug(f'  Rh {myH} {Rh} {Rh.dtype}')
             Rih = Ri - Rh
             Rih *= 1.0 / np.linalg.norm(Rih)
+            fixed_xyz = fixed.loc[fixed['globalIdx'] != myH, ['posX', 'posY', 'posZ']].to_numpy(dtype=float)
             for otH, otHnm in otHpartners.items():
                 logger.debug(f'{self.name}: Considering {myH} {otH}')
-                coord_trials[myH][otH] = deepcopy(BTC)
-                # logger.debug(f'\n{coord_trials[myH][otH].Coordinates.A.to_string()}')
-                Rk = coord_trials[myH][otH].get_R(otH)
-                logger.debug(f'{self.name}:    otH {otH} Rk {Rk} {Rk.dtype}')
+                aligned = deepcopy(BTC)
+                Rk = aligned.get_R(otH)
                 Rkj = Rk - Rj
                 Rkj *= 1.0 / np.linalg.norm(Rkj)
-                logger.debug(f'Rkj {Rkj} {Rkj.dtype} Rih {Rih} {Rih.dtype}')
-                #Rhk=Rh-Rk
-                #rhk=np.linalg.norm(Rhk)
                 cp = np.cross(Rkj,Rih)
                 c = np.dot(Rkj,Rih)
                 v = np.array([[0,-cp[2],cp[1]],[cp[2],0,-cp[0]],[-cp[1],cp[0],0]])
@@ -856,19 +901,31 @@ class Molecule:
                 I = np.array([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]])
                 # R is the rotation matrix that will rotate donb to align with accb
                 R = I + v + v2 / (1. + c)
-                # logger.debug(f'{self.name}: R:\n{R}')
-                # rotate translate all donor atoms!
-                coord_trials[myH][otH].rotate(R)
-                Rk = coord_trials[myH][otH].get_R(otH)
+                aligned.rotate(R)
+                Rk = aligned.get_R(otH)
                 # overlap the two H atoms by translation
-                Rik = Rh - Rk
-                coord_trials[myH][otH].translate(Rik)
-                minD = TC.minimum_distance(coord_trials[myH][otH], self_excludes=[myH], other_excludes=[otH])
-                logger.debug(f'{self.name}: minD {minD}')
+                aligned.translate(Rh - Rk)
+                A = aligned.Coordinates.A
+                moving_mask = (A['globalIdx'] != otH).to_numpy()
+                xyz = A[['posX', 'posY', 'posZ']].to_numpy(dtype=float)
+                best = None
+                for theta in np.deg2rad(np.arange(0.0, 360.0, _TRANSROT_STEP_DEG_)):
+                    trial = _rotate_about_axis(xyz, Rh, Rih, theta)
+                    minD = _min_distance(trial[moving_mask], fixed_xyz)
+                    if best is None or minD > best[0]:
+                        best = (minD, theta, trial)
+                minD, theta, trial = best
+                A[['posX', 'posY', 'posZ']] = trial
+                coord_trials[myH][otH] = aligned
+                logger.debug(f'{self.name}: {myH}/{otH} best turn {np.rad2deg(theta):.0f} deg, minD {minD}')
                 if minD > overall_maximum[0]:
-                    overall_maximum = (minD, myH, otH)
+                    overall_maximum = (minD, myH, otH, theta)
         logger.debug(f'{self.name}: overall_maximum {overall_maximum}')
-        minD, myH, otH = overall_maximum
+        minD, myH, otH, _ = overall_maximum
+        if minD < _TRANSROT_WARN_NM_:
+            logger.warning(f'{self.name}: the best placement found for the new bond still leaves two atoms '
+                           f'{minD*10:.2f} A apart; a semi-empirical charge method (bcc, abcg2) may fail to converge '
+                           f'on this starting geometry')
         BTC = coord_trials[myH][otH]
         TC.overwrite_coords(BTC)
         TC.swap_atom_names(myH, list(myHighestH.keys())[0])
