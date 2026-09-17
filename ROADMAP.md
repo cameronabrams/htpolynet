@@ -8,6 +8,26 @@ Rough ordering within each section is by value, not by effort.
 
 ## Container and deployment
 
+- **The CPU and CUDA images ship different AmberTools.**  Found by
+  htpolynet-study on 2026-09-17. `:v2.10.2` has AmberTools 26.0 and
+  `:cuda-v2.10.2` has 24.8, from the same unpinned `ambertools` line in the
+  Dockerfile. It is not a pin anyone chose: conda-forge cannot solve
+  AmberTools >=26 together with `gromacs=*=nompi_cuda*`. The CUDA GROMACS
+  package pulls in the full `cuda-toolkit`, whose `nsight-compute` needs an
+  older `krb5` than the rest of the environment allows, so the solver quietly
+  falls back to 24.8.
+  - **Why it matters:** parameterizations from the two images can differ, and
+    the parameter-cache record (`paramcache`) does not include the AmberTools
+    version, so a cache filled on one image is reused silently on the other.
+  - **Fix options:** install AmberTools in its own conda environment inside
+    the CUDA image, with its binaries on PATH, so the two solves never meet;
+    pin `ambertools>=26` so a silent downgrade becomes a build failure; or
+    avoid the full toolkit if a CUDA GROMACS build that only needs
+    `cuda-version`/runtime libraries becomes available.
+  - **Independently:** adding the AmberTools version to the cache record would
+    turn a cross-version reuse into a cache miss. Records written without it
+    would still match, as with any new field.
+
 - **The container's Gromacs is generic `AVX2_256`, on both tags.** The
   `:cuda` image fixes the GPU half of this problem and not the SIMD half:
   conda-forge builds for a portable baseline, so on an AVX-512 host both
