@@ -42,7 +42,7 @@ FROM condaforge/miniforge3:latest
 # Links the published GHCR package to its source repository.
 LABEL org.opencontainers.image.source="https://github.com/cameronabrams/htpolynet"
 
-# Install Gromacs and AmberTools (latest available on conda-forge).
+# Install Gromacs (latest available on conda-forge); AmberTools follows below.
 # Miniforge ships with mamba for fast solves; conda-forge is the only
 # channel.  No Anaconda Inc. ToS dependency.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -68,11 +68,25 @@ ARG CONDA_OVERRIDE_CUDA=
 # clean dies, taking the whole RUN with it.  conda clean handles the same cache
 # correctly.  Reproduced locally in both directions before changing this.
 RUN CONDA_OVERRIDE_CUDA="${CONDA_OVERRIDE_CUDA}" mamba install -y -n base -c conda-forge \
-        ambertools \
         "gromacs${GROMACS_BUILD:+=*=${GROMACS_BUILD}*}" \
         parmed \
         rdkit \
     && conda clean -afy
+
+# AmberTools lives in its own environment, pinned, in both images.  Solved
+# together with the CUDA Gromacs, conda-forge silently fell back to AmberTools
+# 24.8 (the CUDA toolkit's nsight-compute needs an older krb5 than AmberTools
+# 26 allows), so the CPU and CUDA images parameterized molecules with different
+# AmberTools releases.  A separate environment keeps the two solves apart, and
+# the pin keeps the images identical and makes a future conflict a build error
+# instead of a quiet downgrade.  The environment is not activated: its
+# wrappers (antechamber, tleap, parmchk2) set AMBERHOME from their own
+# location, so putting its bin last on PATH is enough, and base's python and
+# gmx still come first.
+ARG AMBERTOOLS_VERSION=26.0
+RUN mamba create -y -n amber -c conda-forge "ambertools=${AMBERTOOLS_VERSION}" \
+    && conda clean -afy
+ENV PATH=${PATH}:/opt/conda/envs/amber/bin
 
 # Install HTPolyNet
 COPY . /htpolynet

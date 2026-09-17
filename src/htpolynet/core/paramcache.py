@@ -18,6 +18,7 @@ libraries keep working rather than silently re-parameterizing wholesale.
 Author: Cameron F. Abrams <cfa22@drexel.edu>
 """
 import hashlib
+import re
 import json
 import logging
 import os
@@ -33,6 +34,15 @@ _KEY_FIELDS = (
     ('atom_type',     'atom-type set'),
 )
 """Fields that determine the parameters, with human-readable labels."""
+
+VERSION_FIELD = 'ambertools_version'
+"""Record field holding the AmberTools version that produced the parameters.
+
+The same directives give different numbers under different AmberTools
+releases, and htpolynet's CPU and CUDA images have not always shipped the same
+one.  Compared only when both the record and the current run know it, so
+records written before it existed, or runs that cannot tell, still match.
+"""
 
 FRCMOD_FIELD = 'frcmod'
 """Record field holding a digest of the user frcmod files loaded after parmchk2's.
@@ -59,7 +69,19 @@ def frcmod_digest(frcmods):
     return h.hexdigest()[:16]
 
 
-def build_key(ambertools=None):
+def ambertools_version():
+    """Returns the AmberTools version of the running installation, or None if unknown.
+
+    Returns:
+        str or None: version string, e.g. '26.0'
+    """
+    from ..external import software
+    v = software.versions.get('ambertools', '')
+    m = re.search(r'ver\.\s*([0-9][0-9A-Za-z.\-]*)', v or '')
+    return m.group(1) if m else None
+
+
+def build_key(ambertools=None, version='detect'):
     """Returns the provenance record describing a parameterization run under
     the given AmberTools directives.
 
@@ -68,6 +90,8 @@ def build_key(ambertools=None):
 
     Args:
         ambertools (dict, optional): ambertools configuration directives
+        version (str, optional): AmberTools version to record; 'detect' (the default) asks the
+            running installation, and None records none
 
     Returns:
         dict: provenance record
@@ -79,6 +103,10 @@ def build_key(ambertools=None):
     digest = frcmod_digest(ambertools.get(FRCMOD_FIELD))
     if digest:
         key[FRCMOD_FIELD] = digest
+    if version == 'detect':
+        version = ambertools_version()
+    if version:
+        key[VERSION_FIELD] = version
     return key
 
 
@@ -158,6 +186,9 @@ def describe_mismatch(stored, requested):
             continue
         if stored[field] != requested.get(field):
             diffs.append(f'{label} {stored[field]!r} cached, {requested.get(field)!r} requested')
+    stored_v, requested_v = stored.get(VERSION_FIELD), requested.get(VERSION_FIELD)
+    if stored_v and requested_v and stored_v != requested_v:
+        diffs.append(f'AmberTools {stored_v} cached, {requested_v} running')
     # unlike the fields above, an absent frcmod digest is a statement: none was loaded
     if stored.get(FRCMOD_FIELD) != requested.get(FRCMOD_FIELD):
         diffs.append(f'user frcmod {stored.get(FRCMOD_FIELD) or "none"} cached, '

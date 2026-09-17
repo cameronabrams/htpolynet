@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The CPU and CUDA container images shipped different AmberTools.**  The
+  CUDA images, `:cuda-v2.10.0` through `:cuda-v2.10.2`, had AmberTools 24.8,
+  while the CPU images had 26.0. Nobody chose that: conda-forge can't install
+  AmberTools 26 alongside CUDA GROMACS, and the unpinned Dockerfile line fell
+  back silently. So the same configuration was parameterized by different
+  AmberTools releases depending on which image ran it. Both images now
+  install AmberTools in their own conda environment, pinned to one version
+  (26.0, set by the `AMBERTOOLS_VERSION` build argument). A future conflict
+  now fails the build instead of quietly downgrading.
+
+- **A cached parameterization is no longer reused across AmberTools
+  versions.**  The cache record now includes the AmberTools version, and a
+  run on a different version re-parameterizes instead of reusing the entry.
+  Records written before this, and runs that can't tell their version, still
+  match. A cache filled with a CUDA image up to v2.10.2 (AmberTools 24.8)
+  has no version in its records, so it would still be reused by a newer
+  image. Refill it if the charges must come from one AmberTools release.
+
 ## [2.10.2] - 2026-09-17
 
 ### Fixed

@@ -83,7 +83,7 @@ def _mismatch_and_runtime(name='TAZ', **ambertools):
 
 class TestBuildKey:
     def test_defaults_come_from_ambertools(self):
-        assert paramcache.build_key({}) == AMBERTOOLS_DEFAULTS
+        assert paramcache.build_key({}, version=None) == AMBERTOOLS_DEFAULTS
 
     def test_none_is_the_same_as_empty(self):
         assert paramcache.build_key(None) == paramcache.build_key({})
@@ -95,7 +95,7 @@ class TestBuildKey:
         assert key['atom_type'] == AMBERTOOLS_DEFAULTS['atom_type']
 
     def test_ignores_directives_that_do_not_affect_parameters(self):
-        assert paramcache.build_key({'nonsense': 1}) == AMBERTOOLS_DEFAULTS
+        assert paramcache.build_key({'nonsense': 1}, version=None) == AMBERTOOLS_DEFAULTS
 
     def test_net_charge_default_preserves_the_old_hardcoded_nc(self):
         # antechamber was invoked with a literal -nc 0 before net_charge became
@@ -342,3 +342,37 @@ class TestUnverifiedSummary:
     def test_a_molecule_reported_twice_is_listed_once(self, caplog):
         text = self._report(['TAZ', 'TAZ'], caplog, charge_method='bcc')
         assert '1 parameterization reused without provenance' in text
+
+
+class TestAmberToolsVersion:
+    """The same directives give different numbers under different AmberTools
+    releases, and the CPU and CUDA images once shipped different ones."""
+
+    def test_detected_from_the_running_installation(self, monkeypatch):
+        from htpolynet.external import software
+        monkeypatch.setitem(software.versions, 'ambertools', 'ver. 26.0 (conda)')
+        assert paramcache.ambertools_version() == '26.0'
+        assert paramcache.build_key({})[paramcache.VERSION_FIELD] == '26.0'
+
+    def test_unknown_version_is_not_recorded(self, monkeypatch):
+        from htpolynet.external import software
+        monkeypatch.setitem(software.versions, 'ambertools', 'installed (version unknown)')
+        assert paramcache.VERSION_FIELD not in paramcache.build_key({})
+
+    def test_a_different_version_is_a_miss(self):
+        diffs = paramcache.describe_mismatch(paramcache.build_key({}, version='24.8'),
+                                             paramcache.build_key({}, version='26.0'))
+        assert diffs == ['AmberTools 24.8 cached, 26.0 running']
+
+    def test_the_same_version_matches(self):
+        key = paramcache.build_key({}, version='26.0')
+        assert paramcache.describe_mismatch(key, key) == []
+
+    def test_a_record_without_a_version_still_matches(self):
+        # records written before the field existed, like every cache in use today
+        assert paramcache.describe_mismatch(paramcache.build_key({}, version=None),
+                                            paramcache.build_key({}, version='26.0')) == []
+
+    def test_a_run_that_cannot_tell_still_matches(self):
+        assert paramcache.describe_mismatch(paramcache.build_key({}, version='26.0'),
+                                            paramcache.build_key({}, version=None)) == []
