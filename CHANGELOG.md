@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.1] - 2026-09-16
+
 ### Fixed
 
 - **Asking for `pme: gpu` or `update: gpu` in `mdrun_options` stopped the
