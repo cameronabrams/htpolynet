@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A GPU build died at its first minimization when the configuration set
+  `ntomp`.**  GROMACS refuses OpenMP threads together with a GPU unless it is
+  also told how many ranks to run: "Please specify the number of thread-MPI
+  ranks as well (option -ntmpi)."  Nothing supplied one, so every such build
+  failed about a minute in, after parameterization had already been paid for.
+  htpolynet now passes `-ntmpi 1` when a configuration asks for a GPU, sets
+  `ntomp`, and gives no rank count of its own.  A rank count in the
+  configuration (`ntmpi`, `nt` or `npme`) is left as it is, and so is an MPI
+  `mdrun`, which takes its ranks from `mpirun` or `srun` and rejects
+  `-ntmpi`.  Reported by htpolynet-study from a 9-task GPU build where every
+  task failed.
+
+- **`ntmpi` passed as a keyword argument to `grompp_and_mdrun` was dropped**,
+  because the passthrough list spelled it `ntpmi`.  Configurations were
+  unaffected: `mdrun_options` is copied whole.
+
 ## [2.10.3] - 2026-09-17
 
 ### Fixed

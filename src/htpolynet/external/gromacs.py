@@ -110,6 +110,50 @@ def mdrun_options_for(mdrun_options, integrator):
     return adjusted
 
 
+_GPU_TASK_OPTIONS_ = ('nb', 'pme', 'bonded', 'update')
+"""mdrun options whose value can put a task on a GPU."""
+
+_MPI_LAUNCHERS_ = ('mpirun', 'mpiexec', 'srun', 'gmx_mpi', 'mdrun_mpi', 'aprun')
+"""Markers of an MPI mdrun, which takes its rank count from the launcher and rejects -ntmpi."""
+
+
+def ensure_thread_mpi_ranks(mdrun_options, mdrun_cmd=''):
+    """Returns the mdrun options with a thread-MPI rank count, where GROMACS insists on one.
+
+    GROMACS stops with a fatal error when it is given OpenMP threads and a GPU
+    but no rank count: "setting the number of OpenMP threads without
+    specifying the number of ranks can lead to conflicting demands. Please
+    specify the number of thread-MPI ranks as well (option -ntmpi)."  A build
+    would then die at its first minimization, after parameterization is
+    already paid for.  One rank is what a single-node, single-GPU run wants,
+    so that is supplied when nothing else settles it.
+
+    An MPI mdrun is left alone: it takes its rank count from mpirun or srun
+    and rejects ``-ntmpi`` outright.
+
+    Args:
+        mdrun_options (dict): options from the configuration
+        mdrun_cmd (str): the mdrun command line, to spot an MPI build
+
+    Returns:
+        dict: options to pass to mdrun
+    """
+    if 'ntomp' not in mdrun_options:
+        return mdrun_options
+    if any(k in mdrun_options for k in ('ntmpi', 'nt', 'npme')):
+        return mdrun_options
+    if not ('gpu_id' in mdrun_options
+            or any(str(mdrun_options.get(k, '')).lower() == 'gpu' for k in _GPU_TASK_OPTIONS_)):
+        return mdrun_options
+    if any(m in mdrun_cmd for m in _MPI_LAUNCHERS_):
+        return mdrun_options
+    adjusted = dict(mdrun_options)
+    adjusted['ntmpi'] = 1
+    logger.info('mdrun_options sets ntomp and asks for a GPU but gives no rank count; '
+                'passing -ntmpi 1, which GROMACS requires of a thread-MPI run')
+    return adjusted
+
+
 def grompp_and_mdrun(gro='',top='',out='',mdp='',boxSize=[],single_molecule=False,**kwargs):
     """Launcher for grompp and mdrun.
 
@@ -126,7 +170,7 @@ def grompp_and_mdrun(gro='',top='',out='',mdp='',boxSize=[],single_molecule=Fals
     ignore_codes=kwargs.get('ignore_codes',[-11])
     maxwarn=kwargs.get('maxwarn',4)
     mdrun_options=dict(kwargs.get('mdrun_options',{}))
-    for option in ['rdd','dds','dlb','npme','nt','ntpmi','ntomp','ntomp_pme','nb','tunepme','pme','pmefft','bonded','update']:
+    for option in ['rdd','dds','dlb','npme','nt','ntmpi','ntomp','ntomp_pme','nb','tunepme','pme','pmefft','bonded','update']:
         if option in kwargs and not option in mdrun_options:
             mdrun_options[option]=kwargs[option]
 
@@ -142,6 +186,8 @@ def grompp_and_mdrun(gro='',top='',out='',mdp='',boxSize=[],single_molecule=Fals
     # nsteps=kwargs.get('nsteps',-2)
     run(f'{sw.gmx} {sw.gmx_options} grompp -f {mdp}.mdp -c {gro}.gro -p {top}.top -o {out}.tpr -maxwarn {maxwarn}', quiet=quiet)
     mdrun_options = mdrun_options_for(mdrun_options, mdp_integrator(f'{mdp}.mdp'))
+    mdrun_options = ensure_thread_mpi_ranks(
+        mdrun_options, sw.mdrun_single_molecule if single_molecule else sw.mdrun)
     if 'gpu_id' in mdrun_options:
         unusable = sw.gpu_unusable_reasons()
         if unusable:

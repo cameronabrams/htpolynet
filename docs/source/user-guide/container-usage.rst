@@ -250,7 +250,13 @@ becomes a flag, so this
       nb: gpu
       ntomp: 8
 
-runs ``mdrun -nb gpu -ntomp 8``.  With the short-range work on the GPU,
+runs ``mdrun -nb gpu -ntomp 8 -ntmpi 1``.  The rank count is htpolynet's
+doing: Gromacs stops outright when it is given OpenMP threads and a GPU but
+no ranks, so one thread-MPI rank is supplied when a configuration asks for a
+GPU, sets ``ntomp``, and names no rank count of its own.  Set ``ntmpi``,
+``nt`` or ``npme`` yourself to choose otherwise.  An MPI ``mdrun``, which
+takes its ranks from ``mpirun`` or ``srun`` and rejects ``-ntmpi``, is left
+alone.  With the short-range work on the GPU,
 Gromacs 2026's ``auto`` choices also put PME and the coordinate update on the
 GPU wherever they can.  Bonded interactions are the exception: ``auto`` keeps
 them on the CPU when PME is on the GPU, so add ``bonded: gpu`` to move them.
