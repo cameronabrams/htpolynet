@@ -199,6 +199,85 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Cure and repair
 
+- **A three-body cure reaction, for the real cyanate-ester chemistry.**  Asked for by
+  Cameron 2026-09-21.  Cyanate esters cure by *cyclotrimerization*: three -O-C#N
+  groups combine into one 1,3,5-triazine ring, an addition with no atom lost.
+  htpolynet cannot express that today -- a reaction forms one bond between two
+  reactants -- so example 6 and the study's whole bridge series use a surrogate: a
+  pre-formed TAZ triazine monomer plus aryl-ether bonds (A2 + B3), with
+  `postcure_repair: triazine_to_cyanate_cap` dismantling the rings that never
+  completed back into -OCN caps.
+
+  **Why it is worth doing.**  The surrogate is wrong in ways that cost real work:
+  - Triazine rings exist before cure, so crosslink junctions are present at zero
+    conversion, and the gel point of the model is not the gel point of the chemistry.
+  - Incomplete rings are an artifact with no chemical counterpart, and the repair
+    that cleans them up is where the +/-0.24 e charge bug lived (fixed in 2.9.0).
+    With real trimerization an unreacted group simply stays -OCN, correct by
+    construction, and repair is not needed at all for new builds.
+  - Conversion becomes directly what the literature reports.  Today a bond conversion
+    has to be mapped to OCN conversion (`chi_OCN ~ chi_bond^3`, exactly zero below f
+    iterations -- see the memory note); with trimerization, one reaction event
+    consumes three OCN groups and `chi_OCN` is measured, not inferred.
+
+  **What already generalizes.**  `_yield_bonds_as_df` builds its bonds through a
+  per-reactant `resid_mapper`, so template *building* is not limited to two
+  reactants; `Molecule.generate` merges however many reactants it is given; a bond
+  record is a pair of atoms, which stays true for a ring of three bonds.
+
+  **The hard part, and the central new code.**  Per-bond template splicing cannot
+  form a ring.  `map_from_templates` matches each new bond by its local context, but
+  in the trimer template all three ring bonds exist, while the instance, partway
+  through the batch, has only some of them -- so the template's bystanders cannot
+  match the instance's, in either direction.  A ring needs a **product-wide splice**:
+  map every atom of the three participating residues from the trimer template at
+  once -- types, charges, and all angles, dihedrals and 1-4 pairs involving the new
+  ring -- rather than three independent per-bond splices.  Treat that as a new
+  function beside `map_from_templates`, not a modification of it; CURE's pairwise
+  path must keep working unchanged.
+
+  **Plan.**
+  1. *Reaction model.*  Let a cure reaction declare three reactants and three bonds.
+     Generalize `prepare_new_bonds`, whose residue-offset arithmetic is written for
+     exactly two reactants, and the `len(R.reactants) == 2` guards.  Symmetry
+     expansion needs care but is bounded: three copies of a dicyanate with two
+     equivalent sites give four distinct site combinations, not eight.
+  2. *The trimer template.*  One product per site combination, about 120 atoms for a
+     real dicyanate: a one-time AM1-BCC cost of tens of minutes, then cached.  Ring
+     closure is the question.  Preferred: build it as today by merging and placing the
+     three pieces, then close the third bond under a type-6 restraint with the
+     existing attenuation ladder before parameterizing -- the drag machinery already
+     does exactly this.  Fallback: declare the trimer from SMILES as a
+     `count: 0` constituent, which sidesteps the geometry but needs a way to name
+     residues inside one generated molecule, which htpolynet has no syntax for.
+  3. *Triple search.*  Enumerate candidate triples from the linkcell -- pairs within
+     the radius, then triangles among them -- score by the sum of the three
+     distances, and choose a disjoint set.  Greedy is the simple version; the
+     set-packing problem is close enough to the single-step annealer above that the
+     two should share code if both get built.  Forbid two groups of the same molecule
+     in one ring, as the single-step entry forbids intramolecular loops.
+  4. *Ring closure in the system.*  Three sites have to converge, which is strictly
+     harder than bringing two together.  Restrain all three pairs, walk them in with
+     the drag ladder, then form the ring in one batch and relax.
+  5. *Accounting and checks.*  Conversion counted in OCN groups consumed, three per
+     event.  `check_iterations_vs_functionality` assumes a residue carries its own
+     crosslink sites; junctions now form in situ from three molecules, so its
+     functionality model needs rework rather than a patch.  The per-molecule charge
+     check applies unchanged and is worth watching, since a ring closure changes
+     types and charges on three residues at once.
+  6. *Docs, example, validation.*  A new shipped example, or an ex6 variant, built
+     both ways: surrogate versus true trimerization at matched conversion, comparing
+     density, Tg, and the fragment and junction statistics, against the study's BADCy
+     results.  Builds belong to htpolynet-sweep.
+
+  **Risks.**  Ring closure failing in a dense box is the likely one, and the
+  three-way convergence has no precedent in the code.  Beyond that: template cost if
+  a system has several distinct cyanate monomers (one trimer template per
+  combination), and the fact that changing conversion semantics breaks comparability
+  with every existing cyanate build, which is a documentation problem as much as a
+  code one.  Out of scope: the dimer and oxazoline intermediates real cyanate cure
+  passes through.
+
 - **Single-step crosslinking (the Khare method), as an alternative to CURE, not a
   replacement.**  Agreed with Cameron 2026-09-21.  All bonds are chosen at once by
   combinatorial optimization on one static snapshot, before any bond exists, so
