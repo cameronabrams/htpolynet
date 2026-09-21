@@ -266,7 +266,10 @@ Coverage as of the last measurement: **38.8%** overall.
     (ours carry a cycle rank of ~430 on ~938 junctions).  Now noted in the code at
     both sites that read it, so it does not get "fixed".
 
-  **Class 3, soft: strained cycles, and the threshold problem.**  A candidate bond
+  **Class 3, soft: strained cycles, and the threshold problem.**  For cyanate esters
+  this class is where a filter does *harm* if switched on -- see the end-group
+  arithmetic below -- so what follows is a facility for other chemistries, not a
+  correction for this one.  A candidate bond
   whose two atoms are already close *through the bond graph* closes a covalent cycle.
   Small ones are unphysical -- a cycle threading a few rigid aromatic units cannot
   close without absurd strain -- but "small" needs a number, and inventing one is
@@ -285,15 +288,31 @@ Coverage as of the last measurement: **38.8%** overall.
     "Reject a bond closing a cycle spanning fewer than k junction-to-junction
     repeats" reads off the junction graph, is chemistry-independent, and avoids a
     per-chemistry magic number.
-  - **Ship it off by default** (their second ask), but note the state of knowledge is
-    symmetric ignorance, not evidence of innocence.  Nobody has established the
-    28-rings are wrong, and htpolynet-study explicitly withdrew the converse: they have
-    **not** established the rings are physically allowed either.  They are
-    near-unstrained in GAFF (span -0.07 A, C-O-C angle -0.46 deg against non-ring
-    bridges), but that only says the force field tolerates them; **their absolute
-    frequency is set by our 0.5 nm search radius and by junctions seeded at t=0, not
-    by chemistry.**  So the rate is a property of the model, and the 1.4% should never
-    be quoted as a physical cyclization rate.
+  - **Off by default is the CORRECT default for cyanate esters, not a cautious one --
+    and the docs and the code comment must say why.**  htpolynet-study, 2026-09-21,
+    from the library: Fang & Shimp's end-group arithmetic caps acyclic dendritic
+    growth at **75%** cyanate conversion, a mild ring-chain model at **90%**, and only
+    severe macrocyclization reaches **98%**.  Real cure reaches 98-99%, and Guenthner
+    2014 treats the point as settled.  **A 98% polycyanurate network cannot be
+    macrocycle-free.**  Filtering short cycles out of this chemistry would therefore
+    remove the very structures that let it cure at all.
+  - **The convention we would be importing comes from a different chemistry.**  Khare
+    2018 and Lin 2009 justify prohibiting short cycles for **epoxy-amine**, where they
+    are negligible.  That justification inverts for cyanate esters.  Put this in a
+    comment where the filter is defined, because the filter will otherwise look
+    under-used and someone will helpfully turn it on.
+  - **If anything, we make too few.**  Two independent measures: cycle rank per
+    monomer **0.303 against Fang's 0.485**, and a gel-point delay of **+6.3% against
+    Lin's +21%** cyclization term.  So the interesting question for cyanate esters is
+    not how to suppress cycles but why htpolynet produces fewer than the chemistry
+    demands -- plausibly the 0.5 nm search radius and junctions seeded at t=0.  That
+    is a separate investigation, and the three-body reaction changes its terms, since
+    junctions would then emerge where ends meet.
+  - The 28-rings are near-unstrained in GAFF (span -0.07 A, C-O-C angle -0.46 deg
+    against non-ring bridges), but that only says the force field tolerates them.
+    Their absolute frequency is still set by our search radius and seeded junctions,
+    so **1.4% must never be quoted as a physical cyclization rate**; the comparison
+    against Fang above is the meaningful one.
   - **Do not validate the filter on Tg in this system -- it is underpowered, and
     that is bounded, not guessed.**  Between-bridge spread in ring density is 0.67
     percentage points of bridges, and dTg/dconversion averages 5.6 K per percentage
