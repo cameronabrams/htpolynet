@@ -199,6 +199,72 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Cure and repair
 
+- **Filtering candidate crosslinks against disallowed topologies, and what that means
+  for cyanate esters.**  Raised by Cameron 2026-09-21, who asked the right question:
+  can "physically disallowable" even be defined for these systems?  Partly.  Three
+  classes, in descending order of how firm the ground is.
+
+  **What is filtered today.**
+  - `TopoCoord.makes_shortcircuit` rejects a candidate whose two atoms sit in
+    residues that are *already* bonded to each other, so one pair of residues cannot
+    be doubly bonded.  Live for every chemistry.
+  - `TopoCoord.pierces_ring` rejects a candidate whose segment passes through an
+    existing covalent ring, and can dump a gro file of the piercing.  Live, and the
+    one genuinely topological test in the code.
+  - **The cycle-length filter is inert for cyanate esters.**
+    `min_allowable_bondcycle_length` is read into `TC.min_bondcycle_length`, but the
+    only code that consults it is the C-C bondchain pass, which exists for vinyl
+    chain growth; `makes_bondcycle` itself is commented out in `bondtest`.  For an
+    ether O-C bond, `chain_of` returns None and the whole check is skipped.  So
+    example 6 and the study's bridge series have run with **no cycle filter at all**,
+    and the config key silently does nothing there.  Worth saying out loud before
+    designing more filters.
+
+  **Class 1, firm: valence and connectivity.**  Already handled by `z` bookkeeping
+  and the short-circuit test.  One gap arrives with the three-body reaction above: two
+  -OCN groups of the *same* molecule entering the *same* triazine.  Not forbidden by
+  valence, and Lin & Khare forbade the analogous intramolecular loop by fiat.  Make it
+  a constraint of the triple search (one group per molecule per ring) with a config
+  switch, not a post-hoc rejection.
+
+  **Class 2, firm: catenation and threading.**  `pierces_ring` is one-directional: it
+  asks whether a *new bond* pierces an *existing ring*.  Cyclotrimerization creates
+  rings in situ, so the complementary test is needed -- does a *newly formed ring*
+  encircle an existing strand?  Without it, trimerization can build catenanes that no
+  chemistry would produce and no MD will undo.  This is a real, definable test and
+  should land with the three-body work.
+
+  **Class 3, soft: strained cycles, and the threshold problem.**  A candidate bond
+  whose two atoms are already close *through the bond graph* closes a covalent cycle.
+  Small ones are unphysical -- a cycle threading a few rigid aromatic units cannot
+  close without absurd strain -- but "small" needs a number, and inventing one is
+  how a filter starts rejecting chemistry that is fine.  The clean generalization is
+  a **graph-distance filter**: reject a candidate when the shortest existing bond path
+  between its atoms is under N bonds, with N from config, computed by a BFS bounded at
+  N on `Topology.bondlist`, which is cheap and chemistry-agnostic.  It subsumes the
+  vinyl-only cycle logic conceptually and catches the same-molecule-twice case for
+  free.
+  - **Derive N from data, not taste.**  Measure the cycle-size distribution in
+    networks we already have: for each cure bond in example 6's and the study's
+    finished builds, the length of the shortest cycle through it.  If nothing under,
+    say, 20 atoms ever occurs, the filter is cheap insurance at N=12 and changes no
+    result; if short cycles are common, that is a finding about the existing networks
+    and needs understanding before filtering them away.  This measurement costs
+    nothing, needs no new build, and should come first.
+
+  **Where the filters have to live.**  Not only in the pairwise search.  The
+  single-step annealer chooses a whole connectivity at once, so these become
+  constraints on its move set (reject the move, or price it in the cost), and the
+  three-body search needs them as constraints on triple selection.  A filter
+  expressed only as a post-hoc reject in `bondtest` will not transfer to either.
+  Factor them as predicates over (candidate, current topology) that all three callers
+  share.
+
+  **Reporting.**  `bondtest` outcomes are already counted per `BTRC` code and logged;
+  extend that enum rather than inventing a parallel mechanism, and log the
+  per-reason histogram at each iteration.  A filter that silently removes half the
+  candidates is worse than no filter.
+
 - **A three-body cure reaction, for the real cyanate-ester chemistry.**  Asked for by
   Cameron 2026-09-21.  Cyanate esters cure by *cyclotrimerization*: three -O-C#N
   groups combine into one 1,3,5-triazine ring, an addition with no atom lost.
