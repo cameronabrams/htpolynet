@@ -243,11 +243,17 @@ Coverage as of the last measurement: **38.8%** overall.
     plus C-N-C through the triazine); a chemistry with a direct biphenyl link would
     give 13, so **14 is not a constant to hardcode**.
   - A 28-ring is two triazines joined by two *different* bisphenols.  Double-bridged
-    triazine pairs are **1.4% of bridges, flat across chi = 0.90 to 0.99** (1540
-    instances).  The flatness is itself odd -- a diffusion-limited cyclization rate
-    should rise as ends get scarce -- and reads as a geometric consequence of random
-    crosslinker insertion rather than a kinetic outcome.  Worth explaining before
-    filtering these out.
+    triazine pairs are 1.4% of bridges at chi = 0.99 (1540 instances).  **They form
+    late, and kinetically they must.**  Replaying the DEBUG bond table, which carries
+    residue numbers, dates every ring closure: over 32 c099 cells and 45,199 bridge
+    completions, the instantaneous closure rate per 100 bridges runs
+    0.21 -> 0.83 -> 1.46 -> 1.83 -> 2.55 -> 1.98 -> 1.01 across conversion, and the
+    median closure sits at chi 0.819 against 0.732 for bridges generally.  A second
+    bridge requires the triazine pair to be connected already, so the rate is first
+    connectivity-gated and then end-group-limited.  (An earlier note here called the
+    rate "flat and suspicious"; that was an artifact of comparing *cumulative* ratios
+    at 0.90/0.95/0.99, which all sit in the plateau of a saturating curve --
+    htpolynet-study, retracted 2026-09-21, `bridge-series/ring_history.py`.)
   - Intramolecular loops, both arms of one bisphenol into one triazine, a 14-ring:
     **zero in 96 cells, zero in ~250,000 bridges.**
   - **And the reason is `makes_shortcircuit`, not geometry** -- which turned up
@@ -280,9 +286,10 @@ Coverage as of the last measurement: **38.8%** overall.
     repeats" reads off the junction graph, is chemistry-independent, and avoids a
     per-chemistry magic number.
   - **Ship it off by default** (their second ask).  There is no evidence the 28-rings
-    are wrong; intramolecular cyclization is real in step-growth cure and 1.4% is not
-    an obviously wrong rate.  The filter's first use is to *measure* the effect of
-    removing them, not to correct a defect.
+    are wrong: intramolecular cyclization is real in step-growth cure, and the dated
+    closure rate above behaves as the chemistry demands rather than anomalously.  The
+    filter's first use is to *measure* the effect of removing them, not to correct a
+    defect.
   - **Re-measure for cyclotrimerization.**  These statistics come from the A2+B3
     route, where junctions are seeded at t=0 by random insertion rather than emerging
     where three ends meet, and the cycle spectrum inherits that.  They are a
