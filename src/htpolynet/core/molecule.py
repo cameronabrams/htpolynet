@@ -23,6 +23,7 @@ from ..external.ambertools import GAFFParameterize
 from ..external.command import run
 from ..external.gromacs import mdp_modify,gro_from_trr
 from ..geometry.matrix4 import Matrix4
+from ..geometry.placement import min_distance, place_group, rotate_about_axis
 from ..io.gro import GRX_ATTRIBUTES
 
 logger=logging.getLogger(__name__)
@@ -63,33 +64,10 @@ minimization; below 1 A they have been seen to stop sqm converging (a TMB ring
 methyl H 0.82 A from a triazine N).
 """
 
-
-def _rotate_about_axis(xyz, point, axis, theta):
-    """Rotates points by theta about the line through point along unit vector axis (Rodrigues).
-
-    Args:
-        xyz (numpy.ndarray): (n, 3) positions
-        point (numpy.ndarray): a point on the axis
-        axis (numpy.ndarray): unit vector along the axis
-        theta (float): angle in radians
-
-    Returns:
-        numpy.ndarray: rotated (n, 3) positions
-    """
-    if theta == 0.0:
-        return xyz.copy()
-    k = axis / np.linalg.norm(axis)
-    K = np.array([[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]])
-    R = np.eye(3) + np.sin(theta) * K + (1.0 - np.cos(theta)) * (K @ K)
-    return (xyz - point) @ R.T + point
-
-
-def _min_distance(a, b):
-    """Smallest distance between any point of a and any point of b; inf if either is empty."""
-    if len(a) == 0 or len(b) == 0:
-        return np.inf
-    diff = a[:, np.newaxis, :] - b[np.newaxis, :, :]
-    return float(np.sqrt((diff * diff).sum(axis=2)).min())
+# the turn scan and the addition placement want the same geometry; one copy of it
+# lives in geometry.placement
+_rotate_about_axis = rotate_about_axis
+_min_distance = min_distance
 
 
 class Molecule:
@@ -352,6 +330,102 @@ class Molecule:
         self.load_top_gro(f'{outname}.top', f'{outname}.gro', mol2filename=f'{outname}.mol2', wrap_coords=False)
         self.initialize_molecule_rings()
         self.TopoCoord.write_tpx(f'{outname}.tpx')
+
+    def place_for_addition(self, at_idx, from_idx, from_resids, bond_length=0.147):
+        """Positions the residues of an incoming reactant against an atom it will bond to.
+
+        ``transrot`` aligns two reactants on the sacrificial hydrogens they are about
+        to lose, so it cannot place an addition: in a cyclotrimerization neither the
+        cyanate carbon nor its nitrogen carries a hydrogen, and nothing is lost.  This
+        positions the incoming piece instead -- attaching atom a bond length from its
+        partner, in the direction and at the turn that leave the most room.
+
+        Args:
+            at_idx (int): global index of the atom already in place
+            from_idx (int): global index of the incoming atom that will carry the bond
+            from_resids (list): resNums of every residue that moves with from_idx
+            bond_length (float): distance to leave between the two atoms, in nm
+
+        Returns:
+            float: closest approach between the moved piece and everything else, in nm
+        """
+        TC = self.TopoCoord
+        A = TC.Coordinates.A
+        moving = A['resNum'].isin(from_resids).to_numpy()
+        group = A.loc[moving, ['posX', 'posY', 'posZ']].to_numpy(dtype=float)
+        attach = int(np.flatnonzero(A.loc[moving, 'globalIdx'].to_numpy() == from_idx)[0])
+        fixed = A.loc[~moving, ['posX', 'posY', 'posZ']].to_numpy(dtype=float)
+        anchor = A.loc[A['globalIdx'] == at_idx, ['posX', 'posY', 'posZ']].to_numpy(dtype=float)[0]
+        placed, clearance = place_group(group, attach, anchor, fixed, bond_length)
+        A.loc[moving, ['posX', 'posY', 'posZ']] = placed
+        logger.debug(f'{self.name}: placed residues {from_resids} for addition at {at_idx}-{from_idx}, '
+                     f'clearance {clearance:.3f} nm')
+        return clearance
+
+    def close_ring_geometry(self, pairdf, target=0.15, nstages=8, kb=300000.0, deffnm=''):
+        """Pulls the atoms of a ring-closing bond together before the bond is formed.
+
+        A spanning bond positions the piece it attaches, so its two atoms end up a
+        bond length apart.  A closing bond gets no such chance -- by the time it is
+        reached, both of its residues are already placed -- so its atoms are typically
+        several angstroms apart, and forming the bond there hands AmberTools a
+        geometry with a ring that does not close.
+
+        So the ring is pulled shut first.  The merged topology of the reactants is
+        valid for MD as it stands, and a type-6 restraint needs no atom types, so the
+        pair can be walked in by minimization under a restraint whose equilibrium
+        length is stepped down to a bond length.  This is the same mechanism as
+        CURE's drag, at the scale of one template.
+
+        Args:
+            pairdf (pandas.DataFrame): the closing pairs, with ai, aj and initial_distance
+            target (float): restraint length of the last stage, in nm, defaults to 0.15
+            nstages (int): how many stages to step down over, defaults to 8
+            kb (float): restraint stiffness, in kJ/mol/nm^2, defaults to 300000
+            deffnm (str): output basename, defaults to '<name>-ringclose'
+
+        Returns:
+            pandas.DataFrame: the pairs, with a final_distance column
+        """
+        TC = self.TopoCoord
+        deffnm = deffnm or f'{self.name}-ringclose'
+        work = pairdf.copy().reset_index(drop=True)
+        if work['initial_distance'].isna().any():
+            raise ValueError(f'{self.name}: ring-closing pair with no initial distance; '
+                             f'the pair frame and its lengths are misaligned')
+        logger.info(f'{self.name}: closing {work.shape[0]} ring bond(s) from '
+                    f'{work["initial_distance"].max():.3f} nm over {nstages} stages')
+        TC.Topology.add_restraints(work, typ=6)
+        mdp_prefix = 'single-molecule-min'
+        pfs.checkout(pfs.Dirs.mdp_file(mdp_prefix))
+        for stage in range(nstages):
+            # a prescribed ladder, not attenuate_bond_parameters: see
+            # Topology.set_restraint_parameters for why that compounds here
+            frac = (stage + 1) / nstages
+            lengths = work['initial_distance'] + frac * (target - work['initial_distance'])
+            TC.Topology.set_restraint_parameters(work, lengths, kb)
+            boxsize = np.array(TC.maxspan()) + 5 * np.ones(3)
+            TC.center_coords(new_boxsize=boxsize)
+            # the merged product has no files of its own yet, and grompp_and_mdrun runs
+            # from what is on disk; the restraints change every stage, so write both
+            TC.write_top(f'{deffnm}.top')
+            TC.write_gro(f'{deffnm}.gro')
+            # grompp_and_mdrun copies the new coordinates back itself, which preserves
+            # the extended per-atom attributes that read_gro would drop
+            TC.grompp_and_mdrun(out=f'{deffnm}-{stage + 1}', mdp=mdp_prefix, boxSize=boxsize,
+                                single_molecule=True, wrap_coords=False)
+            TC.add_length_attribute(work, attr_name='current_distance')
+            logger.debug(f'{self.name}: ring-close stage {stage + 1}/{nstages} '
+                         f'max {work["current_distance"].max():.3f} nm')
+        TC.Topology.remove_restraints(work)
+        TC.add_length_attribute(work, attr_name='final_distance')
+        worst = work['final_distance'].max()
+        logger.info(f'{self.name}: ring closed to {worst:.3f} nm (target {target:.3f})')
+        if worst > 2.0 * target:
+            logger.warning(f'{self.name}: a ring-closing pair is still {worst:.3f} nm apart after '
+                           f'{nstages} stages, against a target of {target:.3f} nm; the template '
+                           f'geometry handed to AmberTools may not close')
+        return work
 
     def minimize(self, outname=''):
         """Manages invocation of vacuum minimization.
@@ -816,9 +890,25 @@ class Molecule:
                 explicit_sacrificial_Hs[i] = []
             if r.ri != r.rj and i not in closing:
                 resid_sets = TC.get_resid_sets([r.ai, r.aj])
-                hxi, hxj = self.transrot(r.ai, r.ri, r.aj, r.rj, connected_resids=resid_sets[1])
-                if not keeps_h:
+                if keeps_h:
+                    # an addition has no hydrogens to align on; place the piece instead
+                    self.place_for_addition(r.ai, r.aj, [r.rj] + list(resid_sets[1]))
+                else:
+                    hxi, hxj = self.transrot(r.ai, r.ri, r.aj, r.rj, connected_resids=resid_sets[1])
                     explicit_sacrificial_Hs[i] = [hxi, hxj]
+        if closing:
+            # Every piece is placed now, so the ring can be pulled shut before any of
+            # its bonds exist -- see close_ring_geometry.  Restrain EVERY pair of the
+            # ring, not only the closing one: none of these bonds exists yet, so a
+            # ladder on one pair alone lets the other pieces drift apart while it
+            # pulls, and the ring never takes shape.
+            # A merged product has no box yet, and distances are measured under the
+            # minimum image convention, which divides by the box vectors -- so measure
+            # nothing until there is one.
+            TC.center_coords(new_boxsize=np.array(TC.maxspan()) + 5 * np.ones(3))
+            ring = bdf[bdf['ri'] != bdf['rj']][['ai', 'aj']].copy().reset_index(drop=True)
+            TC.add_length_attribute(ring, attr_name='initial_distance')
+            self.close_ring_geometry(ring)
         if stage in [reaction_stage.cure, reaction_stage.param, reaction_stage.cap, reaction_stage.repair]:
             template_source = 'ambertools'
         else:

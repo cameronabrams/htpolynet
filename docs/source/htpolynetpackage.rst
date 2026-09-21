@@ -182,6 +182,11 @@ htpolynet.geometry
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: htpolynet.geometry.placement
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: htpolynet.geometry.ring
    :members:
    :undoc-members:

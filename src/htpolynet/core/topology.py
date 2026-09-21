@@ -610,6 +610,30 @@ class Topology:
                 bdtoadd = pd.DataFrame(bonddict)
                 self.D['bonds'] = pd.concat((self.D['bonds'], bdtoadd), ignore_index=True)
 
+    def set_restraint_parameters(self, pairdf, b0, kb):
+        """Sets the length and stiffness of existing restraint bonds.
+
+        ``attenuate_bond_parameters`` cannot be used for this.  It reads each bond's
+        reference parameters from the row it is about to overwrite, which is fine for a
+        real bond -- whose reference comes from its atom types and never changes -- but
+        compounds on a restraint that carries explicit parameters: a ladder of n stages
+        multiplies the stiffness by 1/n, then 2/n, and so on, ending orders of
+        magnitude too weak.  A prescribed ladder sets each stage outright instead.
+
+        Args:
+            pairdf (pandas.DataFrame): pairs, with ai and aj
+            b0 (float or sequence): equilibrium length(s), in nm; a sequence is taken
+                to be parallel to pairdf
+            kb (float): spring constant, in kJ/mol/nm^2
+        """
+        bdf = self.D['bonds']
+        lengths = [b0] * pairdf.shape[0] if np.isscalar(b0) else list(b0)
+        for (_, b), length in zip(pairdf.iterrows(), lengths):
+            ai, aj = idxorder((b['ai'], b['aj']))
+            mask = (bdf['ai'] == ai) & (bdf['aj'] == aj)
+            bdf.loc[mask, 'c0'] = float(length)
+            bdf.loc[mask, 'c1'] = float(kb)
+
     def remove_restraints(self, pairdf):
         """Removes all non-topological restraint bonds represented in pairdf.
 

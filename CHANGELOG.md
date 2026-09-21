@@ -31,6 +31,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     each incoming piece as it bonds it, which a closing bond cannot do: the
     residues it joins are already placed, so it is skipped there and its
     geometry handled separately.
+  - A reaction bond that consumes no hydrogen is positioned by
+    `Molecule.place_for_addition` rather than `transrot`, which aligns two
+    reactants on the hydrogens they are about to lose and so cannot place an
+    addition at all: in a cyclotrimerization neither the cyanate carbon nor its
+    nitrogen carries one.  The new placement puts the incoming piece a bond
+    length away, in the direction and at the turn that leave the most room,
+    using one shared copy of that geometry in `geometry.placement`.
+  - `Molecule.close_ring_geometry` pulls a ring shut before its bonds exist,
+    by restraining every pair of the ring and stepping the restraints down to a
+    bond length under minimization.  The merged reactants' topology is already
+    valid for MD, and a type-6 restraint needs no atom types, so this needs
+    nothing parameterized.
+  - `Topology.set_restraint_parameters` prescribes a restraint's length and
+    stiffness outright.  `attenuate_bond_parameters` cannot serve here: it
+    reads each bond's reference values from the row it overwrites, which is
+    stable for a real bond, whose reference comes from its atom types, but
+    compounds on a restraint carrying explicit parameters -- an eight-stage
+    ladder ended 400 times too weak to pull anything.
   - `core.productsplice.map_product_from_template` makes the residues of one
     reaction event match a product template exactly -- atom types, charges, and
     every bond, angle, dihedral and 1-4 pair among them, replacing the
