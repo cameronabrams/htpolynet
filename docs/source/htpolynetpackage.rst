@@ -126,6 +126,11 @@ htpolynet.cure
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: htpolynet.cure.ringcontroller
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: htpolynet.cure.triplesearch
    :members:
    :undoc-members:

@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     each incoming piece as it bonds it, which a closing bond cannot do: the
     residues it joins are already placed, so it is skipped there and its
     geometry handled separately.
+  - `cure.ringcontroller` runs the loop: search, pull every chosen ring shut,
+    form its bonds, splice the trimer template over its three residues, settle
+    the charge, count what was consumed, and widen the search when an iteration
+    finds nothing.  Conversion is counted in reactive **groups**, three per
+    ring, which is what this chemistry reports -- the pre-formed-triazine route
+    has to infer it from a bond count instead.  Its state round-trips to YAML
+    for restart, carrying the widened radius with it.
   - `cure.triplesearch` finds the triangles of reactive groups one ring-closing
     reaction can join.  The pairwise search cannot: it asks which A atom is near
     which B atom, while a cyclotrimerization needs three groups mutually close,
