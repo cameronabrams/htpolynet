@@ -285,11 +285,28 @@ Coverage as of the last measurement: **38.8%** overall.
     "Reject a bond closing a cycle spanning fewer than k junction-to-junction
     repeats" reads off the junction graph, is chemistry-independent, and avoids a
     per-chemistry magic number.
-  - **Ship it off by default** (their second ask).  There is no evidence the 28-rings
-    are wrong: intramolecular cyclization is real in step-growth cure, and the dated
-    closure rate above behaves as the chemistry demands rather than anomalously.  The
-    filter's first use is to *measure* the effect of removing them, not to correct a
-    defect.
+  - **Ship it off by default** (their second ask), but note the state of knowledge is
+    symmetric ignorance, not evidence of innocence.  Nobody has established the
+    28-rings are wrong, and htpolynet-study explicitly withdrew the converse: they have
+    **not** established the rings are physically allowed either.  They are
+    near-unstrained in GAFF (span -0.07 A, C-O-C angle -0.46 deg against non-ring
+    bridges), but that only says the force field tolerates them; **their absolute
+    frequency is set by our 0.5 nm search radius and by junctions seeded at t=0, not
+    by chemistry.**  So the rate is a property of the model, and the 1.4% should never
+    be quoted as a physical cyclization rate.
+  - **Do not validate the filter on Tg in this system -- it is underpowered, and
+    that is bounded, not guessed.**  Between-bridge spread in ring density is 0.67
+    percentage points of bridges, and dTg/dconversion averages 5.6 K per percentage
+    point of bonds, so even if every ring bridge were completely elastically dead the
+    differential Tg across bridges is <= 3.8 K and the absolute effect <= 8.0 K --
+    against a replicate standard deviation of 12.5-25.0 K at chi 0.99 with n = 4.  A
+    null result would mean nothing.
+  - **Validate it structurally instead.**  Correctness on synthetic graphs (it rejects
+    what it should, and nothing else) plus structural observables that respond
+    directly and cheaply -- cycle rank, the count of elastically effective strands,
+    the fragment distribution -- rather than a thermal property the system cannot
+    resolve.  If a thermal effect is ever wanted, it needs a system engineered for a
+    high ring density, not this one.
   - **Re-measure for cyclotrimerization.**  These statistics come from the A2+B3
     route, where junctions are seeded at t=0 by random insertion rather than emerging
     where three ends meet, and the cycle spectrum inherits that.  They are a
