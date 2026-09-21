@@ -199,6 +199,96 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Cure and repair
 
+- **Single-step crosslinking (the Khare method), as an alternative to CURE, not a
+  replacement.**  Agreed with Cameron 2026-09-21.  All bonds are chosen at once by
+  combinatorial optimization on one static snapshot, before any bond exists, so
+  conversion is 100% by construction; the network is then relaxed into place by one
+  restraint-strengthening ladder applied to every bond simultaneously.  CURE stays
+  exactly as it is and remains the default.
+
+  **Sources.**  literature's spec, with every parameter attributed to the paper it
+  was read from, is
+  `~/.local/state/fleet/drops/literature-khare-crosslink-algorithm-20260921.md`.
+  The load-bearing ones: `Khare1993Generation` (origin; the open-TSP framing),
+  `Lin2009Molecular` (the only complete annealing parameter set, and the viability
+  gate), `Khare2012Directed` (the restraint ladder with all k and b0),
+  `Jang2015Comparison` (Cameron's own; the acceptance formula, and the only
+  head-to-head against multi-step).
+
+  **The method, as specified.**
+  - *Stage 1, connectivity by simulated annealing.*  Cost is the total bond length
+    over all chosen pairs; the "temperature" is a **length**, starting at 2.5 A;
+    accept if the cost drops, else with `exp(-dL/L_C)`; multiply L_C by 0.95 whenever
+    attempted moves reach 100x or accepted moves 10x the number of reactive pairs.
+    The move changes only two bonds, so a trial costs O(1) -- that is what makes it
+    cheap (under 15 min CPU in Lin 2009).  Intramolecular loops are forbidden.
+  - *The viability gate, and its loop.*  Annealing returns a sequence, not short
+    bonds: the target C-N bond is 1.364 A, van der Waals approach about 3.4 A, and
+    most chosen pairs start much further apart.  So before any bond is created, two
+    50 ps NVT runs at 300 K under harmonic distance restraints at 8 A then 3 A, then
+    a re-scan requiring every pair under 4 A, and **on failure, re-anneal**.  Lin
+    2009 needed up to three passes for their nanocomposite.  This loop is the
+    difference between a method that works and one that explodes.
+  - *Stage 2, directed diffusion.*  Ten stages of 20 ps NVT at 703 K with
+    `E = k(b-b0)^2`, k in kcal/mol/A^2 and b0 in A: (1,10) (2,9) (4,8) (8,7) (16,6)
+    (32,5) (64,4) (128,3) (256,2) (332.7,1.458).  k doubles each stage; the last is
+    the GAFF C-N bond itself.  Then the topology and charges are updated, sacrificial
+    H's deleted, and MD run for 4 ns at more than 150 K above Tg.
+
+  **Decisions taken (Cameron, 2026-09-21).**
+  1. **Objective:** sum of lengths by default, as the better-documented choice, with
+     sum of squares available as a config option.  `Lin2009Molecular` and
+     `Jang2015Comparison` use lengths, `Khare2021Atomistic` uses squares, and no
+     paper reconciles the two.
+  2. **Encoding:** a capacitated matching with a partner-swap move, rather than a
+     literal TSP path.  A path whose consecutive pairs are all bonds gives every
+     interior site two bonds -- right for a linear chain, wrong for an epoxy carbon
+     that forms one.  htpolynet already knows each site's functionality from `z`, so
+     the matching formulation handles arbitrary functionality and reduces to path
+     reversal for the chain case.  This is a deliberate generalization of the
+     published method; say so in the docs.
+  3. **Ladder:** ship the 10-stage 2012 table as the default and make it
+     configurable.  `Khare2018Quantitative` and `Khare2021Atomistic` use 12 stages
+     from a Supporting Information the library does not hold (queued, with Ketan
+     Khare's 2013 thesis).  Revisit if it arrives.
+  4. **Naming:** the config block is `single_step:`, not a person's name; the docs
+     credit Khare and cite the papers.
+
+  **What it reuses.**  Templates, box construction, densification and precure
+  unchanged; reactive-site enumeration from the same `reactions:` declarations that
+  CURE uses, minus the radius test, so bonds get the same template parameters;
+  type-6 restraints between not-yet-bonded pairs (`TopoCoord.add_restraints`), which
+  is the same mechanism as CURE's drag; batch bond formation through
+  `update_topology_and_coordinates`, which already forms hundreds of bonds per CURE
+  iteration; and the whole postcure path.  The second-shell templates added in 2.9.0
+  matter here: at 100% conversion every multi-site residue ends fully substituted,
+  which is exactly the context they cover.
+
+  **What it needs that does not exist.**
+  - `src/htpolynet/singlestep/anneal.py`: cost, move set, acceptance, schedule, with
+    no MD in it, so it can be tested on a lattice with a known optimum.
+  - A controller mirroring `CureController`: the viability-gate loop, the restraint
+    ladder, its own restart state beside `cure_state.yaml`.
+  - Restraint parameters set explicitly per stage.  `attenuate_bond_parameters`
+    interpolates from each bond's initial distance toward equilibrium; this method
+    prescribes (k, b0) per stage for every bond alike.
+  - A `single_step:` schema section, and a `do_crosslink` dispatch in the workflow
+    that runs either this or CURE.  `do_cure` is not touched.
+  - One fix: `check_iterations_vs_functionality` warns when iterations < site count,
+    which is meaningless at 100% conversion in a single step.  Skip it there.
+
+  **Validation, and the result to design against.**  `Jang2015Comparison` built
+  chemically and stoichiometrically identical systems both ways: thermal and
+  mechanical properties and the N-to-N contour length distribution were insensitive
+  to the choice, but the fragment molecular-weight distribution after cutting each
+  crosslinker was **not** -- single-step gave fewer, larger fragments.  The two
+  methods build qualitatively different networks that agree on the properties usually
+  reported.  So the acceptance test is example 3 (DGEBA/PACM) built both ways,
+  comparing density, thermal and mechanical properties, N-to-N contour length, and
+  that fragment distribution; expect agreement on the first three and a difference in
+  the last.  Builds belong to htpolynet-sweep.  The per-molecule charge check applies
+  unchanged and is worth watching: this forms every bond in one batch.
+
 - **Chain-growth cure leaves whole chains charged.**  The v2.10.0 sweep's new
   molecule-charge check found example 1's polystyrene warning: 7 of 49 chains
   over 0.01 e, the largest -0.040 e on the longest (1410-atom) chain, with the
