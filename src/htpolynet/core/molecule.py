@@ -515,27 +515,22 @@ class Molecule:
         self.bond_templates = []
         TC = self.TopoCoord
         # logger.debug(f'prepare_new_bonds {self.name}: chainlists {TC.idx_lists["bondchain"]}')
+        # Each reactant's residues occupy a contiguous block of the product, in the
+        # order Molecule.generate merged them, which is the order of R.reactants.  So
+        # a reactant's resid offset is the total length of the reactants before it.
+        # Computed over ALL reactants, not just the two a given bond joins: with three
+        # or more, a bond between the first and third needs the second counted too.
+        resid_offset, product_sequence = {}, []
+        for key, rname in R.reactants.items():
+            resid_offset[key] = len(product_sequence)
+            product_sequence.extend(available_molecules[rname].sequence)
         for bondrec in R.bonds:
             atom_keys = bondrec['atoms']
             order = bondrec['order']
             assert len(atom_keys) == 2
             atomrecs = [R.atoms[x] for x in atom_keys]
             atom_names = [x['atom'] for x in atomrecs]
-            reactant_keys = [x['reactant'] for x in atomrecs]
-            in_reactant_resids = [x['resid'] for x in atomrecs]
-            if reactant_keys[0] == reactant_keys[1]:  # this is an intraresidue bond
-                reactant_names = [R.reactants[reactant_keys[0]]]
-            else:
-                reactant_names = [R.reactants[x] for x in reactant_keys]
-            reactant_sequences = [available_molecules[x].sequence for x in reactant_names]
-            product_sequence = []
-            for seq in reactant_sequences:
-                product_sequence.extend(seq)
-            # logger.debug(f'product_sequence {product_sequence}')
-            sequence_residue_idx_origins = [0, 0]
-            if len(reactant_sequences) == 2:
-                sequence_residue_idx_origins[1] = len(reactant_sequences[0])
-            in_product_resids = [in_reactant_resids[x] + sequence_residue_idx_origins[x] for x in [0, 1]]
+            in_product_resids = [x['resid'] + resid_offset[x['reactant']] for x in atomrecs]
             # logger.debug(f'in_product_resids {in_product_resids}')
             in_product_resnames = [product_sequence[in_product_resids[x] - 1] for x in [0, 1]]
             atom_idx = [TC.get_gro_attribute_by_attributes('globalIdx', {'resNum': in_product_resids[x], 'atomName': atom_names[x]}) for x in [0, 1]]

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Groundwork for a three-body cure reaction** (cyanate-ester
+  cyclotrimerization; see `ROADMAP.md`).  Nothing user-visible yet: CURE is
+  unchanged and no configuration can request a three-body reaction.
+  - A reaction's residue-offset arithmetic now works for any number of
+    reactants.  It was written for exactly two, so a bond between the first and
+    third reactant of a three-reactant reaction resolved to the wrong residue.
+  - `reaction.is_ring_closing` recognizes a reaction whose bonds close a cycle
+    among its reactants, which a cyclotrimerization does (1-2, 2-3, 3-1) even
+    though its new bonds alone form no cycle -- the ring closes through bonds
+    each reactant already had.
+  - The pairwise bond search now skips such a reaction with a warning naming
+    it, rather than treating its bonds as three unrelated pairwise candidates
+    and forming them in separate iterations, which would not build a ring.
+
 ### Fixed
 
 - **A GPU build died at its first minimization when the configuration set

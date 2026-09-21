@@ -20,7 +20,7 @@ from ..core import projectfilesystem as pfs
 from ..core.molecule import MoleculeDict
 from ..core.topocoord import TopoCoord, BTRC
 from ..cure.reaction import ReactionList
-from ..cure.reaction import reaction_stage
+from ..cure.reaction import is_ring_closing, reaction_stage
 from ..external.gromacs import gmx_energy_trace, gromacs_distance, mdp_modify
 from ..utils import checkpoint as cp
 from ..utils.stringthings import my_logger
@@ -989,6 +989,19 @@ class CureController:
         raset=adf[adf['z']>0]  # this view will be used for downselecting to potential A-B partners
         bdf=pd.DataFrame()
         Rlist=[x for x in RL if (x.stage==stage and x.probability>0.0)]
+        # A ring-closing reaction (cyclotrimerization: three cyanate groups bonding
+        # 1-2, 2-3, 3-1) cannot be served by this search, which treats every bond of
+        # every reaction as an independent pairwise candidate.  Forming those bonds
+        # one at a time, in separate iterations, would not build the ring -- it would
+        # build three unrelated bonds whose template context never matches.  Skip them
+        # loudly; the multi-body search owes them (see ROADMAP).
+        ring_closing=[x for x in Rlist if is_ring_closing(x)]
+        if ring_closing:
+            for R in ring_closing:
+                logger.warning(f'Reaction "{R.name}" closes a ring among {len(R.reactants)} reactants; '
+                               f'the pairwise bond search cannot form it and is skipping it. '
+                               f'No bonds will be formed for this reaction.')
+            Rlist=[x for x in Rlist if x not in ring_closing]
         logger.debug(f'reactioncount {len(Rlist)} atomscount {raset.shape[0]}')
         for R in Rlist:
             logger.debug(f'Reaction {R.name} with {len(R.bonds)} bond(s)')

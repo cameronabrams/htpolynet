@@ -251,6 +251,43 @@ def reactant_resid_to_presid(R:Reaction,reactantName:str,resid:int,reactions:Rea
     else:
         return -1
 
+def inter_reactant_bonds(R:Reaction):
+    """Returns R's bonds that join two different reactants, as (reactant key, reactant key) pairs.
+
+    Args:
+        R (Reaction): a Reaction
+
+    Returns:
+        list: one (key, key) tuple per interreactant bond, in R.bonds order
+    """
+    pairs=[]
+    for bond in R.bonds:
+        i,j=[R.atoms[k]['reactant'] for k in bond['atoms']]
+        if i!=j:
+            pairs.append((i,j))
+    return pairs
+
+
+def is_ring_closing(R:Reaction):
+    """Returns True if R's bonds close a cycle among its reactants.
+
+    A cyclotrimerization does: three cyanate groups bond 1-2, 2-3 and 3-1, so the
+    reactant graph is a triangle even though the new bonds alone form no cycle in the
+    atom graph -- the ring closes through bonds each reactant already had.  A cure
+    reaction joining two reactants with one bond is a tree and returns False.
+
+    Args:
+        R (Reaction): a Reaction
+
+    Returns:
+        bool: True if the reactant graph contains a cycle
+    """
+    edges=inter_reactant_bonds(R)
+    nodes={k for e in edges for k in e}
+    # a forest on n nodes has at most n-1 edges; more than that means a cycle
+    return len(edges)>=len(nodes) and len(nodes)>0
+
+
 def generate_product_name(R:Reaction):
     """Automatically generates the name of the product based on the names of the reactants and the bonds in R.
 
