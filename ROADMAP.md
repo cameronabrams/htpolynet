@@ -244,9 +244,24 @@ Coverage as of the last measurement: **38.8%** overall.
      literal TSP path.  A path whose consecutive pairs are all bonds gives every
      interior site two bonds -- right for a linear chain, wrong for an epoxy carbon
      that forms one.  htpolynet already knows each site's functionality from `z`, so
-     the matching formulation handles arbitrary functionality and reduces to path
-     reversal for the chain case.  This is a deliberate generalization of the
-     published method; say so in the docs.
+     the matching formulation handles arbitrary functionality.
+
+     **This is our design decision, not a reading of Khare.**  Lin & Khare 2009
+     (journal pp. 4320-4321) name the problem and never state the answer: they
+     extended the polystyrene approach "to incorporate the modifications required to
+     account for the complexities (e.g., **the number of connections**) of the
+     unreacted epoxy monomer, cross-linker, and POSS molecules" -- and what those
+     modifications were appears nowhere.  Their prose points both ways ("sequence of
+     bonds between randomly picked reacting site pairs" reads as a matching, "a path
+     ... that connects all of the potential reacting sites" as a Hamiltonian path),
+     but the move settles it: "only the bonds at the two end points of the selected
+     path segment get altered" is 2-opt segment reversal on a path, which on a
+     matching would change every pair in the segment.  In Khare 1993 there was no
+     tension, because polystyrene is linear and an interior monomer really is
+     bivalent.  The efficiency argument survives the change: swapping the partners of
+     two sites also alters exactly two bonds, so the O(1) delta that makes the
+     annealing schedule affordable is kept.  Credit Khare for the method and say
+     plainly that the network adaptation is ours.
   3. **Ladder:** ship the 10-stage 2012 table as the default and make it
      configurable.  `Khare2018Quantitative` and `Khare2021Atomistic` use 12 stages
      from a Supporting Information the library does not hold (queued, with Ketan
@@ -285,8 +300,15 @@ Coverage as of the last measurement: **38.8%** overall.
   methods build qualitatively different networks that agree on the properties usually
   reported.  So the acceptance test is example 3 (DGEBA/PACM) built both ways,
   comparing density, thermal and mechanical properties, N-to-N contour length, and
-  that fragment distribution; expect agreement on the first three and a difference in
-  the last.  Builds belong to htpolynet-sweep.  The per-molecule charge check applies
+  that fragment distribution.
+
+  **But do not treat the fragment result as a target to hit.**  Because the papers
+  never state their network adaptation (see decision 2), that difference belongs to
+  whatever connectivity rule their implementation used, not to "single-step" as a
+  class.  A capacitated matching may not reproduce it, and would not be wrong for
+  failing to.  Read it as the reason to *measure* the fragment distribution both ways
+  rather than assume the networks are interchangeable; agreement on density, thermal
+  and mechanical properties is the part worth requiring.  Builds belong to htpolynet-sweep.  The per-molecule charge check applies
   unchanged and is worth watching: this forms every bond in one batch.
 
 - **Chain-growth cure leaves whole chains charged.**  The v2.10.0 sweep's new
