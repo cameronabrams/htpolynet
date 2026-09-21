@@ -457,12 +457,74 @@ Coverage as of the last measurement: **38.8%** overall.
      two sites also alters exactly two bonds, so the O(1) delta that makes the
      annealing schedule affordable is kept.  Credit Khare for the method and say
      plainly that the network adaptation is ours.
-  3. **Ladder:** ship the 10-stage 2012 table as the default and make it
-     configurable.  `Khare2018Quantitative` and `Khare2021Atomistic` use 12 stages
-     from a Supporting Information the library does not hold (queued, with Ketan
-     Khare's 2013 thesis).  Revisit if it arrives.
+  3. **Ladder:** configurable, with the published schedules shipped as named presets.
+     **The 2018 SI has since landed** (literature, 2026-09-21) and the 12-stage
+     schedule is a different *shape*, not a longer version of the 10-stage one -- so
+     they are two presets, and neither may be derived from the other.  Which one
+     should be the default is now **an open question for Cameron**: the 10-stage 2012
+     table was chosen when it was the only complete one, but the 12-stage schedule is
+     the one used in the papers that carry the validation (`Khare2018Quantitative`,
+     `Khare2021Atomistic`) and the only one with its full run conditions published.
+
+     *2012, `Khare2012Directed`, ten 20 ps NVT stages at 703 K:* k doubles each stage
+     while b0 walks down with it -- (1,10) (2,9) (4,8) (8,7) (16,6) (32,5) (64,4)
+     (128,3) (256,2) (332.7,1.458).
+
+     *2018 SI Table S1, twelve stages at 700 K, 10.13 MPa, 37.5 ps each:* two phases
+     rather than one ramp.  Stages 1-5 pull b0 in from 15 A to 3 A at almost constant,
+     very weak k; stages 6-11 hold b0 at 1.5 A and ramp k over three decades; stage 12
+     switches to the real GAFF bond.
+
+         stage  1       2      3     4     5     6    7    8   9   10   11   12
+         k      0.0625  0.125  0.25  0.25  0.25  0.25 0.5  1   5   25   125  333.27
+         b0     15      12     9     6     3     1.5  1.5  1.5 1.5 1.5  1.5  1.458
+
+     Final k is 333.27 in the SI and 332.7 in the 2012 figure for the same bond; one
+     is a transposition or a force-field version difference.  Do not read their near
+     agreement as confirmation of either.
   4. **Naming:** the config block is `single_step:`, not a person's name; the docs
      credit Khare and cite the papers.
+
+  **The detail that is in no paper, and would otherwise have been found by failure.**
+  The 2018 SI states that during directed diffusion the **pairwise nonbonded
+  interaction between each connecting pair is switched off**: "Since Van der Waals
+  forces would ordinarily limit the distance between the terminal carbon atom of Epon
+  1001F and the nitrogen atom of 4,4'-DDS to no less than 3.3 A, pairwise interactions
+  between these connecting atoms are excluded."  Without that, b0 = 1.5 A is simply
+  unreachable and the ladder stalls against a wall it cannot cross.  In GROMACS terms
+  this is an `[ exclusions ]` entry per candidate pair, added for the duration of the
+  ladder and removed when the real bond forms.  **This applies to CURE's drag stage
+  too**, which pulls pairs together under type-6 restraints with vdW fully on -- which
+  is very likely what `CURE.drag.limit` exists to work around.  Worth trying there
+  once the mechanism exists.
+
+  **Two things the SI settles, one of which matches htpolynet already.**
+  - *Objective:* sum of the **squares** -- "minimizing the sum of the squares of the
+    individual distances of each of the connections", average connection length going
+    from ~70 A to ~10 A.  So squares is the Khare line and sum-of-lengths is Lin 2009
+    / Jang 2015.  Our default stays lengths (decision 1), but it is now a real fork
+    between two published choices rather than an unresolved ambiguity, and the config
+    option must be documented as such.
+  - *Loop prevention:* "allowing only a single connection between a given pair of Epon
+    1001F and 4,4'-DDS molecules".  That is **exactly what htpolynet's
+    `makes_shortcircuit` already enforces**, via the deliberately stale `molecule`
+    attribute -- see the filtering entry above.  Nothing to build.
+
+  **Their topology transformation, for contrast with ours.**  Delete one H from each
+  terminal epoxy carbon and both from each amine N; **recompute partial charges near
+  the new bonds with AM1-BCC**; fix angles, dihedrals and impropers for GAFF
+  consistency; then relax 10 ns at 820 K and 5 MPa.  htpolynet does this differently
+  and, arguably, better: charges and types come from a pre-parameterized product
+  template rather than an in-situ recomputation, which is reproducible and cached.
+  Worth saying in the docs that this is a deliberate difference from the published
+  method, not an oversight.
+
+  **An acceptance test to lift directly.**  Figure S4 of the 2018 SI shows the epoxy
+  monomer end-to-end distance distribution **essentially unchanged before and after
+  crosslinking** -- their own check that the restraint ladder does not unphysically
+  stretch molecules.  It is cheap, it tests the thing most likely to go wrong, and it
+  can be computed for CURE builds too as a baseline.  Make it part of the acceptance
+  criteria alongside the Jang comparison.
 
   **What it reuses.**  Templates, box construction, densification and precure
   unchanged; reactive-site enumeration from the same `reactions:` declarations that
