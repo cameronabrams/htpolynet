@@ -251,6 +251,58 @@ def reactant_resid_to_presid(R:Reaction,reactantName:str,resid:int,reactions:Rea
     else:
         return -1
 
+def consumes_sacrificial_h(bondrec):
+    """Returns True if forming this bond deletes one H from each of its atoms.
+
+    True for a condensation, which is what htpolynet has always assumed, and false
+    for an addition such as cyclotrimerization, where the ring closes with no atom
+    lost.
+
+    Args:
+        bondrec (dict): one record from a Reaction's ``bonds``
+
+    Returns:
+        bool: whether to look for sacrificial hydrogens
+    """
+    return bool(bondrec.get('sacrificial_h', True))
+
+
+def spanning_and_closing_bonds(R:Reaction):
+    """Splits R's interreactant bonds into those that assemble the product and those that close a ring.
+
+    A bond is *spanning* if it joins two reactants not yet connected by earlier bonds,
+    and *closing* if they are already connected.  The distinction matters when a
+    template is built: a spanning bond may position the incoming piece freely, while a
+    closing bond's geometry is already fixed by the pieces it joins, so it cannot be
+    placed and has to be brought together instead.
+
+    Args:
+        R (Reaction): a Reaction
+
+    Returns:
+        tuple: (spanning, closing) lists of indices into R.bonds
+    """
+    parent={}
+    def find(x):
+        parent.setdefault(x,x)
+        while parent[x]!=x:
+            parent[x]=parent[parent[x]]
+            x=parent[x]
+        return x
+    spanning,closing=[],[]
+    for i,bond in enumerate(R.bonds):
+        a,b=[R.atoms[k]['reactant'] for k in bond['atoms']]
+        if a==b:
+            continue
+        ra,rb=find(a),find(b)
+        if ra==rb:
+            closing.append(i)
+        else:
+            parent[ra]=rb
+            spanning.append(i)
+    return spanning,closing
+
+
 def inter_reactant_bonds(R:Reaction):
     """Returns R's bonds that join two different reactants, as (reactant key, reactant key) pairs.
 

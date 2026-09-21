@@ -193,3 +193,61 @@ class TestResidOffsetsForThreeReactants(unittest.TestCase):
         M = self.molecule(etherify(), molecules)
         self.assertEqual([rb.resids for rb in M.reaction_bonds], [[1, 2]])
         self.assertEqual([bt.resnames for bt in M.bond_templates], [['BPA', 'TAZ']])
+
+
+class TestSacrificialHydrogenDeclaration(unittest.TestCase):
+    """Cyclotrimerization is an addition: three bonds form and nothing is lost.
+    Every reaction htpolynet had before is a condensation, so True is the default."""
+
+    def test_default_is_a_condensation(self):
+        from htpolynet.cure.reaction import consumes_sacrificial_h
+        self.assertTrue(consumes_sacrificial_h({'atoms': ['A', 'B'], 'order': 1}))
+
+    def test_declaring_false_is_honored(self):
+        from htpolynet.cure.reaction import consumes_sacrificial_h
+        self.assertFalse(consumes_sacrificial_h({'atoms': ['A', 'B'], 'order': 1, 'sacrificial_h': False}))
+
+    def test_the_schema_carries_it_with_the_right_default(self):
+        import yaml
+        from importlib.resources import files
+        schema = yaml.safe_load((files('htpolynet.schema') / 'base.yaml').read_text())
+        directives = {d['name']: d for d in schema['attributes']}
+        bonds = {a['name']: a for a in directives['reactions']['value_attributes']}['bonds']
+        flag = {a['name']: a for a in bonds['value_attributes']}['sacrificial_h']
+        self.assertEqual(flag['type'], 'bool')
+        self.assertTrue(flag['default'])
+
+
+class TestSpanningAndClosingBonds(unittest.TestCase):
+    """A closing bond cannot be placed: the residues it joins are already positioned
+    by the bonds before it, so the template build must treat it differently."""
+
+    def test_a_single_bond_is_spanning(self):
+        from htpolynet.cure.reaction import spanning_and_closing_bonds
+        self.assertEqual(spanning_and_closing_bonds(etherify()), ([0], []))
+
+    def test_cyclotrimerization_has_one_closing_bond(self):
+        from htpolynet.cure.reaction import spanning_and_closing_bonds
+        spanning, closing = spanning_and_closing_bonds(cyclotrimerize())
+        self.assertEqual(spanning, [0, 1])
+        self.assertEqual(closing, [2])
+
+    def test_a_chain_of_three_is_all_spanning(self):
+        from htpolynet.cure.reaction import spanning_and_closing_bonds
+        R = reaction({1: 'A', 2: 'B', 3: 'C'},
+                     {'a': (1, 1, 'C1'), 'b1': (2, 1, 'N1'), 'b2': (2, 1, 'N2'), 'c': (3, 1, 'C1')},
+                     [('a', 'b1'), ('b2', 'c')])
+        self.assertEqual(spanning_and_closing_bonds(R), ([0, 1], []))
+
+    def test_a_second_bond_between_one_pair_closes(self):
+        R = reaction({1: 'BCY', 2: 'TAZ'},
+                     {'a1': (1, 1, 'C1'), 'a2': (1, 1, 'C2'), 'b1': (2, 1, 'N1'), 'b2': (2, 1, 'N2')},
+                     [('a1', 'b1'), ('a2', 'b2')])
+        from htpolynet.cure.reaction import spanning_and_closing_bonds
+        self.assertEqual(spanning_and_closing_bonds(R), ([0], [1]))
+
+    def test_intraresidue_bonds_are_neither(self):
+        from htpolynet.cure.reaction import spanning_and_closing_bonds
+        R = reaction({1: 'DGE'}, {'a': (1, 1, 'C1'), 'b': (1, 1, 'O1')}, [('a', 'b')],
+                     stage=reaction_stage.cap)
+        self.assertEqual(spanning_and_closing_bonds(R), ([], []))

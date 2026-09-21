@@ -925,6 +925,14 @@ attributes:
             type: int
             text: Bond order.
             default: 1
+          - name: sacrificial_h
+            type: bool
+            text: >
+              Whether forming this bond consumes one hydrogen from each of its
+              atoms, as a condensation does.  Set false for an addition, where
+              nothing is lost: cyclotrimerization of three -O-C#N groups into a
+              triazine ring forms three bonds and deletes no atom.
+            default: true
       - name: probability
         type: float
         text: >

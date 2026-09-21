@@ -17,7 +17,8 @@ from ..core import projectfilesystem as pfs
 from ..core.bondtemplate import BondTemplate, BondTemplateList, ReactionBond, ReactionBondList
 from ..core.topocoord import TopoCoord
 from ..cure.chain import ChainManager
-from ..cure.reaction import Reaction, ReactionList, reaction_stage
+from ..cure.reaction import (Reaction, ReactionList, consumes_sacrificial_h, reaction_stage,
+                             spanning_and_closing_bonds)
 from ..external.ambertools import GAFFParameterize
 from ..external.command import run
 from ..external.gromacs import mdp_modify,gro_from_trr
@@ -801,13 +802,23 @@ class Molecule:
         """
         TC = self.TopoCoord
         explicit_sacrificial_Hs = {}
+        # A closing bond's two residues are already placed by the bonds before it, so
+        # there is nothing to position and transrot must not run; its geometry is
+        # handled separately (see ROADMAP: ring closure).  bdf rows are in R.bonds
+        # order, which is what spanning_and_closing_bonds indexes.
+        closing = set(spanning_and_closing_bonds(self.generator)[1]) if self.generator else set()
         for i, r in bdf.iterrows():
             aname, bname = [TC.get_gro_attribute_by_attributes('atomName', {'globalIdx': x}) for x in [r.ai, r.rj]]
             logger.debug(f'generating {self.name} bond {r.ri}:{aname}:{r.ai}-{r.rj}:{bname}:{r.aj} order {r.order}')
-            if r.ri != r.rj:
+            keeps_h = self.generator is not None and not consumes_sacrificial_h(self.generator.bonds[i])
+            if keeps_h:
+                # an addition: nothing is lost, so no hydrogen is offered up
+                explicit_sacrificial_Hs[i] = []
+            if r.ri != r.rj and i not in closing:
                 resid_sets = TC.get_resid_sets([r.ai, r.aj])
                 hxi, hxj = self.transrot(r.ai, r.ri, r.aj, r.rj, connected_resids=resid_sets[1])
-                explicit_sacrificial_Hs[i] = [hxi, hxj]
+                if not keeps_h:
+                    explicit_sacrificial_Hs[i] = [hxi, hxj]
         if stage in [reaction_stage.cure, reaction_stage.param, reaction_stage.cap, reaction_stage.repair]:
             template_source = 'ambertools'
         else:

@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The pairwise bond search now skips such a reaction with a warning naming
     it, rather than treating its bonds as three unrelated pairwise candidates
     and forming them in separate iterations, which would not build a ring.
+  - A reaction bond can declare `sacrificial_h: false`, for an addition where
+    nothing is lost.  Every reaction htpolynet had before is a condensation
+    that deletes one hydrogen from each of the bond's atoms, which stays the
+    default; cyclotrimerization forms three bonds and deletes no atom.
+  - `reaction.spanning_and_closing_bonds` separates the bonds that assemble a
+    product from the bond that closes its ring.  A template build positions
+    each incoming piece as it bonds it, which a closing bond cannot do: the
+    residues it joins are already placed, so it is skipped there and its
+    geometry handled separately.
   - `core.productsplice.map_product_from_template` makes the residues of one
     reaction event match a product template exactly -- atom types, charges, and
     every bond, angle, dihedral and 1-4 pair among them, replacing the
