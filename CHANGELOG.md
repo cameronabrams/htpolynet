@@ -31,6 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     each incoming piece as it bonds it, which a closing bond cannot do: the
     residues it joins are already placed, so it is skipped there and its
     geometry handled separately.
+  - `cure.triplesearch` finds the triangles of reactive groups one ring-closing
+    reaction can join.  The pairwise search cannot: it asks which A atom is near
+    which B atom, while a cyclotrimerization needs three groups mutually close,
+    and two well-chosen groups can still leave the third far off.  Candidates
+    are scored as whole triangles by their total new-bond length, both ring
+    orientations are tried, each group may join only one triple, and a group is
+    identified by residue *and* atom names -- a bisphenol dicyanate carries two,
+    which is what makes it a crosslinker.  Two groups of one residue, or of one
+    molecule, are excluded by default.  On a 720-molecule box (1440 groups) at
+    a 0.5 nm radius it finds 358 candidates in half a second and packs 148
+    triples from them.
   - A reaction bond that consumes no hydrogen is positioned by
     `Molecule.place_for_addition` rather than `transrot`, which aligns two
     reactants on the hydrogens they are about to lose and so cannot place an
