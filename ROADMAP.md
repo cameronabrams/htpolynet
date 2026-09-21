@@ -286,11 +286,21 @@ Coverage as of the last measurement: **38.8%** overall.
   - **Re-measure for cyclotrimerization.**  These statistics come from the A2+B3
     route, where junctions are seeded at t=0 by random insertion rather than emerging
     where three ends meet, and the cycle spectrum inherits that.  They are a
-    measurement of what htpolynet builds this way, not of polycyanurate.  Note also
-    that under the three-body reaction the 14-ring is *not* covered by
-    `makes_shortcircuit`: both arms of one bisphenol are the same residue, which that
-    test asserts against rather than rejects.  The triple search must exclude it
-    itself -- the class 1 constraint above.
+    measurement of what htpolynet builds this way, not of polycyanurate.
+  - **Under the three-body reaction the same-molecule case aborts rather than
+    declines.**  `makes_shortcircuit` opens with `assert i_resNum != j_resNum`
+    (topocoord.py:1299), and two cyanate arms of one dicyanate are the *same*
+    residue, so routing that pair through `bondtest` raises instead of rejecting.
+    The triple search must exclude it **before** the pairwise test, not rely on it.
+  - **And the right criterion is a distance, not a same-residue veto** (study,
+    section 5).  Two bridge positions on one triazine sit at O...O = 4.60 +/- 0.10 A
+    (n = 2814).  Bisphenol intramolecular O...O over ~11,000 conformers of all eight
+    bridges: means 9.31-9.80 A, closest approach anywhere 5.93 A (a sulfone) -- still
+    1.3 A short, so the 14-ring is geometrically inaccessible to these monomers and a
+    blanket veto would be doing no work.  A shorter-span diol *could* reach 4.6 A, and
+    there the exclusion matters.  So gate on whether the two arms' oxygens can span
+    the junction's bridge separation, which is chemistry-independent and does real
+    work in the case where the loop is actually possible.
 
   **Where the filters have to live.**  Not only in the pairwise search.  The
   single-step annealer chooses a whole connectivity at once, so these become
