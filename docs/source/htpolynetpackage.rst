@@ -60,6 +60,11 @@ htpolynet.core
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: htpolynet.core.productsplice
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: htpolynet.core.projectfilesystem
    :members:
    :undoc-members:

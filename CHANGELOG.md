@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The pairwise bond search now skips such a reaction with a warning naming
     it, rather than treating its bonds as three unrelated pairwise candidates
     and forming them in separate iterations, which would not build a ring.
+  - `core.productsplice.map_product_from_template` makes the residues of one
+    reaction event match a product template exactly -- atom types, charges, and
+    every bond, angle, dihedral and 1-4 pair among them, replacing the
+    instance's parameters where they exist and adding them where they do not.
+    This is what a ring closure needs and what the per-bond splice cannot do:
+    among the interactions a triazine closure changes are ones wholly inside a
+    residue (a cyanate C#N becoming a ring bond), which contain no new bond and
+    so are never revisited by `map_from_templates`.  It takes the residue
+    correspondence from its caller rather than inferring it from local context,
+    refuses a residue map that does not explain the bonds it was given, and
+    refuses by default to run before those bonds exist.
 
 ### Fixed
 
