@@ -234,6 +234,32 @@ Coverage as of the last measurement: **38.8%** overall.
   chemistry would produce and no MD will undo.  This is a real, definable test and
   should land with the three-body work.
 
+  **What the existing networks actually contain (htpolynet-study, 2026-09-21).**
+  Measured on the v5 builds, 96 cured cells, 1440 bisphenol + 960 TAZ;
+  `drops/htpolynet-study-cycle-sizes-20260921.md`, scripts and JSON in the study tree.
+  - The atom-level shortest cycle through a cure bond is **quantized at 14n, with a
+    floor of 28 in every cell, every conversion, every bridge.**  Nothing shorter
+    occurs.  14 atoms is one junction-to-junction repeat (O + 4 aryl + X + 4 aryl + O,
+    plus C-N-C through the triazine); a chemistry with a direct biphenyl link would
+    give 13, so **14 is not a constant to hardcode**.
+  - A 28-ring is two triazines joined by two *different* bisphenols.  Double-bridged
+    triazine pairs are **1.4% of bridges, flat across chi = 0.90 to 0.99** (1540
+    instances).  The flatness is itself odd -- a diffusion-limited cyclization rate
+    should rise as ends get scarce -- and reads as a geometric consequence of random
+    crosslinker insertion rather than a kinetic outcome.  Worth explaining before
+    filtering these out.
+  - Intramolecular loops, both arms of one bisphenol into one triazine, a 14-ring:
+    **zero in 96 cells, zero in ~250,000 bridges.**
+  - **And the reason is `makes_shortcircuit`, not geometry** -- which turned up
+    something worth knowing.  That test keys on the `molecule` gro attribute, which is
+    set at template build and replication and **never updated when a cure bond merges
+    two molecules**.  So it asks only "are these two monomer instances already
+    directly bonded to each other?", which forbids exactly the 14-ring and nothing
+    else.  The staleness is load-bearing: were `molecule` the current connected
+    component, the test would reject every cycle-closing bond and no system could gel
+    (ours carry a cycle rank of ~430 on ~938 junctions).  Now noted in the code at
+    both sites that read it, so it does not get "fixed".
+
   **Class 3, soft: strained cycles, and the threshold problem.**  A candidate bond
   whose two atoms are already close *through the bond graph* closes a covalent cycle.
   Small ones are unphysical -- a cycle threading a few rigid aromatic units cannot
@@ -244,13 +270,27 @@ Coverage as of the last measurement: **38.8%** overall.
   N on `Topology.bondlist`, which is cheap and chemistry-agnostic.  It subsumes the
   vinyl-only cycle logic conceptually and catches the same-molecule-twice case for
   free.
-  - **Derive N from data, not taste.**  Measure the cycle-size distribution in
-    networks we already have: for each cure bond in example 6's and the study's
-    finished builds, the length of the shortest cycle through it.  If nothing under,
-    say, 20 atoms ever occurs, the filter is cheap insurance at N=12 and changes no
-    result; if short cycles are common, that is a finding about the existing networks
-    and needs understanding before filtering them away.  This measurement costs
-    nothing, needs no new build, and should come first.
+  - **The data says this filter is insurance, not a correction.**  The floor is a
+    28-membered macrocycle -- large and unstrained -- and the one strained candidate,
+    the 14-ring, is already excluded.  Because the spectrum is quantized, N has few
+    distinct settings in this chemistry: 15 <= N <= 28 is a no-op, N = 29 removes the
+    28-rings, N = 43 removes 28s and 42s.
+  - **Count crosslinker repeats, not atoms** (the study's ask, and it is right).
+    "Reject a bond closing a cycle spanning fewer than k junction-to-junction
+    repeats" reads off the junction graph, is chemistry-independent, and avoids a
+    per-chemistry magic number.
+  - **Ship it off by default** (their second ask).  There is no evidence the 28-rings
+    are wrong; intramolecular cyclization is real in step-growth cure and 1.4% is not
+    an obviously wrong rate.  The filter's first use is to *measure* the effect of
+    removing them, not to correct a defect.
+  - **Re-measure for cyclotrimerization.**  These statistics come from the A2+B3
+    route, where junctions are seeded at t=0 by random insertion rather than emerging
+    where three ends meet, and the cycle spectrum inherits that.  They are a
+    measurement of what htpolynet builds this way, not of polycyanurate.  Note also
+    that under the three-body reaction the 14-ring is *not* covered by
+    `makes_shortcircuit`: both arms of one bisphenol are the same residue, which that
+    test asserts against rather than rejects.  The triple search must exclude it
+    itself -- the class 1 constraint above.
 
   **Where the filters have to live.**  Not only in the pairwise search.  The
   single-step annealer chooses a whole connectivity at once, so these become

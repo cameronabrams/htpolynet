@@ -1296,6 +1296,17 @@ class TopoCoord:
         '''
         In a cure reaction, atoms that react should be in different residues
         '''
+        # The 'molecule' attribute is the original monomer-instance id: it is set at
+        # template build and system replication and is NEVER updated when a cure bond
+        # merges two molecules.  That is deliberate and load-bearing.  Were it the
+        # current connected component, this test would reject every bond whose atoms
+        # already share a molecule -- that is, every cycle-closing bond -- and no
+        # system could gel.  As written the test asks only "are these two monomer
+        # instances already directly bonded to each other?", which forbids a second
+        # bond between one pair of monomers and nothing else.  Measured by
+        # htpolynet-study 2026-09-21: that is the sole reason no cured cyanate-ester
+        # network in 96 cells contains an intramolecular 14-ring, while carrying a
+        # cycle rank of ~430 on ~938 junctions.  Do not "fix" the staleness.
         assert i_resNum!=j_resNum,f'shortcircuit test error {i}-{j} both in residue {i_resNum}?'
         i_neighbors=self.Topology.bondlist.partners_of(i)
         j_neighbors=self.Topology.bondlist.partners_of(j)

@@ -1029,7 +1029,10 @@ class CureController:
                                   'reactantName': [R.product for _ in  all_possible_pairs],
                                   'order':        [order for _ in all_possible_pairs]})
                 if stage==reaction_stage.cure:
-                    # exclude atom pairs that have same resid or molid
+                    # exclude atom pairs in the same residue or the same monomer
+                    # instance.  'mi'/'mj' are original monomer-instance ids, never
+                    # updated as bonds merge molecules; see the note in
+                    # TopoCoord.makes_shortcircuit for why that matters.
                     idf=idf[(idf['ri']!=idf['rj'])&(idf['mi']!=idf['mj'])].copy()
                     logger.debug(f'Examining {idf.shape[0]} bond-candidates of order {order}')
                     if idf.shape[0]>0:
