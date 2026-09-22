@@ -142,6 +142,55 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(chosen, [])
 
 
+class TestWideningWithinAnIteration(unittest.TestCase):
+    """The pairwise cure grows its radius until an iteration has enough bonds.  Widening
+    only when an iteration finds nothing leaves a rigid monomer trickling one or two
+    rings at the starting radius forever -- 150 bisphenol A dicyanates reached 0.40
+    rather than the 0.60 asked for, having never once widened."""
+
+    def test_it_widens_until_it_finds_a_ring(self):
+        adf, pos = triangle(side=0.45)
+        c = RingController({'search_radius': 0.2, 'radial_increment': 0.1})
+        c.setup(total_groups=3, max_radius=1.0)
+        with self.assertLogs(LOG, level='INFO'):
+            _, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),))
+        self.assertEqual(len(chosen), 1)
+        self.assertGreater(c.radius, 0.2)
+
+    def test_it_gives_up_at_the_maximum_radius(self):
+        adf, pos = triangle(side=2.0)
+        c = RingController({'search_radius': 0.2, 'radial_increment': 0.1})
+        c.setup(total_groups=3, max_radius=0.5)
+        with self.assertLogs(LOG, level='INFO'):
+            _, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),))
+        self.assertEqual(chosen, [])
+        self.assertAlmostEqual(c.radius, 0.5)
+
+    def test_the_floor_is_the_configured_one_when_far_from_target(self):
+        c = RingController({'min_rings_per_iteration': 4, 'desired_conversion': 0.6})
+        c.setup(total_groups=300, max_radius=1.0)
+        self.assertEqual(c.ring_floor(), 4)
+
+    def test_the_floor_falls_to_what_is_left_near_the_target(self):
+        # three groups short of the target is one ring, so do not widen for four
+        c = RingController({'min_rings_per_iteration': 4, 'desired_conversion': 0.6})
+        c.setup(total_groups=300, max_radius=1.0)
+        c.state.groups_consumed = 177
+        self.assertEqual(c.ring_floor(), 1)
+
+    def test_a_per_iteration_cap_lowers_the_floor(self):
+        # never widen in search of more rings than the iteration would accept
+        c = RingController({'min_rings_per_iteration': 4, 'max_rings_per_iteration': 2})
+        c.setup(total_groups=300, max_radius=1.0)
+        self.assertEqual(c.ring_floor(), 2)
+
+    def test_the_floor_is_never_zero(self):
+        c = RingController({'desired_conversion': 0.5})
+        c.setup(total_groups=300, max_radius=1.0)
+        c.state.groups_consumed = 150
+        self.assertEqual(c.ring_floor(), 1)
+
+
 class TestRestartState(unittest.TestCase):
     def test_round_trips(self, ):
         import tempfile, os

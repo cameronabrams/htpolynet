@@ -795,7 +795,7 @@ attributes:
         default: 0.5
       - name: radial_increment
         type: float
-        text: How much to widen the search after an iteration that finds no ring, in nm.
+        text: How much to widen the search when an iteration is short of rings, in nm.
         default: 0.05
       - name: max_radius
         type: float
@@ -813,6 +813,14 @@ attributes:
         type: int
         text: Form at most this many rings per iteration; 0 for no limit.
         default: 0
+      - name: min_rings_per_iteration
+        type: int
+        text: >
+          Widen the search radius within an iteration until it yields at least this
+          many rings, or the maximum radius is reached.  The pairwise cure's
+          min_bonds_per_iteration, counted in rings.  Clamped against the rings still
+          needed to reach desired_conversion.
+        default: 4
       - name: same_molecule
         type: bool
         text: >

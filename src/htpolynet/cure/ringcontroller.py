@@ -20,6 +20,7 @@ Author: Cameron F. Abrams <cfa22@drexel.edu>
 """
 import logging
 
+import numpy as np
 import yaml
 
 from ..core import projectfilesystem as pfs
@@ -75,6 +76,7 @@ class RingController:
         'max_iterations': 100,
         'desired_conversion': 0.95,
         'max_rings_per_iteration': 0,
+        'min_rings_per_iteration': 4,
         'same_molecule': False,
         'same_residue': False,
         'relax': [{'ensemble': 'min'},
@@ -130,8 +132,29 @@ class RingController:
         logger.info(f'No rings found; widening the search to {self.radius:.3f} nm')
         return False
 
+    def ring_floor(self):
+        """How many rings an iteration should find before it stops widening.
+
+        The pairwise cure grows its radius within an iteration until it has at least
+        ``min_bonds_per_iteration`` bonds; this is the same rule counted in rings.
+        Widening only when an iteration finds *nothing* is not enough: a rigid monomer
+        keeps yielding one or two rings at the starting radius, so the radius never
+        grows and the cure runs out of iterations far short of its target.  Measured on
+        150 bisphenol A dicyanates, that is conversion 0.40 in eight iterations rather
+        than the 0.60 asked for.
+
+        The floor is clamped against the rings still needed to reach the target, so the
+        last iteration does not widen in search of rings it would decline to form.
+        """
+        remaining = self.dicts['desired_conversion'] * self.state.total_groups - self.state.groups_consumed
+        needed = max(1, int(np.ceil(remaining / 3.0)))
+        floor = min(int(self.dicts['min_rings_per_iteration']), needed)
+        if self.dicts['max_rings_per_iteration']:
+            floor = min(floor, int(self.dicts['max_rings_per_iteration']))
+        return max(1, floor)
+
     def search(self, adf, positions, box, resname, groups):
-        """Finds and packs this iteration's rings.
+        """Finds and packs this iteration's rings, widening the radius until it has enough.
 
         Args:
             adf (pandas.DataFrame): the system's atoms
@@ -144,14 +167,20 @@ class RingController:
             tuple: (sites, chosen) -- the groups considered and the rings accepted
         """
         sites = reactive_sites(adf, resname, groups=groups)
-        cands = candidate_triples(sites, positions, self.radius, box,
-                                  same_molecule=self.dicts['same_molecule'],
-                                  same_residue=self.dicts['same_residue'])
-        chosen = select_disjoint(cands, max_triples=self.dicts['max_rings_per_iteration'])
-        logger.info(f'Iteration {self.state.iter}: {len(sites)} unreacted group(s), '
-                    f'{len(cands)} candidate ring(s) within {self.radius:.3f} nm, '
-                    f'{len(chosen)} accepted')
-        return sites, chosen
+        floor = self.ring_floor()
+        while True:
+            cands = candidate_triples(sites, positions, self.radius, box,
+                                      same_molecule=self.dicts['same_molecule'],
+                                      same_residue=self.dicts['same_residue'])
+            chosen = select_disjoint(cands, max_triples=self.dicts['max_rings_per_iteration'])
+            logger.info(f'Iteration {self.state.iter}: {len(sites)} unreacted group(s), '
+                        f'{len(cands)} candidate ring(s) within {self.radius:.3f} nm, '
+                        f'{len(chosen)} accepted')
+            if len(chosen) >= floor or self.radius >= self.dicts['max_radius']:
+                return sites, chosen
+            self.state.radius_index += 1
+            logger.info(f'Radius increased to {self.radius:.3f} nm '
+                        f'({len(chosen)}/{floor} ring(s) so far)')
 
     def record(self, chosen):
         """Counts the rings formed and the groups they consumed."""

@@ -89,7 +89,11 @@ def candidate_triples(sites, positions, radius, box, same_molecule=False, same_r
         box (array-like): box diagonal, in nm
         same_molecule (bool): allow two groups of one molecule in a ring; defaults to
             False, which is what the published method does and what the geometry of a
-            para-para bisphenol makes impossible anyway
+            para-para bisphenol makes impossible anyway.  Note that ``molecule`` is the
+            original monomer-instance id, not the current connected component -- see
+            ``TopoCoord.makes_shortcircuit`` -- so this forbids one monomer ringing with
+            itself, not one network component ringing with itself.  The latter would
+            forbid every cycle-closing ring and no system could gel
         same_residue (bool): allow two groups of one residue in a ring; defaults to
             False.  Both arms of one dicyanate closing one triazine is a 14-membered
             ring, which for these monomers the O...O span cannot reach, and the

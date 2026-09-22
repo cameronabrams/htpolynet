@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A ring cure now widens its search radius when an iteration is short of
+  rings, not only when it finds none.**  The pairwise cure has always grown its
+  radius within an iteration until it has `min_bonds_per_iteration` bonds; the
+  ring loop instead widened only after an iteration that found nothing at all.
+  A floppy monomer never noticed, but a rigid one keeps trickling one or two
+  rings at the starting radius, so the radius never grew: 150 bisphenol A
+  dicyanates stopped at conversion 0.40 after eight iterations, having asked for
+  0.60 and never once widened.  With the same rule the pairwise cure uses --
+  counted in rings, and clamped against the rings still needed to reach the
+  target -- the same system reaches 0.61 in eight iterations.  The floor is
+  `ring_cure: min_rings_per_iteration`, default 4.
+
 ### Added
 
 - **A three-body cure reaction: cyclotrimerization** (see `ROADMAP.md`).  A
@@ -26,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   monomers reacted through both arms and 40 through one, no chemically
   impossible bond, and the largest of the 8 remaining molecules holding 1068 of
   1200 atoms -- a percolating network.
+
+  Then at scale, on 150 bisphenol A dicyanates -- the real monomer, 35 atoms
+  rather than 12, with a rigid aromatic backbone and its two arms about 0.9 nm
+  apart: 61 triazines at 61% conversion, every unit six-membered with three
+  aromatic nitrogens and three ring carbons still carrying their ester oxygen,
+  ring bonds averaging 1.347 A, no bond anywhere longer than 2.5 A, 54 monomers
+  reacted through both arms and 75 through one, all 150 molecules neutral, and
+  the largest of the 30 remaining components holding 1295 of 5250 atoms.
 
   A monomer with more than one reactive site needs two things beyond the
   single-site case, both of which the difunctional build exposed:

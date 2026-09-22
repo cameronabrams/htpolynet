@@ -1736,3 +1736,17 @@ Coverage as of the last measurement: **38.8%** overall.
   thioether, sulfone, dicyclopentadiene. A homologous series would
   exercise the repair stage across chemistries and give the tutorials a
   structure-property story.
+
+
+- **A ring-closing ladder stops around 0.22 nm, not at its 0.15 nm target.**
+  The closure restraints pull three cyanate groups together before any ring bond
+  exists, and they consistently stall at ~0.225 nm regardless of how far apart
+  they started -- in the isolated trimer template too, so it is not crowding by
+  the surrounding system.  The cause is that the groups still carry their
+  sp-hybridized C#N parameters while being pulled, and a linear triple bond
+  resists closing the angle a triazine needs; no force constant fixes that.  It
+  is benign today: the bonds are formed at that length, the template splice
+  replaces the types, and the relax step brings them to 1.35 A, which every
+  build has confirmed.  The warning threshold (twice the target) has never
+  fired.  If it ever does, the fix is to attenuate the C#N bonded parameters
+  along the closure ladder rather than to pull harder.
