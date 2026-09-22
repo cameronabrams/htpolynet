@@ -265,6 +265,12 @@ Coverage as of the last measurement: **38.8%** overall.
     component, the test would reject every cycle-closing bond and no system could gel
     (ours carry a cycle rank of ~430 on ~938 junctions).  Now noted in the code at
     both sites that read it, so it does not get "fixed".
+  - **Stronger than "could not gel": above 75% conversion an acyclic network does not
+    exist.**  From the cycle-rank identity below, a forest (rank 0) requires
+    4chi/3 - 1 = -(u+C)/n < 0, that is **chi < 3/4**.  Our builds run to chi 0.97-0.99,
+    so cycle-closing bonds are *forced* there, not merely tolerated -- a test that
+    rejected them could not reach its own target conversion, never mind gel.
+    htpolynet-study, 2026-09-22, checked here.
 
   **Class 3, soft: strained cycles, and the threshold problem.**  For cyanate esters
   this class is where a filter does *harm* if switched on -- see the end-group
@@ -292,7 +298,10 @@ Coverage as of the last measurement: **38.8%** overall.
     and the docs and the code comment must say why.**  htpolynet-study, 2026-09-21,
     from the library: Fang & Shimp's end-group arithmetic caps acyclic dendritic
     growth at **75%** cyanate conversion, a mild ring-chain model at **90%**, and only
-    severe macrocyclization reaches **98%**.  Real cure reaches 98-99%, and Guenthner
+    severe macrocyclization reaches **98%**.  That 75% is not only an end-group
+    argument: counting edges and vertices on the monomer-junction graph gives
+    chi < 3/4 for any acyclic network, with no chemistry in the derivation at all
+    (see the retraction below).  Two independent routes to the same ceiling.  Real cure reaches 98-99%, and Guenthner
     2014 treats the point as settled.  **A 98% polycyanurate network cannot be
     macrocycle-free.**  Filtering short cycles out of this chemistry would therefore
     remove the very structures that let it cure at all.
@@ -320,7 +329,10 @@ Coverage as of the last measurement: **38.8%** overall.
     4chi/3 - 1 = 0.485 requires chi = 1.11.  Two different quantities were being
     compared.  Do not reinstate the comparison; if a cyclization metric is wanted,
     it has to be one with structural freedom left in it once chi is fixed -- the
-    cycle *spectrum* (how many cycles of each length) rather than the rank.
+    cycle *spectrum* (how many cycles of each length) rather than the rank.  The
+    freedom in the rank is exactly u + C, which for a well-cured network is about 1:
+    htpolynet-study measured rank 107 against a floor of 106.1 at n = 360, chi 0.971.
+    A metric whose entire range is one unit cannot separate two networks.
   - The 28-rings are near-unstrained in GAFF (span -0.07 A, C-O-C angle -0.46 deg
     against non-ring bridges), but that only says the force field tolerates them.
     Their absolute frequency is still set by our search radius and seeded junctions,

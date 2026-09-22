@@ -1307,6 +1307,11 @@ class TopoCoord:
         # htpolynet-study 2026-09-21: that is the sole reason no cured cyanate-ester
         # network in 96 cells contains an intramolecular 14-ring, while carrying a
         # cycle rank of ~430 on ~938 junctions.  Do not "fix" the staleness.
+        # Nor is gelling the whole of it: counting edges and vertices on the
+        # monomer-junction graph, an acyclic network requires a conversion below
+        # 3/4, so above that every further bond MUST close a cycle.  A cure that
+        # refused cycle-closing bonds could not reach the conversions this
+        # chemistry is run at (0.97-0.99) at all.
         assert i_resNum!=j_resNum,f'shortcircuit test error {i}-{j} both in residue {i_resNum}?'
         i_neighbors=self.Topology.bondlist.partners_of(i)
         j_neighbors=self.Topology.bondlist.partners_of(j)
