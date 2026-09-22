@@ -17,12 +17,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and remains the default; a configuration without a ring-closing reaction
   behaves exactly as before.
 
-  Verified end to end on the smallest case, 90 methyl cyanates in a box: four
-  iterations formed 19 triazines to 63% conversion of reactive groups.  Every
-  ring came out as a six-membered ring of three aromatic carbons and three
-  aromatic nitrogens, with bonds averaging 1.351 A (a triazine's is 1.34) and
-  planar to 0.065 A, while the 33 unreacted groups kept their C#N at 1.153 A.
-  All 52 resulting molecules are neutral.
+  Verified end to end twice.  On 90 methyl cyanates, which can only trimerize:
+  19 triazines, 63% conversion, every ring six-membered with three aromatic
+  carbons and three aromatic nitrogens, bonds averaging 1.351 A (a triazine's
+  is 1.34) and planar to 0.065 A, the 33 unreacted groups keeping their C#N at
+  1.153 A, and all 52 molecules neutral.  Then on 100 ethylene dicyanates,
+  which gel: 50 triazines, 75% conversion, ring bonds averaging 1.347 A, 55
+  monomers reacted through both arms and 40 through one, no chemically
+  impossible bond, and the largest of the 8 remaining molecules holding 1068 of
+  1200 atoms -- a percolating network.
+
+  A monomer with more than one reactive site needs two things beyond the
+  single-site case, both of which the difunctional build exposed:
+  - **Only the reacting site's share of a residue is spliced.**  A dicyanate can
+    join two rings, and the trimer template shows one arm reacted, so splicing
+    the whole residue reset the other ring's arm -- 36 bonds between an aromatic
+    nitrogen and an unreacted cyanate carbon in the first attempt.  Each atom is
+    assigned to whichever site is nearer through the residue's own bonds.
+  - **The template's atom names are translated for a residue that rings through
+    its other site.**  That exchange moves every atom of the arm, hydrogens
+    included, so it is derived as an automorphism of the monomer's bond graph
+    rather than read off `symmetry_equivalent_atoms`, which names only the
+    reactive atoms.  The sets are still consulted for which sites exist.
+
+  A ring-closing reaction is also exempt from symmetry expansion, which permutes
+  each reactive atom independently: for three dicyanates that produced 64
+  reactions, most of them mixing the two arms of one site, and a template for
+  each.
   - A reaction's residue-offset arithmetic now works for any number of
     reactants.  It was written for exactly two, so a bond between the first and
     third reactant of a three-reactant reaction resolved to the wrong residue.

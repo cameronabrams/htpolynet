@@ -20,6 +20,8 @@ Author: Cameron F. Abrams <cfa22@drexel.edu>
 """
 import logging
 
+import networkx as nx
+import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -51,33 +53,97 @@ def _keys_of(section, df):
     return {_key(section, r) for _, r in df.iterrows()}
 
 
-def atom_map(instance_atoms, template_atoms, resid_map):
+def nearer_site_atoms(template, resnr, home, other):
+    """Names of one residue's atoms that belong to one reactive site rather than another.
+
+    A monomer with two reactive sites -- a dicyanate's two cyanate arms -- can join two
+    different rings, and a template shows only one of them reacted.  Splicing the whole
+    residue from it would reset the other arm to unreacted types, undoing an earlier
+    ring.  So each atom is assigned to whichever site is closer through the residue's
+    own bonds, and only the reacting site's share is spliced.
+
+    Args:
+        template (Molecule): the product template
+        resnr (int): which of its residues to partition
+        home (iterable): atom names of the site the template reacted
+        other (iterable): atom names of the site it did not
+
+    Returns:
+        set: names of the atoms nearer the home site, ties included
+    """
+    T = template.TopoCoord.Topology
+    at = T.D['atoms']
+    mine = at[at['resnr'] == resnr]
+    idx = set(int(x) for x in mine['nr'])
+    name = dict(zip(mine['nr'].astype(int), mine['atom']))
+    g = nx.Graph()
+    g.add_nodes_from(idx)
+    for r in T.D['bonds'].itertuples():
+        i, j = int(r.ai), int(r.aj)
+        if i in idx and j in idx:
+            g.add_edge(i, j)
+    by_name = {v: k for k, v in name.items()}
+
+    def spread(seeds):
+        d = {}
+        for s in seeds:
+            if s not in by_name:
+                continue
+            for node, dist in nx.single_source_shortest_path_length(g, by_name[s]).items():
+                d[node] = min(d.get(node, dist), dist)
+        return d
+
+    dh, do = spread(home), spread(other)
+    return {name[n] for n in idx if dh.get(n, np.inf) <= do.get(n, np.inf)}
+
+
+def atom_map(instance_atoms, template_atoms, resid_map, name_maps=None, atom_names=None):
     """Maps template atoms to instance atoms, residue by residue, on atom name.
+
+    A residue may react through a different equivalent site than the template shows.
+    A bisphenol dicyanate has two cyanate arms, and the trimer template is built with
+    one of them reacted; a residue that rings through the other needs the template's
+    names translated onto its own, or the reacted arm's parameters would land on the
+    arm that is still free.  ``name_maps`` carries that translation, and comes from
+    the constituent's ``symmetry_equivalent_atoms``.
 
     Args:
         instance_atoms (pandas.DataFrame): the system's [ atoms ], with nr, atom, resnr
         template_atoms (pandas.DataFrame): the template's [ atoms ], same columns
         resid_map (dict): {template resnr: instance resnr} for every participating residue
+        name_maps (dict): {template resnr: {template atom name: instance atom name}},
+            for residues reacting through a site other than the template's
+        atom_names (set): template atom names to map, for splicing one reactive site's
+            share of a residue rather than all of it; None maps everything
 
     Returns:
         tuple: (temp2inst, unmapped) -- the mapping, and the template atom numbers that
             have no instance counterpart
     """
     temp2inst = {}
+    name_maps = name_maps or {}
     for t_res, i_res in resid_map.items():
-        t = template_atoms[template_atoms['resnr'] == t_res][['nr', 'atom']]
+        t = template_atoms[template_atoms['resnr'] == t_res][['nr', 'atom']].copy()
+        if atom_names is not None:
+            t = t[t['atom'].isin(atom_names)]
+        translate = name_maps.get(t_res)
+        if translate:
+            t['atom'] = [translate.get(a, a) for a in t['atom']]
         i = instance_atoms[instance_atoms['resnr'] == i_res][['nr', 'atom']]
         merged = t.merge(i, on='atom', how='left', suffixes=('_t', '_i'))
         for _, r in merged.iterrows():
             if pd.notna(r['nr_i']):
                 temp2inst[int(r['nr_t'])] = int(r['nr_i'])
     mapped_t = set(temp2inst)
-    unmapped = [int(x) for x in template_atoms[template_atoms['resnr'].isin(resid_map)]['nr']
-                if int(x) not in mapped_t]
+    wanted = template_atoms[template_atoms['resnr'].isin(resid_map)]
+    if atom_names is not None:
+        wanted = wanted[wanted['atom'].isin(atom_names)]
+    unmapped = [int(x) for x in wanted['nr'] if int(x) not in mapped_t]
     return temp2inst, unmapped
 
 
-def map_product_from_template(TC, template, resid_map, new_bonds=(), strict=True):
+def map_product_from_template(TC, template, resid_map, new_bonds=(), strict=True, name_maps=None,
+                              atom_names=None):
     """Makes the mapped residues of TC match a product template exactly.
 
     Copies atom types and charges for every mapped atom, and every bond, angle,
@@ -100,6 +166,10 @@ def map_product_from_template(TC, template, resid_map, new_bonds=(), strict=True
             the template
         strict (bool): raise when the template and instance disagree about which bonds
             exist among the mapped residues; defaults to True
+        name_maps (dict): per-residue atom-name translation, for a residue reacting
+            through a site other than the one the template shows; see :func:`atom_map`
+        atom_names (set): template atom names to splice, for a monomer with more than one
+            reactive site; see :func:`nearer_site_atoms`
 
     Returns:
         dict: ``atoms`` (instance atom numbers touched), ``types`` and ``charges``
@@ -112,7 +182,14 @@ def map_product_from_template(TC, template, resid_map, new_bonds=(), strict=True
             instance
     """
     inst_top, temp_top = TC.Topology, template.TopoCoord.Topology
-    temp2inst, unmapped = atom_map(inst_top.D['atoms'], temp_top.D['atoms'], resid_map)
+    # The template's interactions are written in terms of its atom types, and a system
+    # built from unreacted monomers has never seen the ones a closed ring introduces
+    # (aromatic carbon and nitrogen, here).  Without their type tables the new bonds
+    # have no parameters to resolve and grompp refuses the topology.  merge_types drops
+    # duplicates, so this is idempotent across rings and iterations.
+    inst_top.merge_types(temp_top)
+    temp2inst, unmapped = atom_map(inst_top.D['atoms'], temp_top.D['atoms'], resid_map,
+                                   name_maps=name_maps, atom_names=atom_names)
     if unmapped:
         logger.debug(f'{len(unmapped)} template atom(s) have no instance counterpart and are skipped')
 

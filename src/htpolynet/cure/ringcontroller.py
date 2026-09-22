@@ -25,7 +25,7 @@ import yaml
 from ..core import projectfilesystem as pfs
 from ..core.productsplice import map_product_from_template
 from ..cure.triplesearch import (candidate_triples, reactive_sites, residue_map,
-                                 select_disjoint)
+                                 select_disjoint, site_name_maps)
 from ..external.gromacs import mdp_modify
 from ..repair.topology_surgery import neutralize_touched_fragments
 
@@ -77,6 +77,8 @@ class RingController:
         'max_rings_per_iteration': 0,
         'same_molecule': False,
         'same_residue': False,
+        'relax': [{'ensemble': 'min'},
+                  {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2000}],
         'closure': {'nstages': 8, 'target': 0.15, 'kb': 300000.0,
                     'equilibration': [{'ensemble': 'min'},
                                       {'ensemble': 'nvt', 'temperature': 600, 'nsteps': 1000}]},
@@ -203,6 +205,22 @@ class RingController:
                            f'formed long and relaxed, which may strain the network')
         return work
 
+    def relax(self, TC, gromacs_dict=None):
+        """Eases a freshly closed ring's bonds in before anything else runs.
+
+        A ring bond is formed at whatever length the closure ladder reached, a good way
+        short of the 1.34 A it wants, so the system is strained the moment the bonds
+        exist.  CURE relaxes its new bonds for the same reason; without it here, the
+        strain is still there when postcure MD starts, and that run dies.
+
+        Args:
+            TC (TopoCoord): the system
+            gromacs_dict (dict): gromacs directives
+        """
+        self._run_stages(TC, f'ringrelax-{self.state.iter}', self.dicts['relax'],
+                         gromacs_dict or {})
+        logger.info(f'Iteration {self.state.iter}: new ring bonds relaxed')
+
     def _run_stages(self, TC, deffnm, stages, gromacs_dict):
         """Runs one equilibration sequence, as the cure's ladders do."""
         for stage in stages:
@@ -215,7 +233,8 @@ class RingController:
                                           'gen-vel': 'yes', 'nsteps': stage.get('nsteps', 1000)})
             TC.grompp_and_mdrun(out=f'{deffnm}-{ensemble}', mdp=mdp, **gromacs_dict)
 
-    def form_rings(self, TC, bdf, sites, chosen, template, template_resids):
+    def form_rings(self, TC, bdf, sites, chosen, template, template_resids, name_translations=None,
+                   atom_names=None):
         """Forms each ring's bonds and gives its residues the template's parameters.
 
         Args:
@@ -225,6 +244,10 @@ class RingController:
             chosen (list): the accepted rings
             template (Molecule): the trimer template
             template_resids (list): its residue numbers, in reactant order
+            name_translations (dict): {group label: {template name: that group's name}},
+                for residues ringing through a site other than the template's
+            atom_names (set): template atom names to splice, one reactive site's share of
+                a residue, for a monomer carrying more than one
 
         Returns:
             dict: ``atoms`` touched and ``rings`` spliced
@@ -233,9 +256,12 @@ class RingController:
         # an addition: nothing is lost, so no hydrogen is offered up for any of them
         TC.make_bonds(pairs, explicit_sacH={i: [] for i in range(len(pairs))})
         touched = set()
-        for n, rmap in enumerate(residue_map(chosen, sites, template_resids)):
+        maps = residue_map(chosen, sites, template_resids)
+        names = site_name_maps(chosen, sites, template_resids, name_translations or {})
+        for n, (rmap, nmap) in enumerate(zip(maps, names)):
             ring_bonds = [(int(r.ai), int(r.aj)) for r in bdf[bdf['triple'] == n].itertuples()]
-            stats = map_product_from_template(TC, template, rmap, new_bonds=ring_bonds)
+            stats = map_product_from_template(TC, template, rmap, new_bonds=ring_bonds,
+                                              name_maps=nmap, atom_names=atom_names)
             touched.update(stats['atoms'])
         # the splice replaces charges wholesale over three residues at a time, so the
         # molecules it touched have to be brought back to neutral

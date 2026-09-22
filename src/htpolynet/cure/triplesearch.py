@@ -198,6 +198,32 @@ def triple_bonds_dataframe(chosen, sites, product, order=1):
     return pd.DataFrame(rows, columns=['ai', 'aj', 'ri', 'rj', 'order', 'reactantName', 'triple'])
 
 
+def site_name_maps(chosen, sites, template_resids, group_names):
+    """Builds the atom-name translation each ring member needs.
+
+    Args:
+        chosen (list): from :func:`select_disjoint`
+        sites (pandas.DataFrame): from :func:`reactive_sites`
+        template_resids (list): the template's residue numbers, in reactant order
+        group_names (dict): {group label: {template atom name: this group's name}},
+            one entry per reactive site a residue carries; the site the template was
+            built from maps to itself
+
+    Returns:
+        list: one {template resnr: {name: name}} dict per triple, entries omitted
+            where no translation is needed
+    """
+    out = []
+    for score, ring, bonds in chosen:
+        maps = {}
+        for t, s in zip(template_resids, ring):
+            translate = group_names.get(sites.at[s, 'group'])
+            if translate:
+                maps[int(t)] = translate
+        out.append(maps)
+    return out
+
+
 def residue_map(chosen, sites, template_resids):
     """Maps each triple's template residues onto its instance residues.
 

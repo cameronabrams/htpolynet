@@ -12,7 +12,10 @@ import yaml
 from collections import namedtuple
 from copy import deepcopy
 
+import networkx as nx
 import numpy as np
+
+from networkx.algorithms import isomorphism
 
 from ..analysis.plot import trace
 from ..core import paramcache
@@ -26,6 +29,7 @@ from ..cure.curecontroller import CureController, CureState
 from ..cure.expandreactions import bondchain_expand_reactions, generate_stereo_reactions, generate_symmetry_reactions, sibling_expand_reactions
 from ..cure.reaction import (Reaction, ReactionList, parse_reaction_list, extract_molecule_reactions,
                              is_reactant, is_ring_closing, reaction_stage)
+from ..core.productsplice import nearer_site_atoms
 from ..cure.ringcontroller import RingController, RingCureState
 from ..cure.triplesearch import reactive_sites, triple_bonds_dataframe
 from ..external import software as software
@@ -582,7 +586,82 @@ class Runtime:
             pairs.add((d[0], a[0]))
         template = self.molecules[R.product]
         resids = list(range(1, len(R.reactants) + 1))
-        return resname, tuple(sorted(pairs)), template, resids
+        if len(pairs) != 1:
+            raise NotImplementedError(f'reaction "{R.name}" uses {len(pairs)} different sites; '
+                                      f'declare one and let symmetry supply the rest')
+        home = next(iter(pairs))
+        groups, names = self._symmetry_images(self.molecules[reactant], home)
+        # A monomer with more than one reactive site can join more than one ring, and
+        # this template shows one site reacted.  Splice only that site's share of each
+        # residue, or a second ring would reset the first one's atoms.
+        others = [g for g in groups if g != home]
+        arm = None
+        if others:
+            arm = nearer_site_atoms(template, resids[0], home, [n for g in others for n in g])
+            logger.info(f'{reactant} carries {len(groups)} reactive sites; splicing {len(arm)} '
+                        f'atom(s) per residue, the reacting one\'s share')
+        return resname, groups, template, resids, names, arm
+
+    @staticmethod
+    def _symmetry_images(M, group):
+        """Expands one reactive site over its equivalent sites, with the name translation each needs.
+
+        A dicyanate carries two cyanate arms, and the trimer template is built with one
+        of them reacted.  A residue ringing through the other is the same chemistry with
+        the two arms exchanged, so one template serves both -- provided the splice is
+        told how to read it.
+
+        That exchange is a symmetry of the molecule itself, and it moves *every* atom of
+        the arm: the oxygen, the methylenes between them, their hydrogens.  Declaring all
+        of that by hand is impractical, and a missed atom maps a bond onto one the
+        instance does not have.  So the translation is derived as an automorphism of the
+        monomer's own bond graph -- one that carries the declared site onto the other --
+        and `symmetry_equivalent_atoms` is consulted only for which other sites exist.
+
+        Args:
+            M (Molecule): the monomer carrying the sites
+            group (tuple): (donor, acceptor) atom names, as the reaction declares them
+
+        Returns:
+            tuple: (groups, names) -- every (donor, acceptor) pair, and
+                {group label: {template name: that group's name}}
+
+        Raises:
+            NotImplementedError: if a declared equivalent site is not reachable by any
+                symmetry of the molecule
+        """
+        donor, acceptor = group
+        sets = [list(s) for s in (M.symmetry_relateds or [])]
+        home = next((s.index(donor) for s in sets if donor in s), None)
+        if home is None:
+            return (group,), {}
+        width = min(len(s) for s in sets)
+        A = M.TopoCoord.Coordinates.A
+        name_of = dict(zip(A['globalIdx'].astype(int), A['atomName']))
+        idx_of = {v: k for k, v in name_of.items()}
+        G = nx.Graph()
+        types = dict(zip(M.TopoCoord.Topology.D['atoms']['nr'].astype(int),
+                         M.TopoCoord.Topology.D['atoms']['type']))
+        for i, t in types.items():
+            G.add_node(i, type=t)
+        G.add_edges_from(zip(M.TopoCoord.Topology.D['bonds']['ai'].astype(int),
+                             M.TopoCoord.Topology.D['bonds']['aj'].astype(int)))
+        groups, names = [], {}
+        for k in range(width):
+            pair = (next(s[k] for s in sets if donor in s), next(s[k] for s in sets if acceptor in s))
+            groups.append(pair)
+            if k == home:
+                continue
+            want = {idx_of[donor]: idx_of[pair[0]], idx_of[acceptor]: idx_of[pair[1]]}
+            matcher = isomorphism.GraphMatcher(G, G, node_match=lambda a, b: a['type'] == b['type'])
+            found = next((m for m in matcher.isomorphisms_iter()
+                          if all(m[a] == b for a, b in want.items())), None)
+            if found is None:
+                raise NotImplementedError(f'{M.name}: no symmetry of the molecule carries '
+                                          f'{group} onto {pair}, so one template cannot serve both; '
+                                          f'declare a reaction per site instead')
+            names[f'{pair[0]}-{pair[1]}'] = {name_of[a]: name_of[b] for a, b in found.items()}
+        return tuple(groups), names
 
     @cp.enableCheckpoint
     def do_ring_cure(self):
@@ -597,7 +676,7 @@ class Runtime:
         if len(rxns) > 1:
             raise NotImplementedError(f'{len(rxns)} ring-closing reactions; only one is supported')
         R = rxns[0]
-        resname, groups, template, template_resids = self._ring_recipe(R)
+        resname, groups, template, template_resids, name_translations, arm = self._ring_recipe(R)
         TC = self.TopoCoord
         gromacs_dict = self.cfg.gromacs
         statefile = f'{pfs.Dirs.systems}/ring_state.yaml'
@@ -623,7 +702,9 @@ class Runtime:
                 continue
             bdf = triple_bonds_dataframe(chosen, sites, R.product, order=R.bonds[0].get('order', 1))
             rc.close_rings(TC, bdf, gromacs_dict=gromacs_dict)
-            rc.form_rings(TC, bdf, sites, chosen, template, template_resids)
+            rc.form_rings(TC, bdf, sites, chosen, template, template_resids,
+                          name_translations=name_translations, atom_names=arm)
+            rc.relax(TC, gromacs_dict=gromacs_dict)
             rc.record(chosen)
             TC.write_gro(f'ring-{rc.state.iter}.gro')
             TC.write_top(f'ring-{rc.state.iter}.top')

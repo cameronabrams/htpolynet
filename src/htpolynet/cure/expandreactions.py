@@ -8,7 +8,8 @@ from copy import deepcopy
 from itertools import combinations, product
 
 from ..core.molecule import Molecule, MoleculeList, MoleculeDict
-from ..cure.reaction import reaction_stage, Reaction, ReactionList, generate_product_name, reactant_resid_to_presid
+from ..cure.reaction import (reaction_stage, Reaction, ReactionList, generate_product_name,
+                             is_ring_closing, reactant_resid_to_presid)
 
 logger=logging.getLogger(__name__)
 
@@ -211,6 +212,15 @@ def generate_symmetry_reactions(RL:ReactionList,MD:MoleculeDict):
     tail_adds=0
     for R in RL:
         if R.stage not in [reaction_stage.param,reaction_stage.cure,reaction_stage.cap,reaction_stage.repair]: continue
+        if is_ring_closing(R):
+            # Expanding a ring-closing reaction here permutes every reactive atom
+            # independently, which mixes the arms of one site -- a reactant donating
+            # N1 while accepting C2 is not a cyanate group -- and asks for a template
+            # per combination: 64 of them for three dicyanates.  The ring search
+            # expands the sites instead, at search time, using the same symmetry sets,
+            # and one template serves them all with its atom names translated.
+            logger.debug(f'{R.name} closes a ring; its symmetry images are expanded by the ring search')
+            continue
         Prod=MD[R.product]
         logger.debug(f'Symmetry versions for {R.name} ({str(R.stage)})\n{str(R)}')
         sra_by_reactant={k:MD[rname].symmetry_relateds for k,rname in R.reactants.items()}
