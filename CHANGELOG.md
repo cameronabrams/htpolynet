@@ -9,9 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Groundwork for a three-body cure reaction** (cyanate-ester
-  cyclotrimerization; see `ROADMAP.md`).  Nothing user-visible yet: CURE is
-  unchanged and no configuration can request a three-body reaction.
+- **A three-body cure reaction: cyclotrimerization** (see `ROADMAP.md`).  A
+  `reactions` entry whose bonds close a ring among three reactants, plus a
+  `ring_cure` configuration block, now build a network by the real cyanate-ester
+  chemistry -- three -O-C#N groups closing one triazine -- instead of the
+  pre-formed-triazine surrogate that needs postcure repair.  CURE is untouched
+  and remains the default; a configuration without a ring-closing reaction
+  behaves exactly as before.
+
+  Verified end to end on the smallest case, 90 methyl cyanates in a box: four
+  iterations formed 19 triazines to 63% conversion of reactive groups.  Every
+  ring came out as a six-membered ring of three aromatic carbons and three
+  aromatic nitrogens, with bonds averaging 1.351 A (a triazine's is 1.34) and
+  planar to 0.065 A, while the 33 unreacted groups kept their C#N at 1.153 A.
+  All 52 resulting molecules are neutral.
   - A reaction's residue-offset arithmetic now works for any number of
     reactants.  It was written for exactly two, so a bond between the first and
     third reactant of a three-reactant reaction resolved to the wrong residue.
@@ -31,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     each incoming piece as it bonds it, which a closing bond cannot do: the
     residues it joins are already placed, so it is skipped there and its
     geometry handled separately.
+  - `Runtime.do_ring_cure` runs it as a workflow stage, with restart state
+    beside the cure's.  `do_cure` now returns early when every cure reaction
+    closes a ring: the pairwise search skips those, so it would otherwise
+    iterate to its limit forming nothing.  (The `CURE` block is present even
+    when a configuration omits it, since the schema supplies its defaults.)
   - `cure.ringcontroller` runs the loop: search, pull every chosen ring shut,
     form its bonds, splice the trimer template over its three residues, settle
     the charge, count what was consumed, and widen the search when an iteration

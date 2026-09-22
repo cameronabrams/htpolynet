@@ -781,6 +781,71 @@ attributes:
             text: Times to repeat this simulation in series; 0 runs it once.
             default: 0
 
+  - name: ring_cure
+    type: dict
+    text: >
+      A cure whose reaction closes a ring -- cyclotrimerization of three cyanate
+      groups into a triazine, as opposed to CURE's pairwise crosslinking.  Present
+      only when `reactions` declares a ring-closing reaction.  Conversion is counted
+      in reactive groups consumed, three per ring, not in bonds.
+    attributes:
+      - name: search_radius
+        type: float
+        text: Longest new bond a candidate ring may need, in nm.
+        default: 0.5
+      - name: radial_increment
+        type: float
+        text: How much to widen the search after an iteration that finds no ring, in nm.
+        default: 0.05
+      - name: max_radius
+        type: float
+        text: Widening stops here; 0 means half the shortest box vector.
+        default: 0.0
+      - name: max_iterations
+        type: int
+        text: Stop after this many iterations whatever the conversion.
+        default: 100
+      - name: desired_conversion
+        type: float
+        text: Fraction of reactive groups to consume.
+        default: 0.95
+      - name: max_rings_per_iteration
+        type: int
+        text: Form at most this many rings per iteration; 0 for no limit.
+        default: 0
+      - name: same_molecule
+        type: bool
+        text: >
+          Allow two groups of one molecule in a ring.  False by default, as the
+          published single-step method requires; for a para-para bisphenol the
+          oxygen-to-oxygen span cannot reach a triazine's two bridge positions
+          anyway.
+        default: false
+      - name: same_residue
+        type: bool
+        text: >
+          Allow two groups of one residue in a ring, which for a dicyanate is both
+          arms into one triazine.
+        default: false
+      - name: closure
+        type: dict
+        text: >
+          How the ring is pulled shut before its bonds exist: all three pairs are
+          restrained together and the restraints stepped down to a bond length.
+        attributes:
+          - name: nstages
+            type: int
+            text: Stages in the ladder.
+            default: 8
+          - name: target
+            type: float
+            text: Restraint length of the last stage, in nm.
+            default: 0.15
+          - name: kb
+            type: float
+            text: Restraint stiffness, in kJ/mol/nm^2.
+            default: 300000.0
+
   - name: postcure_repair
     type: list
     text: >

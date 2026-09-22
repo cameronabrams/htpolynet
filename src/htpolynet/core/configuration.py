@@ -57,6 +57,7 @@ class Configuration:
         self.postcure_repair = []    # list of postcure topology-repair specs
         self.postcure = {}
         self.cure = {}
+        self.ring_cure = {}
         self.gaff = {}
         self.ambertools = {}
         self.resolve_type_discrepancies = []
@@ -129,6 +130,7 @@ class Configuration:
         self.postcure_repair = self.basedict.get('postcure_repair', [])
         self.postcure = self.basedict.get('postcure', {})
         self.cure = self.basedict.get('CURE', {})
+        self.ring_cure = self.basedict.get('ring_cure', {})
         self.gaff = self.basedict.get('GAFF', {})
         self.ambertools = self.basedict.get('ambertools', {})
         self.resolve_type_discrepancies = self.basedict.get('resolve_type_discrepancies', [])

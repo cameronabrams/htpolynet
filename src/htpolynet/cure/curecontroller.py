@@ -392,7 +392,8 @@ class CureController:
         self._do_topology_update(TC,MD)
         self._do_relax(TC,gromacs_dict)
         self._do_equilibrate(TC,gromacs_dict)
-        self.state.cum_nxlinkbonds+=self.bonds_df.shape[0]
+        # an iteration that forms nothing leaves bonds_df unset rather than empty
+        self.state.cum_nxlinkbonds+=0 if self.bonds_df is None else self.bonds_df.shape[0]
         logger.info(f'Iteration {self.state.iter} current conversion {self._curr_conversion():.3f} or {self.state.cum_nxlinkbonds} bonds')
         return {c:os.path.basename(x) for c,x in TC.files.items() if c!='mol2'}
 

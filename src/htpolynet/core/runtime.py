@@ -24,7 +24,10 @@ from ..core.topology import conflicting_types, select_topology_type_option
 from ..cure.chain import ChainManager
 from ..cure.curecontroller import CureController, CureState
 from ..cure.expandreactions import bondchain_expand_reactions, generate_stereo_reactions, generate_symmetry_reactions, sibling_expand_reactions
-from ..cure.reaction import Reaction, ReactionList, parse_reaction_list, extract_molecule_reactions, is_reactant, reaction_stage
+from ..cure.reaction import (Reaction, ReactionList, parse_reaction_list, extract_molecule_reactions,
+                             is_reactant, is_ring_closing, reaction_stage)
+from ..cure.ringcontroller import RingController, RingCureState
+from ..cure.triplesearch import reactive_sites, triple_bonds_dataframe
 from ..external import software as software
 from ..external.gromacs import insert_molecules, mdp_modify, mdp_get
 from ..external.smiles_input import materialize_smiles_inputs
@@ -499,6 +502,16 @@ class Runtime:
         if not hasattr(self,'cc'): 
             logger.debug(f'no cure controller')
             return  # no cure controller
+        # A ring-closing reaction is the ring cure's business, and the pairwise search
+        # skips it.  With nothing else to form, CURE would iterate to its limit forming
+        # nothing, so say so and leave.  (The CURE block is present even when the
+        # configuration omits it: the schema supplies its defaults.)
+        pairwise=[R for R in self.reactions
+                  if R.stage==reaction_stage.cure and not is_ring_closing(R)]
+        if not pairwise:
+            if self._ring_reactions():
+                my_logger('No pairwise cure reactions; crosslinking is the ring cure\'s',logger.info)
+            return
         cc=self.cc
         TC=self.TopoCoord
         RL=self.reactions
@@ -536,6 +549,93 @@ class Runtime:
             cc.do_capping(TC,RL,MD,gromacs_dict=gromacs_dict)
         self._report_molecule_charges('after cure')
         my_logger('Connect-Update-Relax-Equilibrate (CURE) ends',logger.info)
+
+    def _ring_reactions(self):
+        """The cure reactions that close a ring, which CURE's pairwise search skips."""
+        return [R for R in self.reactions
+                if R.stage == reaction_stage.cure and is_ring_closing(R)]
+
+    def _ring_recipe(self, R):
+        """Works out what the ring search needs from one ring-closing reaction.
+
+        Returns:
+            tuple: (residue name, ((donor, acceptor), ...), template Molecule,
+                [template resid per reactant])
+        """
+        names = set(R.reactants.values())
+        if len(names) != 1:
+            raise NotImplementedError(f'reaction "{R.name}" closes a ring among different '
+                                      f'reactants ({sorted(names)}); only one kind is supported')
+        reactant = next(iter(names))
+        if len(self.molecules[reactant].sequence) != 1:
+            raise NotImplementedError(f'reaction "{R.name}" closes a ring among multi-residue '
+                                      f'reactants; only single-residue ones are supported')
+        resname = self.molecules[reactant].get_resname(1)
+        donors = {b['atoms'][0] for b in R.bonds}
+        pairs = set()
+        for key in R.reactants:
+            d = [R.atoms[k]['atom'] for k in R.atoms if R.atoms[k]['reactant'] == key and k in donors]
+            a = [R.atoms[k]['atom'] for k in R.atoms if R.atoms[k]['reactant'] == key and k not in donors]
+            if len(d) != 1 or len(a) != 1:
+                raise NotImplementedError(f'reaction "{R.name}" gives reactant {key} '
+                                          f'{len(d)} donor(s) and {len(a)} acceptor(s); expected one each')
+            pairs.add((d[0], a[0]))
+        template = self.molecules[R.product]
+        resids = list(range(1, len(R.reactants) + 1))
+        return resname, tuple(sorted(pairs)), template, resids
+
+    @cp.enableCheckpoint
+    def do_ring_cure(self):
+        """Manages a cure whose reaction closes a ring (cyclotrimerization).
+
+        Returns:
+            dict: dictionary of Gromacs file basenames, or empty if there is nothing to do
+        """
+        rxns = self._ring_reactions()
+        if not rxns:
+            return {}
+        if len(rxns) > 1:
+            raise NotImplementedError(f'{len(rxns)} ring-closing reactions; only one is supported')
+        R = rxns[0]
+        resname, groups, template, template_resids = self._ring_recipe(R)
+        TC = self.TopoCoord
+        gromacs_dict = self.cfg.gromacs
+        statefile = f'{pfs.Dirs.systems}/ring_state.yaml'
+        pfs.go_proj()
+        state = RingCureState.from_yaml(statefile) if os.path.exists(statefile) else None
+        rc = RingController(self.cfg.ring_cure, state=state)
+        adf = TC.Coordinates.A
+        total = reactive_sites(adf, resname, groups=groups, require_z=False).shape[0]
+        rc.setup(total_groups=total, max_radius=float(min(TC.Coordinates.box.diagonal() / 2)))
+        my_logger(f'Ring cure begins: {total} reactive {resname} group(s), '
+                  f'{groups}, template {template.name}', logger.info)
+        while not rc.is_cured():
+            pfs.go_to(pfs.Dirs.systems_iter(rc.state.iter))
+            TC.grab_files()
+            adf = TC.Coordinates.A
+            positions = {int(r.globalIdx): np.array([r.posX, r.posY, r.posZ])
+                         for r in adf.itertuples()}
+            sites, chosen = rc.search(adf, positions, TC.Coordinates.box.diagonal(), resname, groups)
+            if not chosen:
+                if rc.widen():
+                    break
+                rc.state.iter += 1
+                continue
+            bdf = triple_bonds_dataframe(chosen, sites, R.product, order=R.bonds[0].get('order', 1))
+            rc.close_rings(TC, bdf, gromacs_dict=gromacs_dict)
+            rc.form_rings(TC, bdf, sites, chosen, template, template_resids)
+            rc.record(chosen)
+            TC.write_gro(f'ring-{rc.state.iter}.gro')
+            TC.write_top(f'ring-{rc.state.iter}.top')
+            TC.write_grx_attributes(f'ring-{rc.state.iter}.grx')
+            TC.write_tpx(f'ring-{rc.state.iter}.tpx')
+            rc.state.iter += 1
+            pfs.go_proj()
+            rc.state.to_yaml(statefile)
+        self._report_molecule_charges('after ring cure')
+        my_logger(f'Ring cure ends: {rc.state.rings} ring(s), conversion '
+                  f'{rc.state.conversion:.3f}', logger.info)
+        return {c: os.path.basename(x) for c, x in TC.files.items() if c != 'mol2'}
 
     @cp.enableCheckpoint
     def do_repair(self):
@@ -748,6 +848,9 @@ class Runtime:
                 self.do_precure()
             with profiling.stage('cure'):
                 self.do_cure()
+            if self._ring_reactions():
+                with profiling.stage('ring-cure'):
+                    self.do_ring_cure()
             if getattr(self.cfg, 'postcure_repair', None):
                 pfs.go_to(pfs.Dirs.systems_repair)
                 with profiling.stage('repair'):

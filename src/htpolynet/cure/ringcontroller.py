@@ -185,6 +185,10 @@ class RingController:
             frac = (stage + 1) / c['nstages']
             lengths = work['initial_distance'] + frac * (c['target'] - work['initial_distance'])
             TC.Topology.set_restraint_parameters(work, lengths, c['kb'])
+            # the MD reads the topology from disk, so the restraints have to be
+            # written out again every stage or the run pulls on nothing
+            TC.write_top(f'ringclose-{self.state.iter}-{stage + 1}.top')
+            TC.write_gro(f'ringclose-{self.state.iter}-{stage + 1}.gro')
             self._run_stages(TC, f'ringclose-{self.state.iter}-{stage + 1}', c['equilibration'],
                              gromacs_dict or {})
             TC.add_length_attribute(work, attr_name='current_distance')

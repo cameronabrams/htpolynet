@@ -172,6 +172,15 @@ def map_product_from_template(TC, template, resid_map, new_bonds=(), strict=True
             inst_top.D[section] = mapped.reset_index(drop=True)
         stats['added'][section] = len(new_keys) - stats['replaced'][section]
 
+    # pandas upcasts an int column to float wherever a concat had to align frames, and
+    # the topology writer and delete_atoms both assert int atom indices
+    for section in _SECTIONS_:
+        df = inst_top.D.get(section)
+        if df is None or df.empty:
+            continue
+        for c in _ATOM_COLUMNS_[section] + ('funct',):
+            if c in df.columns:
+                df[c] = df[c].astype(int)
     if 'bonds' in inst_top.D:
         from ..geometry.bondlist import Bondlist
         inst_top.bondlist = Bondlist.fromDataFrame(inst_top.D['bonds'])
