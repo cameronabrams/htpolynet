@@ -1763,15 +1763,16 @@ Coverage as of the last measurement: **38.8%** overall.
   structure-property story.
 
 
-- **A ring-closing ladder stops around 0.22 nm, not at its 0.15 nm target.**
-  The closure restraints pull three cyanate groups together before any ring bond
-  exists, and they consistently stall at ~0.225 nm regardless of how far apart
-  they started -- in the isolated trimer template too, so it is not crowding by
-  the surrounding system.  The cause is that the groups still carry their
-  sp-hybridized C#N parameters while being pulled, and a linear triple bond
-  resists closing the angle a triazine needs; no force constant fixes that.  It
-  is benign today: the bonds are formed at that length, the template splice
-  replaces the types, and the relax step brings them to 1.35 A, which every
-  build has confirmed.  The warning threshold (twice the target) has never
-  fired.  If it ever does, the fix is to attenuate the C#N bonded parameters
-  along the closure ladder rather than to pull harder.
+- **Every template is parameterized with its new bonds still about 2.2 A long, and
+  whether that matters outside ring closures is unverified.**  htpolynet records a
+  reaction's bonds and only relaxes the geometry after parameterization, so antechamber
+  always sees a product whose new bonds are stretched -- a styrene dimer as much as a
+  triazine.  For ring closures this was measured to be badly wrong (0.21 e per ring
+  carbon; see the CHANGELOG for 2.11.1) and is now fixed by relaxing those templates
+  first.  For an ordinary one-bond condensation nobody has checked.  The honest test is
+  not the output mol2, because antechamber echoes its input coordinates into it: it is
+  to parameterize a dimer template both as built and after relaxing it, and compare the
+  charges near the new bond.  If they differ materially, the same relaxation should be
+  applied to every product, which would move the charges of every template htpolynet has
+  ever built -- so it wants measuring before it is done, and a deliberate decision about
+  reproducibility against published results.

@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A cyclotrimerization's charges were computed on a ring that was never closed.**  The
+  trimer template reached antechamber with its three ring bonds recorded but still about
+  2.2 A long: the closure ladder cannot beat the reactants' own C#N, whose sp parameters
+  hold each group linear, and no force constant wins that.  Charges come from the
+  geometry, so the semiempirical step charged three separate cyanates rather than a
+  triazine, leaving **every ring carbon about 0.21 e low** with the deficit smeared over
+  the rest of the molecule.
+
+  Nothing caught it.  The atom types were right, because antechamber perceives those from
+  the connectivity, which was right; the molecules were neutral, because the error sums
+  to zero; and the system's own ring bonds relaxed to 1.347 A after the splice, because
+  the bonded parameters were fine.  It surfaced only when htpolynet-study ran a campaign
+  with `bcc` charges and half their builds died in a 500 K anneal -- the release smoke
+  test had used `gas` charges, which are computed from the topology and could not have
+  seen it.
+
+  A product whose reaction closes a ring is now relaxed against its own connectivity
+  before it is parameterized, and refused if the ring is still open afterward.
+  Measured on a methyl cyanate trimer, ring-carbon charge: **+0.699 before, +0.909
+  after, against +0.909** for the same molecule built independently from SMILES.
+  htpolynet-study measured the same 0.21 e deficit on a bisphenol A dicyanate trimer.
+
+  Two things fell out of the investigation that are worth knowing:
+  - **Correcting the bond orders does not fix it.**  An addition bond leaves the cyanate
+    carbon pentavalent -- it keeps its C#N, gains the ring bond, and still carries its
+    ester oxygen -- and that is now repaired too, since RDKit cannot read a molecule with
+    an impossible valence.  But repairing the orders alone produced charges identical to
+    the broken ones, because the semiempirical step reads coordinates, not bond orders.
+  - **antechamber's output geometry is its input geometry.**  It is not evidence about
+    what the charge calculation did or did not relax, and it should not be read as such.
+
+- `Topology.rebalance_mol2_bond_orders` reduces a multiple bond when an addition would
+  otherwise leave an atom over-valent, preferring a bond that is over-valent at both ends
+  because reducing it repairs two atoms at once.
+
 ## [2.11.0] - 2026-09-22
 
 ### Added

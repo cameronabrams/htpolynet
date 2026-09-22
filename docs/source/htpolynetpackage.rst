@@ -202,6 +202,11 @@ htpolynet.geometry
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: htpolynet.geometry.templategeom
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 htpolynet.repair
 ----------------
 

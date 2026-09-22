@@ -18,11 +18,13 @@ from ..core.bondtemplate import BondTemplate, BondTemplateList, ReactionBond, Re
 from ..core.topocoord import TopoCoord
 from ..cure.chain import ChainManager
 from ..cure.reaction import (Reaction, ReactionList, consumes_sacrificial_h, reaction_stage,
-                             spanning_and_closing_bonds)
+                             spanning_and_closing_bonds, is_ring_closing)
 from ..external.ambertools import GAFFParameterize
 from ..external.command import run
 from ..external.gromacs import mdp_modify,gro_from_trr
 from ..geometry.matrix4 import Matrix4
+from ..geometry.templategeom import (check_ring_closed,
+                                     relax_geometry as relax_template_geometry)
 from ..geometry.placement import min_distance, place_group, rotate_about_axis
 from ..io.gro import GRX_ATTRIBUTES
 
@@ -510,6 +512,15 @@ class Molecule:
             #     logger.debug(f'Using override input molecules/inputs/{self.name}.{isf} as a generator')
             #     pfs.checkout(f'molecules/inputs/{self.name}.{isf}')
             # else:
+            # A ring closure leaves the template's coordinates describing its reactants
+            # rather than its product: the closure ladder cannot beat the reactants' own
+            # sp parameters, so the ring bonds are recorded but still ~0.22 nm long.
+            # Charges are computed from the geometry, so this has to be put right before
+            # antechamber sees it -- see geometry.templategeom.
+            if is_ring_closing(R):
+                self.TopoCoord.Topology.rebalance_mol2_bond_orders()
+                relax_template_geometry(self.TopoCoord, name=self.name)
+                check_ring_closed(self.TopoCoord, self.name)
             self.TopoCoord.write_mol2(filename=f'{self.name}.mol2', molname=self.name)
             if not do_parameterization:
                 self.TopoCoord.write_gro(f'{self.name}.gro', grotitle=self.name)

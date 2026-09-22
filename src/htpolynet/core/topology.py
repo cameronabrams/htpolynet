@@ -209,6 +209,23 @@ def select_topology_type_option(options, typename='dihedraltypes', rule='stiffes
         return sorted_options[0]
     return []
 
+
+def _element_of(name, gafftype):
+    """Best guess at an atom's element from its GAFF type, falling back to its name.
+
+    GAFF types are lowercase element-led (``ca``, ``nb``, ``os``, ``hc``), with the
+    two-letter halogens the only ambiguity worth handling.
+    """
+    for src in (str(gafftype), str(name)):
+        t = src.strip().upper()
+        if not t:
+            continue
+        if t[:2] in ('CL', 'BR'):
+            return t[:2]
+        if t[0].isalpha():
+            return t[0]
+    return ''
+
 class Topology:
     """ Class for handling gromacs topology data
     """
@@ -648,6 +665,66 @@ class Topology:
             ai, aj = idxorder((b['ai'], b['aj']))
             to_drop.append(d[(d.ai == ai) & (d.aj == aj)].index.values[0])
         self.D['bonds'] = self.D['bonds'].drop(to_drop)
+
+    def rebalance_mol2_bond_orders(self, atoms=None):
+        """Restores valence after an addition bond, by reducing a multiple bond.
+
+        A condensation reaction removes a hydrogen from each atom it bonds, so valence
+        takes care of itself.  An addition removes nothing: ``add_bonds`` records the new
+        mol2 bond at order 1 and leaves every existing bond alone, so an atom that already
+        carried a multiple bond ends up over-valent.  A cyclotrimerization does exactly
+        this -- the cyanate carbon keeps its C#N, gains the ring bond, and still carries
+        its ester oxygen, for a valence of five.
+
+        The mol2 bond orders are what antechamber perceives the molecule from, so an
+        impossible valence there is not cosmetic.  Reducing the shared triple bond fixes
+        both of its atoms at once, which is why a bond over-valent at BOTH ends is chosen
+        first.
+
+        Args:
+            atoms (iterable): restrict the repair to these atom numbers, normally the ones
+                a reaction just bonded; None considers every atom
+
+        Returns:
+            int: how many bond orders were reduced
+        """
+        mb = self.D.get('mol2_bonds')
+        if mb is None or mb.empty:
+            return 0
+        at = self.D['atoms']
+        element = {int(r.nr): _element_of(r.atom, r.type) for r in at.itertuples()}
+        limit = {'H': 1, 'C': 4, 'N': 3, 'O': 2, 'F': 1, 'CL': 1, 'BR': 1, 'I': 1}
+        order_of = {'1': 1.0, '2': 2.0, '3': 3.0, 'ar': 1.5, 'am': 1.0}
+        watch = None if atoms is None else {int(a) for a in atoms}
+        reduced = 0
+        for _ in range(4 * mb.shape[0]):     # each pass reduces one order; bounded
+            val = {}
+            for r in mb.itertuples():
+                o = order_of.get(str(r.order), 1.0)
+                val[int(r.ai)] = val.get(int(r.ai), 0.0) + o
+                val[int(r.aj)] = val.get(int(r.aj), 0.0) + o
+            over = {a: v - limit[element[a]] for a, v in val.items()
+                    if element.get(a) in limit and v > limit[element[a]] + 0.01
+                    and (watch is None or a in watch)}
+            if not over:
+                break
+            # a bond over-valent at both ends repairs two atoms at once
+            cand = [(i, r) for i, r in enumerate(mb.itertuples())
+                    if order_of.get(str(r.order), 1.0) >= 2.0
+                    and (int(r.ai) in over or int(r.aj) in over)]
+            if not cand:
+                break
+            cand.sort(key=lambda x: (-(int(x[1].ai) in over) - (int(x[1].aj) in over),
+                                     -order_of.get(str(x[1].order), 1.0)))
+            i, row = cand[0]
+            newo = int(order_of[str(row.order)] - 1)
+            mb.iat[i, mb.columns.get_loc('order')] = str(newo)
+            logger.debug(f'valence repair: bond {row.ai}-{row.aj} order '
+                         f'{row.order} -> {newo}')
+            reduced += 1
+        if reduced:
+            logger.info(f'Reduced {reduced} bond order(s) to keep valence after an addition')
+        return reduced
 
     def add_bonds(self, pairs=[]):
         """Adds bonds indicated in list pairs to the topology.
