@@ -7,20 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- **A ring cure now widens its search radius when an iteration is short of
-  rings, not only when it finds none.**  The pairwise cure has always grown its
-  radius within an iteration until it has `min_bonds_per_iteration` bonds; the
-  ring loop instead widened only after an iteration that found nothing at all.
-  A floppy monomer never noticed, but a rigid one keeps trickling one or two
-  rings at the starting radius, so the radius never grew: 150 bisphenol A
-  dicyanates stopped at conversion 0.40 after eight iterations, having asked for
-  0.60 and never once widened.  With the same rule the pairwise cure uses --
-  counted in rings, and clamped against the rings still needed to reach the
-  target -- the same system reaches 0.61 in eight iterations.  The floor is
-  `ring_cure: min_rings_per_iteration`, default 4.
-
 ### Added
 
 - **A three-body cure reaction: cyclotrimerization** (see `ROADMAP.md`).  A
@@ -92,11 +78,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     when a configuration omits it, since the schema supplies its defaults.)
   - `cure.ringcontroller` runs the loop: search, pull every chosen ring shut,
     form its bonds, splice the trimer template over its three residues, settle
-    the charge, count what was consumed, and widen the search when an iteration
-    finds nothing.  Conversion is counted in reactive **groups**, three per
+    the charge, and count what was consumed.  Conversion is counted in reactive **groups**, three per
     ring, which is what this chemistry reports -- the pre-formed-triazine route
-    has to infer it from a bond count instead.  Its state round-trips to YAML
-    for restart, carrying the widened radius with it.
+    has to infer it from a bond count instead.  The search widens until an
+    iteration yields `min_rings_per_iteration` rings, as the pairwise cure's
+    does for bonds.  Its state round-trips to YAML for restart, carrying the
+    widened radius with it.
   - `cure.triplesearch` finds the triangles of reactive groups one ring-closing
     reaction can join.  The pairwise search cannot: it asks which A atom is near
     which B atom, while a cyclotrimerization needs three groups mutually close,
@@ -139,6 +126,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     refuses by default to run before those bonds exist.
 
 ### Fixed
+
+- **A ring cure now widens its search radius when an iteration is short of
+  rings, not only when it finds none.**  The pairwise cure has always grown its
+  radius within an iteration until it has `min_bonds_per_iteration` bonds; the
+  ring loop instead widened only after an iteration that found nothing at all.
+  A floppy monomer never noticed, but a rigid one keeps trickling one or two
+  rings at the starting radius, so the radius never grew: 150 bisphenol A
+  dicyanates stopped at conversion 0.40 after eight iterations, having asked for
+  0.60 and never once widened.  With the same rule the pairwise cure uses --
+  counted in rings, and clamped against the rings still needed to reach the
+  target -- the same system reaches 0.61 in eight iterations.  The floor is
+  `ring_cure: min_rings_per_iteration`, default 4.
 
 - **A GPU build died at its first minimization when the configuration set
   `ntomp`.**  GROMACS refuses OpenMP threads together with a GPU unless it is
