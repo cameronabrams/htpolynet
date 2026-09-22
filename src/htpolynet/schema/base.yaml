@@ -543,6 +543,13 @@ attributes:
               Minimum amount in nm by which the target distance is decreased
               per stage; with `limit`, this sets the stage count.
             default: 0.0
+          - name: max_accept
+            type: float
+            text: >
+              Refuse to form a ring whose pairs are still further apart than this after
+              the closure ladder, in nm.  The groups stay unreacted and are offered
+              again next iteration.  0 accepts any ring.
+            default: 0.30
           - name: nstages
             type: int
             text: Explicit stage count, as an alternative to deriving one from `increment`.

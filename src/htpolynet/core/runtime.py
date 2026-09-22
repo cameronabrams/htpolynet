@@ -701,7 +701,12 @@ class Runtime:
                 rc.state.iter += 1
                 continue
             bdf = triple_bonds_dataframe(chosen, sites, R.product, order=R.bonds[0].get('order', 1))
-            rc.close_rings(TC, bdf, gromacs_dict=gromacs_dict)
+            work = rc.close_rings(TC, bdf, gromacs_dict=gromacs_dict)
+            # a ring the ladder could not pull shut would be bonded long and stay that way
+            bdf, chosen = rc.accept(bdf, work, chosen)
+            if not chosen:
+                rc.state.iter += 1
+                continue
             rc.form_rings(TC, bdf, sites, chosen, template, template_resids,
                           name_translations=name_translations, atom_names=arm)
             rc.relax(TC, gromacs_dict=gromacs_dict)

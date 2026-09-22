@@ -40,6 +40,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **antechamber's output geometry is its input geometry.**  It is not evidence about
     what the charge calculation did or did not relax, and it should not be read as such.
 
+- **A ring the closure ladder could not pull shut is now declined rather than bonded
+  long.**  Late in a cure the matrix is rigid enough that a ring sometimes stops well
+  short -- one batch at conversion 0.95 ended 0.327 nm apart against a target of 0.150 --
+  and forming the bond anyway leaves it long for good: two ring bonds survived relaxation
+  and a 500 K anneal still 2.6 A apart, strained but stable, a defect the network then
+  carries permanently.  Declining costs almost nothing, since the groups stay unreacted
+  and are offered again next iteration once the neighbourhood has moved.  The limit is
+  `ring_cure: closure: max_accept`, default 0.30 nm; 0 restores the old behavior.  Only
+  visible now because the charge fix let a build reach conversion 0.95 for the first
+  time.
+
 - `Topology.rebalance_mol2_bond_orders` reduces a multiple bond when an addition would
   otherwise leave an atom over-valent, preferring a bond that is over-valent at both ends
   because reducing it repairs two atoms at once.

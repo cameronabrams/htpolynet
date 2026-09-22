@@ -222,3 +222,51 @@ class TestClosureDefaults(unittest.TestCase):
         self.assertEqual(c.dicts['closure']['nstages'], 12)
         self.assertAlmostEqual(c.dicts['closure']['target'], 0.15)
         self.assertTrue(c.dicts['closure']['equilibration'])
+
+
+class TestDecliningRingsThatDidNotClose(unittest.TestCase):
+    """Late in a cure the matrix is rigid enough that a ring sometimes stops well short.
+    Bonding it anyway leaves the bond long for good: two survived relaxation and a 500 K
+    anneal still 2.6 A apart in a conversion-0.95 build."""
+
+    def bonds_and_work(self, worsts):
+        """One ring per entry in `worsts`, three pairs each, that ring's worst last."""
+        rows, final = [], []
+        for n, w in enumerate(worsts):
+            for k in range(3):
+                rows.append({'ai': 10 * n + k, 'aj': 10 * n + k + 5, 'triple': n})
+                final.append(0.15 if k < 2 else w)
+        return (pd.DataFrame(rows),
+                pd.DataFrame({'final_distance': final}),
+                [object() for _ in worsts])
+
+    def test_a_ring_that_closed_is_kept(self):
+        c = RingController({})
+        bdf, work, chosen = self.bonds_and_work([0.22])
+        out_b, out_c = c.accept(bdf, work, chosen)
+        self.assertEqual(len(out_c), 1)
+        self.assertEqual(out_b.shape[0], 3)
+
+    def test_a_ring_that_did_not_is_dropped(self):
+        c = RingController({})
+        bdf, work, chosen = self.bonds_and_work([0.327])
+        with self.assertLogs(LOG, level='INFO'):
+            out_b, out_c = c.accept(bdf, work, chosen)
+        self.assertEqual(out_c, [])
+        self.assertTrue(out_b.empty)
+
+    def test_the_survivors_are_renumbered_contiguously(self):
+        # form_rings zips its maps against the triple column, so a gap would misalign them
+        c = RingController({})
+        bdf, work, chosen = self.bonds_and_work([0.22, 0.40, 0.21])
+        with self.assertLogs(LOG, level='INFO'):
+            out_b, out_c = c.accept(bdf, work, chosen)
+        self.assertEqual(len(out_c), 2)
+        self.assertEqual(sorted(out_b['triple'].unique()), [0, 1])
+        self.assertEqual(out_c, [chosen[0], chosen[2]])
+
+    def test_a_zero_limit_accepts_anything(self):
+        c = RingController({'closure': {'max_accept': 0}})
+        bdf, work, chosen = self.bonds_and_work([0.9])
+        out_b, out_c = c.accept(bdf, work, chosen)
+        self.assertEqual(len(out_c), 1)

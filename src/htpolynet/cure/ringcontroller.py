@@ -81,7 +81,7 @@ class RingController:
         'same_residue': False,
         'relax': [{'ensemble': 'min'},
                   {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2000}],
-        'closure': {'nstages': 8, 'target': 0.15, 'kb': 300000.0,
+        'closure': {'nstages': 8, 'target': 0.15, 'kb': 300000.0, 'max_accept': 0.30,
                     'equilibration': [{'ensemble': 'min'},
                                       {'ensemble': 'nvt', 'temperature': 600, 'nsteps': 1000}]},
     }
@@ -229,10 +229,45 @@ class RingController:
         TC.add_length_attribute(work, attr_name='final_distance')
         worst = work['final_distance'].max()
         logger.info(f'Rings closed to at most {worst:.3f} nm (target {c["target"]:.3f})')
-        if worst > 2.0 * c['target']:
-            logger.warning(f'A ring-closing pair is still {worst:.3f} nm apart; its bond will be '
-                           f'formed long and relaxed, which may strain the network')
         return work
+
+    def accept(self, bdf, work, chosen):
+        """Drops any ring the closure ladder could not actually pull shut.
+
+        Late in a cure the matrix is rigid enough that a ring sometimes stops well short
+        -- one batch at conversion 0.95 ended 0.327 nm apart against a target of 0.150.
+        Forming the bond anyway leaves it long: two ring bonds survived relaxation and a
+        500 K anneal still 2.6 A apart, strained but stable, which is a defect the
+        network then carries for good.
+
+        Declining costs almost nothing.  The groups stay unreacted and are offered again
+        next iteration, by which time the neighbourhood has moved; only if they can never
+        close does the cure lose them, which is the right outcome.
+
+        Args:
+            bdf (pandas.DataFrame): this iteration's bonds, three rows per ring
+            work (pandas.DataFrame): the same pairs with their final distances
+            chosen (list): the rings the search accepted
+
+        Returns:
+            tuple: (bdf, chosen) keeping only the rings that closed
+        """
+        limit = self.dicts['closure']['max_accept']
+        if not limit:
+            return bdf, chosen
+        worst = work['final_distance'].to_numpy().reshape(-1, 3).max(axis=1)
+        keep = [n for n in range(len(chosen)) if worst[n] <= limit]
+        if len(keep) == len(chosen):
+            return bdf, chosen
+        for n in range(len(chosen)):
+            if n not in keep:
+                logger.info(f'Iteration {self.state.iter}: declining a ring still '
+                            f'{worst[n]:.3f} nm from closing (limit {limit:.3f} nm); its '
+                            f'groups stay unreacted and will be offered again')
+        renumber = {old: new for new, old in enumerate(keep)}
+        bdf = bdf[bdf['triple'].isin(keep)].copy()
+        bdf['triple'] = [renumber[t] for t in bdf['triple']]
+        return bdf.reset_index(drop=True), [chosen[n] for n in keep]
 
     def relax(self, TC, gromacs_dict=None):
         """Eases a freshly closed ring's bonds in before anything else runs.
