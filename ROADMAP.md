@@ -301,18 +301,31 @@ Coverage as of the last measurement: **38.8%** overall.
     are negligible.  That justification inverts for cyanate esters.  Put this in a
     comment where the filter is defined, because the filter will otherwise look
     under-used and someone will helpfully turn it on.
-  - **If anything, we make too few.**  Two independent measures: cycle rank per
-    monomer **0.303 against Fang's 0.485**, and a gel-point delay of **+6.3% against
-    Lin's +21%** cyclization term.  So the interesting question for cyanate esters is
-    not how to suppress cycles but why htpolynet produces fewer than the chemistry
-    demands -- plausibly the 0.5 nm search radius and junctions seeded at t=0.  That
-    is a separate investigation, and the three-body reaction changes its terms, since
-    junctions would then emerge where ends meet.
+  - **If anything, we make too few** -- on the gel-point evidence, which is now the
+    only evidence.  A gel-point delay of **+6.3% against Lin's +21%** cyclization
+    term.  So the interesting question for cyanate esters is not how to suppress
+    cycles but why htpolynet produces fewer than the chemistry demands -- plausibly
+    the 0.5 nm search radius and junctions seeded at t=0.  That is a separate
+    investigation, and the three-body reaction changes its terms, since junctions
+    would then emerge where ends meet.
+  - **RETRACTED 2026-09-22: the cycle-rank half of that claim ("0.303 against Fang's
+    0.485") was never a measurement.**  On the monomer-junction graph, with
+    `same_residue: false` forbidding both arms of one monomer in one junction, the
+    edge count is fixed by the conversion: E = 3N and N = 2n*chi/3, so
+    cycle rank = E - V + C = n(4chi/3 - 1) + u + C, with u the monomers having no
+    reacted arm.  Nothing about cyclization is left free.  Raised by htpolynet-study
+    and checked here against an unrelated network -- 150 bisphenol A dicyanates at
+    chi 0.610 -- where the identity reproduces the measured rank of 2 with a residual
+    of zero to six decimals.  Fang's 0.485 also cannot be a graph cycle rank at all:
+    4chi/3 - 1 = 0.485 requires chi = 1.11.  Two different quantities were being
+    compared.  Do not reinstate the comparison; if a cyclization metric is wanted,
+    it has to be one with structural freedom left in it once chi is fixed -- the
+    cycle *spectrum* (how many cycles of each length) rather than the rank.
   - The 28-rings are near-unstrained in GAFF (span -0.07 A, C-O-C angle -0.46 deg
     against non-ring bridges), but that only says the force field tolerates them.
     Their absolute frequency is still set by our search radius and seeded junctions,
-    so **1.4% must never be quoted as a physical cyclization rate**; the comparison
-    against Fang above is the meaningful one.
+    so **1.4% must never be quoted as a physical cyclization rate**; the gel-point
+    comparison above is the meaningful one, the cycle-rank one having been retracted.
   - **Do not validate the filter on Tg in this system -- it is underpowered, and
     that is bounded, not guessed.**  Between-bridge spread in ring density is 0.67
     percentage points of bridges, and dTg/dconversion averages 5.6 K per percentage
