@@ -12,7 +12,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from htpolynet.cure.ringcontroller import RingController, RingCureState
+from htpolynet.cure.ringcontroller import RingController, RingCureState, _triple_key
 
 from .test_triplesearch import BOX, triangle
 
@@ -270,3 +270,90 @@ class TestDecliningRingsThatDidNotClose(unittest.TestCase):
         bdf, work, chosen = self.bonds_and_work([0.9])
         out_b, out_c = c.accept(bdf, work, chosen)
         self.assertEqual(len(out_c), 1)
+
+
+class TestATripleThatFailedIsNotTriedAgainWhileAnythingElseIsLeft(unittest.TestCase):
+    """A declined ring leaves its groups unreacted, so the next search offered the same
+    triples, ran the same ladder and declined them again: nine iterations running at
+    conversion 0.97, 77 declines, before one finally closed and the cure finished at
+    0.971.  The memory skips them; it does not forbid them, because that cure escaped
+    only because the geometry between iterations had moved."""
+
+    def bonds_and_work(self, worsts, donors=None):
+        """One ring per entry in `worsts`; `donors` gives each ring's three donor atoms."""
+        rows, final = [], []
+        for n, w in enumerate(worsts):
+            d = donors[n] if donors else [10 * n + k for k in range(3)]
+            for k in range(3):
+                rows.append({'ai': d[k], 'aj': 10 * n + k + 5, 'triple': n})
+                final.append(0.15 if k < 2 else w)
+        return (pd.DataFrame(rows),
+                pd.DataFrame({'final_distance': final}),
+                [object() for _ in worsts])
+
+    def two_triangles(self):
+        """Two rings far enough apart to be independent, and a controller that sees both."""
+        a1, p1 = triangle(side=0.2, resnums=(1, 2, 3), molecules=(1, 2, 3))
+        a2, p2 = triangle(side=0.2, resnums=(4, 5, 6), molecules=(4, 5, 6))
+        a2 = a2.copy()
+        a2['globalIdx'] += 100
+        p2 = {k + 100: v + np.array([2.0, 0.0, 0.0]) for k, v in p2.items()}
+        c = RingController({'search_radius': 0.6})
+        c.setup(total_groups=6, max_radius=1.0)
+        return c, pd.concat([a1, a2], ignore_index=True), {**p1, **p2}
+
+    def test_a_declined_ring_is_remembered_by_its_donor_atoms(self):
+        # row numbers into the site table name a different ring next iteration; the
+        # donors do not move
+        c = RingController({})
+        bdf, work, chosen = self.bonds_and_work([0.40], donors=[[7, 21, 34]])
+        with self.assertLogs(LOG, level='INFO'):
+            c.accept(bdf, work, chosen)
+        self.assertEqual(c.declined, {_triple_key([34, 7, 21])})
+
+    def test_a_ring_that_closed_is_not_remembered(self):
+        c = RingController({})
+        bdf, work, chosen = self.bonds_and_work([0.22])
+        c.accept(bdf, work, chosen)
+        self.assertEqual(c.declined, set())
+
+    def test_the_search_takes_the_other_ring_instead(self):
+        c, adf, pos = self.two_triangles()
+        with self.assertLogs(LOG, level='INFO'):
+            sites, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),))
+        self.assertEqual(len(chosen), 2)
+        first = _triple_key(sites.at[a, 'donor'] for a in chosen[0][1])
+        c.declined.add(first)
+        with self.assertLogs(LOG, level='INFO') as cm:
+            sites, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),))
+        self.assertEqual(len(chosen), 1)
+        self.assertNotEqual(_triple_key(sites.at[a, 'donor'] for a in chosen[0][1]), first)
+        self.assertIn('1 passed over as already failed', '\n'.join(cm.output))
+
+    def test_it_is_lifted_rather_than_leave_the_iteration_idle(self):
+        # the relaxation between iterations moves the groups, so a triple that failed
+        # can still close later -- one did, at iteration 41, and it finished that cure
+        adf, pos = triangle(side=0.25)
+        c = RingController({'search_radius': 0.6})
+        c.setup(total_groups=3, max_radius=1.0)
+        with self.assertLogs(LOG, level='INFO'):
+            sites, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),))
+        c.declined.add(_triple_key(sites['donor']))
+        with self.assertLogs(LOG, level='INFO') as cm:
+            _, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),))
+        self.assertEqual(len(chosen), 1)
+        self.assertEqual(c.declined, set())
+        self.assertIn('offering them again', '\n'.join(cm.output))
+
+    def test_both_orientations_share_one_key(self):
+        # candidate_triples scores both and keeps the better, so the declined one is
+        # the better one and the other has farther to go
+        self.assertEqual(_triple_key([3, 1, 2]), _triple_key([1, 2, 3]))
+
+    def test_a_ring_exactly_at_the_limit_is_kept(self):
+        # the log rounds to three decimals, so a decline reported at the limit was over it
+        c = RingController({'closure': {'max_accept': 0.30}})
+        bdf, work, chosen = self.bonds_and_work([0.30])
+        _, out_c = c.accept(bdf, work, chosen)
+        self.assertEqual(len(out_c), 1)
+        self.assertEqual(c.declined, set())

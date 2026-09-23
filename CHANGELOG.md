@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A ring cure near its target kept re-proposing the triples it had just declined.**
+  Declining a ring that the closure ladder could not pull shut leaves its three groups
+  unreacted, which is the point -- but the next search then offered the same groups,
+  ran the same eight-stage ladder, and declined them again.  htpolynet-study measured
+  the cost on a 2.11.1 build: at conversion 0.97 with 24 groups left, nine iterations
+  running produced 77 declines and not one ring, at about 67 s each.
+
+  A declined combination is now passed over while any untried ring is within the search
+  radius.  It is a preference and not a prohibition: that cure escaped on iteration 41
+  and finished at 0.971, because the relaxation between iterations moves the groups, so
+  a triple that failed once can still close later.  When the memory is the only thing
+  left keeping an iteration idle, the search lifts it and offers those rings again
+  rather than stand still.
+
 ## [2.11.1] - 2026-09-22
 
 ### Fixed

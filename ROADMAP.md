@@ -199,6 +199,24 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Cure and repair
 
+- **A ring cure that stalls near its target has no exit but `max_iterations`.**
+  Reported by htpolynet-study 2026-09-23 from a 2.11.1 build: at conversion 0.97
+  with 24 groups left, nine iterations running (32-40) produced 77 declines and no
+  ring, about 67 s apiece.  2.11.1 now skips a triple it has already failed to
+  close, which removes most of that cost, but a cure with nothing closable left
+  still runs to `max_iterations` rather than stopping.
+
+  The obvious fix -- stop after N consecutive iterations that close nothing -- was
+  deliberately not taken, and the reason is worth keeping.  That build escaped on
+  iteration 41 and finished at 0.971, and it was the one of four that survived the
+  study's postcure anneal.  Any N below 9 would have ended it early.  A stall is
+  not evidence that a cure is finished: the inter-iteration relaxation keeps moving
+  the groups, so the escape is real and can be a long time coming.
+
+  If this is revisited, the test should be something that distinguishes "nothing is
+  closable" from "nothing closed this time" -- the trend in the ladder's final
+  distances across the stalled run, say, rather than a count of iterations.
+
 - **Filtering candidate crosslinks against disallowed topologies, and what that means
   for cyanate esters.**  Raised by Cameron 2026-09-21, who asked the right question:
   can "physically disallowable" even be defined for these systems?  Partly.  Three

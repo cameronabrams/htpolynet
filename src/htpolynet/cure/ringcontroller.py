@@ -33,6 +33,21 @@ from ..repair.topology_surgery import neutralize_touched_fragments
 logger = logging.getLogger(__name__)
 
 
+def _triple_key(donors):
+    """A ring's identity, in terms that survive from one iteration to the next.
+
+    A triple is held as row numbers into the site table, and that table is rebuilt
+    every iteration and shrinks as groups react, so those numbers name a different
+    ring next time.  The three donor atoms do not move: one per group, unique to it,
+    and fixed for the life of the system.
+
+    The two ring orientations deliberately share a key.  :func:`candidate_triples`
+    scores both and keeps the better one, so the orientation that was declined is the
+    better one, and the other would have farther to go.
+    """
+    return frozenset(int(d) for d in donors)
+
+
 class RingCureState:
     """How far a ring cure has got, and enough to resume it."""
 
@@ -93,6 +108,7 @@ class RingController:
         self.dicts = d
         self.state = state or RingCureState()
         self.rings_df = None
+        self.declined = set()
 
     # ---- what the loop decides, all of it testable without MD ----
 
@@ -172,15 +188,48 @@ class RingController:
             cands = candidate_triples(sites, positions, self.radius, box,
                                       same_molecule=self.dicts['same_molecule'],
                                       same_residue=self.dicts['same_residue'])
-            chosen = select_disjoint(cands, max_triples=self.dicts['max_rings_per_iteration'])
+            allowed = self._drop_declined(cands, sites)
+            chosen = select_disjoint(allowed, max_triples=self.dicts['max_rings_per_iteration'])
+            passed = len(cands) - len(allowed)
             logger.info(f'Iteration {self.state.iter}: {len(sites)} unreacted group(s), '
-                        f'{len(cands)} candidate ring(s) within {self.radius:.3f} nm, '
-                        f'{len(chosen)} accepted')
+                        f'{len(cands)} candidate ring(s) within {self.radius:.3f} nm'
+                        + (f' ({passed} passed over as already failed)' if passed else '')
+                        + f', {len(chosen)} accepted')
             if len(chosen) >= floor or self.radius >= self.dicts['max_radius']:
+                if not chosen and cands and self.declined:
+                    # the memory is now the only thing keeping this iteration idle, and
+                    # the groups have moved since they were declined; try them again
+                    logger.info(f'Iteration {self.state.iter}: every ring in reach has '
+                                f'failed before; forgetting {len(self.declined)} of them '
+                                f'and offering them again')
+                    self.declined.clear()
+                    chosen = select_disjoint(cands,
+                                             max_triples=self.dicts['max_rings_per_iteration'])
                 return sites, chosen
             self.state.radius_index += 1
             logger.info(f'Radius increased to {self.radius:.3f} nm '
                         f'({len(chosen)}/{floor} ring(s) so far)')
+
+    def _drop_declined(self, cands, sites):
+        """Passes over the triples this cure has already failed to pull shut.
+
+        A declined ring leaves its three groups unreacted by design, and the next search
+        offers them again -- so a rigid endgame proposes the same triples, runs the same
+        closure ladder, and declines them again.  Measured at conversion 0.97 with 24
+        groups left: nine iterations running, 77 declines, about 67 s apiece, before one
+        triple finally closed and the cure finished at 0.971.
+
+        A preference, not a prohibition, because the geometry between one decline and the
+        next search is not identical -- the inter-iteration relaxation moves the groups,
+        which is how that cure escaped.  Skipping a triple saves a ladder that would
+        almost certainly fail; refusing it outright would have ended that cure three
+        iterations early.  :meth:`search` therefore lifts the whole memory rather than
+        come back empty-handed.
+        """
+        if not self.declined:
+            return cands
+        return [c for c in cands
+                if _triple_key(sites.at[a, 'donor'] for a in c[1]) not in self.declined]
 
     def record(self, chosen):
         """Counts the rings formed and the groups they consumed."""
@@ -244,6 +293,11 @@ class RingController:
         next iteration, by which time the neighbourhood has moved; only if they can never
         close does the cure lose them, which is the right outcome.
 
+        The combination itself is recorded for :meth:`_drop_declined`, which prefers not
+        to spend another ladder on it while any untried ring is in reach.  That is what
+        a rigid endgame otherwise does: nine iterations running, 77 declines, the same
+        few triples every time.
+
         Args:
             bdf (pandas.DataFrame): this iteration's bonds, three rows per ring
             work (pandas.DataFrame): the same pairs with their final distances
@@ -261,9 +315,11 @@ class RingController:
             return bdf, chosen
         for n in range(len(chosen)):
             if n not in keep:
+                self.declined.add(_triple_key(bdf[bdf['triple'] == n]['ai']))
                 logger.info(f'Iteration {self.state.iter}: declining a ring still '
                             f'{worst[n]:.3f} nm from closing (limit {limit:.3f} nm); its '
-                            f'groups stay unreacted and will be offered again')
+                            f'groups stay unreacted, and this combination waits until '
+                            f'nothing untried is in reach')
         renumber = {old: new for new, old in enumerate(keep)}
         bdf = bdf[bdf['triple'].isin(keep)].copy()
         bdf['triple'] = [renumber[t] for t in bdf['triple']]
