@@ -236,35 +236,50 @@ Coverage as of the last measurement: **38.8%** overall.
   network that closure pulled apart, and stretches until the surrounding stiffness
   balances.  It need never touch the ring being closed.
 
-  **It is in shipped output, and annealing does not remove it.**  Measured on final,
-  post-anneal structures — a full 160 ps anneal, far more than `ring_cure.settle`:
+  **It is in shipped output, annealing does not remove it, and it is common.**  Measured
+  on final, post-anneal structures — a full 160 ps anneal, far more than
+  `ring_cure.settle` — with minimum-image distances:
 
-        build       ring bonds >2.0 A     stretched monomers
-        ring3/r1    0                     0
-        ring3/r2    0                     1   2.78 A  C1-O    res 337
-        ring3/r3    0                     1   3.20 A  C5-C8   res 138
-        ring3/r4    0                     0
-        ring4/r2    0                     0
+        route                          builds carrying a stretched monomer
+        ring cure (2.11.0 / 2.11.1)    5 of 8, worst 3.20 A
+        A2+B3 surrogate                0 of 6
 
-  Two of five final structures.  The contrast is the point: ring bonds are *always*
-  relieved, twelve and three of them going to zero, while ring3/r3's 3.20 A monomer
-  survived the whole anneal unchanged to two decimals.  A mild one at 2.38 A did relax.
-  So this is not a pre-anneal artifact and `ring_cure.settle` will not fix it — an
-  earlier version of this entry assumed it would, which was wrong and is what prompted
-  the measurement.
+  Three of the six surrogate builds were fresh rebuilds on the same binary as the ring
+  cure builds, so this is a **route difference, not a force-field or protocol artifact**.
+  Not one intra-residue bond over 2.0 A in any surrogate build.
 
-  Since 2.11.4 a build at least *says so*: `Runtime._report_overlong_bonds` warns at
-  the end of the ring cure and in the final data when any bond exceeds 0.2 nm, naming
-  the worst by atom and residue.  That is detection, not a fix.
+  The contrast within the ring-cure builds is as sharp: ring bonds relax, these do not.
+  ring3/r3's 3.20 A C5-C8 came through the whole anneal unchanged to two decimals, while
+  twelve and three overlong ring bonds in other builds went to zero.  A mild 2.38 A
+  monomer did relax.  So `ring_cure.settle` was never going to fix these — an earlier
+  version of this entry assumed it would, which was wrong, and finding that out is what
+  produced the post-anneal measurement.
 
-  **What to do about it is genuinely unclear**, which is why this is a roadmap entry and
-  not a patch.  No packing rule reaches a bystander.  A softer or slower ladder would
-  reduce how far closure drags the network, at the cost of rings that then fail to close.
-  Releasing the strain locally — a restrained minimization around any bond the new report
-  flags — treats the symptom, and would need care not to move charges or break the
-  network elsewhere.  The open question worth answering first is how often this happens
-  and how much it perturbs anything downstream: two of five builds, one or two monomers
-  each, is a rate worth knowing precisely before choosing a remedy that changes results.
+  Since 2.11.4 a build at least *says so*: `Runtime._report_overlong_bonds` warns at the
+  end of the ring cure and in the final data when any bond exceeds 0.2 nm, naming the
+  worst by atom and residue.  That is detection, not a fix.
+
+  **The cheapest experiment, and it needs no code.**  The ring cure restrains three
+  pairs per ring and walks them down together over `closure.nstages` stages (default 8),
+  many rings at once, while the surrogate forms one exocyclic bond at a time.  If the
+  stretch is the network being dragged faster than it can accommodate — kinetic trapping
+  rather than a real force balance — then raising `nstages` to 16 or 24 should lower the
+  rate, at proportionate cost in wall time and with no change to which rings form or to
+  any parameter.  That is a configuration sweep, and it distinguishes "pulled too fast"
+  from "pulled too far" before anyone writes a remedy.  Run it before the rest of this.
+
+  **If it is not kinetic**, the remaining options all change results, which is why none
+  has been taken: fewer rings per iteration, or a softer ladder, both of which change
+  which rings close; or a relief pass that restrains any flagged bond back toward its
+  equilibrium length and re-relaxes, which treats the symptom, may simply redistribute
+  the strain, and needs care not to move charges or break the network elsewhere.
+
+  **One anomaly, recorded and deliberately not used.**  htpolynet-study's table also
+  shows 3-4 *inter*-residue bonds over 2.0 A surviving the anneal in the ring1 and ring2
+  builds where ring3 and ring4 show zero, and since ring2/r3 is 2.11.1 like ring3 and
+  ring4, it is not a version effect.  Unexplained, flagged by them as not to be leaned
+  on, and noted here only so the next person does not rediscover it and assume it means
+  something.
 
 - **A ring cure that stalls near its target has no exit but `max_iterations`.**
   Reported by htpolynet-study 2026-09-23 from a 2.11.1 build: at conversion 0.97
