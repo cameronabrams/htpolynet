@@ -96,6 +96,8 @@ class RingController:
         'same_residue': False,
         'relax': [{'ensemble': 'min'},
                   {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2000}],
+        'settle': [{'ensemble': 'min'},
+                   {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2500}],
         'closure': {'nstages': 8, 'target': 0.15, 'kb': 300000.0, 'max_accept': 0.30,
                     'equilibration': [{'ensemble': 'min'},
                                       {'ensemble': 'nvt', 'temperature': 600, 'nsteps': 1000}]},
@@ -340,6 +342,45 @@ class RingController:
         self._run_stages(TC, f'ringrelax-{self.state.iter}', self.dicts['relax'],
                          gromacs_dict or {})
         logger.info(f'Iteration {self.state.iter}: new ring bonds relaxed')
+
+    def settle(self, TC, gromacs_dict=None):
+        """Relaxes the network one last time before the cure hands it on.
+
+        Every batch of rings but the last is relaxed twice: once by :meth:`relax` as
+        soon as its bonds exist, and again -- much harder -- by the next iteration's
+        closure ladder, which is eight minimizations and 16 ps at 600 K against relax's
+        one minimization and 4 ps at 300 K.  The final batch only ever gets the first,
+        and whatever the cure ends on goes straight into postcure.
+
+        Measured by htpolynet-study on three 2.11.1 builds, all of which ended on a
+        ring-forming iteration, so all of which had been relaxed: bond energy entering
+        the anneal tracked how many rings that last iteration formed -- 1, 1 and 4 rings
+        for 18849, 26113 and 35959 kJ/mol, against 13619 +/- 226 for a route that enters
+        already relaxed.  An inventory of one such structure found five bonds beyond
+        2.0 A: one triazine's three ring bonds at 2.24 A, and two monomers whose own
+        backbones the ladder had stretched to 2.34 and 3.20 A while pulling their two
+        arms toward different rings.  Nothing after the restraints come off relieves
+        either, and the strain then has to be absorbed by a 500 K anneal, which is where
+        11 of 20 builds died.
+
+        Unconditional on purpose.  The cure has four ways to end -- target reached,
+        iterations exhausted, radius exhausted, every ring declined -- and which of them
+        leaves strain behind is not worth reasoning about per exit when the remedy is
+        this cheap.
+
+        Args:
+            TC (TopoCoord): the system
+            gromacs_dict (dict): gromacs directives
+        """
+        stages = self.dicts['settle']
+        if not stages:
+            return False
+        TC.write_top(f'ringsettle-{self.state.iter}.top')
+        TC.write_gro(f'ringsettle-{self.state.iter}.gro')
+        self._run_stages(TC, f'ringsettle-{self.state.iter}', stages, gromacs_dict or {})
+        logger.info(f'Ring cure settled after {self.state.rings} ring(s); the network is '
+                    f'relaxed before postcure rather than at 500 K')
+        return True
 
     def _run_stages(self, TC, deffnm, stages, gromacs_dict):
         """Runs one equilibration sequence, as the cure's ladders do."""

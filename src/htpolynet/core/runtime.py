@@ -718,6 +718,12 @@ class Runtime:
             rc.state.iter += 1
             pfs.go_proj()
             rc.state.to_yaml(statefile)
+        # the last batch of rings never sees another closure ladder, so it reaches
+        # postcure carrying whatever the ladder left in it
+        pfs.go_to(pfs.Dirs.systems_iter(rc.state.iter))
+        TC.grab_files()
+        rc.settle(TC, gromacs_dict=gromacs_dict)
+        pfs.go_proj()
         self._report_molecule_charges('after ring cure')
         my_logger(f'Ring cure ends: {rc.state.rings} ring(s), conversion '
                   f'{rc.state.conversion:.3f}', logger.info)

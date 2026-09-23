@@ -842,6 +842,20 @@ attributes:
           Allow two groups of one residue in a ring, which for a dicyanate is both
           arms into one triazine.
         default: false
+      - name: settle
+        type: list
+        text: >
+          Equilibration run once at the end of the cure, before postcure.  Every
+          batch of rings but the last is relaxed again by the next iteration's
+          closure ladder; the last one is not, and reaches postcure still carrying
+          the strain the ladder left -- stretched ring bonds, and monomers whose
+          backbones were pulled while their arms went to different rings.  An empty
+          list skips it.
+        default:
+          - ensemble: min
+          - ensemble: nvt
+            temperature: 300
+            nsteps: 2500
       - name: closure
         type: dict
         text: >

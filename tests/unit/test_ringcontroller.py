@@ -357,3 +357,22 @@ class TestATripleThatFailedIsNotTriedAgainWhileAnythingElseIsLeft(unittest.TestC
         _, out_c = c.accept(bdf, work, chosen)
         self.assertEqual(len(out_c), 1)
         self.assertEqual(c.declined, set())
+
+
+class TestSettlingTheNetworkOnExit(unittest.TestCase):
+    """Every batch of rings but the last is relaxed twice -- once by `relax`, then much
+    harder by the next iteration's closure ladder.  The last batch only gets the first,
+    and goes to a 500 K anneal carrying whatever the ladder left in it."""
+
+    def test_it_is_on_by_default(self):
+        c = RingController({})
+        self.assertEqual([s['ensemble'] for s in c.dicts['settle']], ['min', 'nvt'])
+
+    def test_an_empty_list_skips_it(self):
+        # and does not touch the system, so a caller that disables it pays nothing
+        c = RingController({'settle': []})
+        self.assertFalse(c.settle(None))
+
+    def test_a_caller_can_replace_the_stages(self):
+        c = RingController({'settle': [{'ensemble': 'npt', 'temperature': 400}]})
+        self.assertEqual(c.dicts['settle'], [{'ensemble': 'npt', 'temperature': 400}])

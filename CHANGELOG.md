@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A ring cure handed its last batch of rings to postcure unrelaxed.**  Every batch
+  but the last is relaxed twice: once by the per-iteration relax as soon as its bonds
+  exist, and again by the *next* iteration's closure ladder, which is eight
+  minimizations and 16 ps at 600 K against the relax's one minimization and 4 ps at
+  300 K.  The final batch only ever gets the first, and then goes straight into a
+  500 K anneal.
+
+  htpolynet-study measured it on three 2.11.1 builds, all of which had ended on a
+  ring-forming iteration and had therefore been relaxed.  Bond energy entering the
+  anneal tracked how many rings that last iteration formed -- 1, 1 and 4 rings for
+  18849, 26113 and 35959 kJ/mol, against 13619 +/- 226 for a route that enters already
+  relaxed.  An inventory of one such structure found five bonds beyond 2.0 A: one
+  triazine's three ring bonds at 2.24 A, and two monomers whose own backbones the
+  ladder had stretched to 2.34 and 3.20 A while pulling their arms toward different
+  rings.  Eleven of twenty builds died in the anneal.
+
+  The cure now runs a minimization and a short 300 K NVT once on exit, mirroring what
+  the postcure repair stage already did for the route that never saw this.  It is
+  unconditional -- the cure has four ways to end and which of them leaves strain behind
+  is not worth reasoning about per exit -- and configurable as `ring_cure.settle`.
+
 ## [2.11.2] - 2026-09-23
 
 ### Fixed
