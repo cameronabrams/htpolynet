@@ -219,30 +219,41 @@ Coverage as of the last measurement: **38.8%** overall.
   relieved by the same `ring_cure.settle` that 2.11.3 added for the rings, not another
   symptom of it.
 
-  **The likely mechanism, and it is a design gap rather than a bug.**
-  `select_disjoint` packs triples so no *group* is used twice, and
-  `candidate_triples(same_residue=False)` keeps both arms of one dicyanate out of one
-  ring.  Neither prevents a monomer's two arms from being taken into two *different*
-  rings of the same iteration — `reactive_sites` emits one row per (residue, group), so
-  the two arms are two distinct sites and the packer sees nothing wrong.  Both rings are
-  then restrained and walked down together, pulling the monomer's two ends toward
-  different places for eight stages of NVT at 600 K.  A gentler version needs no second
-  ring at all: one arm already crosslinked into the rigid network while the other is
-  dragged 2 A toward a new ring will do it, which is the variant that fits ring3/r3,
-  where only one ring formed in the final iteration.
+  **The mechanism is network tension, and it is longer-ranged than it looks.**  Two
+  guesses were tried and both are wrong.  It is not that the packer takes a dicyanate's
+  two arms into two different rings of one iteration — it can (`select_disjoint` packs
+  so no *group* repeats, and `reactive_sites` emits one row per (residue, group), so the
+  two arms are two distinct sites; `same_residue=False` only keeps them out of the same
+  ring) — and it is not that one arm is anchored while the other is dragged.  Diffing
+  the last two iteration topologies shows the stretched monomers are **bystanders**:
+  res 138 is not among ring3/r3's 35/123/348, and res 43 is not among ring4/r2's twelve.
+  Neither is in any ring formed that iteration.
 
-  **To act on this, measure first.** For each stretched monomer, check whether its two
-  groups were in two triples of the same iteration (the first mechanism) or one arm was
-  already reacted (the second).  That distinguishes them and decides the fix: the first
-  wants residue-level disjointness in `select_disjoint`, or a cap on how many of one
-  residue's groups may react in one iteration; the second wants a softer ladder or a
-  per-stage relaxation, since no packing rule can help it.
+  htpolynet-study traced res 138's C5-C8 (r0 1.516) across every iteration: 1.51-1.62 A
+  through iteration 15, 2.965 A at 16, then 3.20-3.24 A for the remaining six.  At 3.2 A
+  it holds about 3,500 kJ/mol, roughly 700 kT at 600 K, so it cannot be sitting there
+  thermally — something holds it.  The monomer is covalently caught between parts of the
+  network that closure pulled apart, and stretches until the surrounding stiffness
+  balances.  It need never touch the ring being closed.
 
-  **Deferred rather than dropped.** The settle relieves the strain, so nothing is
-  currently shipping broken, and the cheap fix — residue-level packing — would change
-  which rings form and therefore every ring-cure result, for a defect seen in one or two
-  monomers per build.  Worth doing when someone is already revalidating ring-cure
-  networks, not before.
+  **Whether `ring_cure.settle` relieves this is UNMEASURED, and the first version of
+  this entry asserted that it does.  That was an assumption and is probably wrong.**
+  The stretch persisted through six further iterations, each of which already contains a
+  relax of exactly the kind the settle runs — one minimization plus a few ps of 300 K
+  NVT.  A strained local minimum held by network tension is what a minimization *finds*,
+  not what it removes.  So the likeliest reading is that 2.11.3's settle fixed the
+  explosions by relieving the ring bonds, and these monomers are still stretched in
+  shipped builds.  The measurement that settles it is a bond inventory of a post-settle
+  structure; until someone runs it, treat this as an open defect rather than a relieved
+  one.
+
+  **What to do about it is genuinely unclear**, which is why this is a roadmap entry and
+  not a patch.  No packing rule reaches a bystander.  A softer or slower ladder would
+  reduce how far closure drags the network, at the cost of rings that then fail to close.
+  Releasing the strain locally — a short restrained minimization around any bond found
+  beyond some length — treats the symptom and would need care not to move charges or
+  break the network elsewhere.  Getting the measurement above first is worth more than
+  choosing between these now.
 
 - **A ring cure that stalls near its target has no exit but `max_iterations`.**
   Reported by htpolynet-study 2026-09-23 from a 2.11.1 build: at conversion 0.97
