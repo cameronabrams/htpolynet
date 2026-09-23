@@ -236,24 +236,35 @@ Coverage as of the last measurement: **38.8%** overall.
   network that closure pulled apart, and stretches until the surrounding stiffness
   balances.  It need never touch the ring being closed.
 
-  **Whether `ring_cure.settle` relieves this is UNMEASURED, and the first version of
-  this entry asserted that it does.  That was an assumption and is probably wrong.**
-  The stretch persisted through six further iterations, each of which already contains a
-  relax of exactly the kind the settle runs — one minimization plus a few ps of 300 K
-  NVT.  A strained local minimum held by network tension is what a minimization *finds*,
-  not what it removes.  So the likeliest reading is that 2.11.3's settle fixed the
-  explosions by relieving the ring bonds, and these monomers are still stretched in
-  shipped builds.  The measurement that settles it is a bond inventory of a post-settle
-  structure; until someone runs it, treat this as an open defect rather than a relieved
-  one.
+  **It is in shipped output, and annealing does not remove it.**  Measured on final,
+  post-anneal structures — a full 160 ps anneal, far more than `ring_cure.settle`:
+
+        build       ring bonds >2.0 A     stretched monomers
+        ring3/r1    0                     0
+        ring3/r2    0                     1   2.78 A  C1-O    res 337
+        ring3/r3    0                     1   3.20 A  C5-C8   res 138
+        ring3/r4    0                     0
+        ring4/r2    0                     0
+
+  Two of five final structures.  The contrast is the point: ring bonds are *always*
+  relieved, twelve and three of them going to zero, while ring3/r3's 3.20 A monomer
+  survived the whole anneal unchanged to two decimals.  A mild one at 2.38 A did relax.
+  So this is not a pre-anneal artifact and `ring_cure.settle` will not fix it — an
+  earlier version of this entry assumed it would, which was wrong and is what prompted
+  the measurement.
+
+  Since 2.11.4 a build at least *says so*: `Runtime._report_overlong_bonds` warns at
+  the end of the ring cure and in the final data when any bond exceeds 0.2 nm, naming
+  the worst by atom and residue.  That is detection, not a fix.
 
   **What to do about it is genuinely unclear**, which is why this is a roadmap entry and
   not a patch.  No packing rule reaches a bystander.  A softer or slower ladder would
   reduce how far closure drags the network, at the cost of rings that then fail to close.
-  Releasing the strain locally — a short restrained minimization around any bond found
-  beyond some length — treats the symptom and would need care not to move charges or
-  break the network elsewhere.  Getting the measurement above first is worth more than
-  choosing between these now.
+  Releasing the strain locally — a restrained minimization around any bond the new report
+  flags — treats the symptom, and would need care not to move charges or break the
+  network elsewhere.  The open question worth answering first is how often this happens
+  and how much it perturbs anything downstream: two of five builds, one or two monomers
+  each, is a rate worth knowing precisely before choosing a remedy that changes results.
 
 - **A ring cure that stalls near its target has no exit but `max_iterations`.**
   Reported by htpolynet-study 2026-09-23 from a 2.11.1 build: at conversion 0.97

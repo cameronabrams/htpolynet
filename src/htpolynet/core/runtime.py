@@ -14,6 +14,7 @@ from copy import deepcopy
 
 import networkx as nx
 import numpy as np
+import pandas as pd
 
 from networkx.algorithms import isomorphism
 
@@ -725,6 +726,7 @@ class Runtime:
         rc.settle(TC, gromacs_dict=gromacs_dict)
         pfs.go_proj()
         self._report_molecule_charges('after ring cure')
+        self._report_overlong_bonds('after ring cure')
         my_logger(f'Ring cure ends: {rc.state.rings} ring(s), conversion '
                   f'{rc.state.conversion:.3f}', logger.info)
         return {c: os.path.basename(x) for c, x in TC.files.items() if c != 'mol2'}
@@ -845,6 +847,7 @@ class Runtime:
         if dropped:
             logger.info(f'Pruned {dropped} stale [ pairs ] entries left over from cure-induced path shortening')
         self._report_molecule_charges(f'in {result_name}')
+        self._report_overlong_bonds(f'in {result_name}')
         TC.write_grx_attributes(f'{result_name}.grx')
         TC.write_gro(f'{result_name}.gro')
         TC.write_top(f'{result_name}.top')
@@ -882,6 +885,62 @@ class Runtime:
                        f'The system total is {self.TopoCoord.Topology.total_charge():+.4f} e, so this is charge '
                        f'moved between molecules, which parameterization does not intend.')
         return charged
+
+    def _report_overlong_bonds(self, when, limit=0.2, show=5):
+        """Logs any bond too long to be a bond in the structure being handed on.
+
+        A crosslinked network can finish a build carrying a bond stretched far past what
+        chemistry allows, and nothing else reports it: the topology is valid, every
+        molecule is neutral, and the run completes.  htpolynet-study measured a C-C at
+        3.20 A in two of five *final* structures, unchanged to two decimals by a 160 ps
+        anneal -- a monomer held stretched by network tension from a ring closure it was
+        not part of.  Ring bonds themselves always relaxed; these did not.  Anything
+        computed from such a structure inherits it, so it should at least be said out
+        loud.  See ROADMAP.md for the mechanism and why there is no fix yet.
+
+        Lengths use the minimum-image convention, so a bond spanning a periodic boundary
+        is measured across the boundary rather than counted as long.
+
+        Args:
+            when (str): stage label for the message, e.g. 'in final'
+            limit (float): longest credible bond, in nm.  The longest ordinary single
+                bond between light elements is C-S at about 0.182 nm, so 0.2 is
+                generous: this is meant to catch a bond that is not a bond any more,
+                not to police a strained one.
+            show (int): how many of the worst to name individually
+
+        Returns:
+            pandas.DataFrame: the offending bonds, longest first
+        """
+        TC = self.TopoCoord
+        D = getattr(getattr(TC, 'Topology', None), 'D', None) or {}
+        bonds = D.get('bonds')
+        if bonds is None or bonds.empty:
+            return pd.DataFrame()
+        work = bonds[['ai', 'aj']].copy()
+        TC.add_length_attribute(work, attr_name='length')
+        long = work[work['length'] > limit].sort_values('length', ascending=False)
+        if long.empty:
+            logger.info(f'Bond lengths {when}: no bond among {work.shape[0]} exceeds {limit} nm')
+            return long
+        A = TC.Coordinates.A.set_index('globalIdx')
+
+        def label(i):
+            try:
+                r = A.loc[int(i)]
+                return f'{r.atomName}({int(i)}) of {r.resName}{int(r.resNum)}'
+            except Exception:
+                return str(int(i))
+
+        ess = '' if long.shape[0] == 1 else 's'
+        worst = '; '.join(f'{label(r.ai)}-{label(r.aj)} at {r.length * 10:.2f} A'
+                          for r in long.head(show).itertuples())
+        logger.warning(f'Bond lengths {when}: {long.shape[0]} bond{ess} of {work.shape[0]} exceed '
+                       f'{limit} nm, which is longer than any real bond between these elements.  '
+                       f'Worst: {worst}.  A bond this long survives minimization and annealing -- '
+                       f'it is held by the surrounding network, not by thermal motion -- and every '
+                       f'property computed from this structure carries it.  See ROADMAP.md.')
+        return long
 
     def _write_vmd_viz_files(self, result_name='final'):
         """Writes a PSF (real bond topology for VMD) and a TCL helper that

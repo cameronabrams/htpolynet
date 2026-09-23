@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A build now says so when it hands on a bond that is not a bond any more.**  At the
+  end of a ring cure and again in the final data, any bond longer than 0.2 nm is
+  reported, the worst named by atom and residue.  Lengths use the minimum-image
+  convention, so a bond across a periodic boundary is not counted.
+
+  This exists because such a bond is otherwise silent: the topology is valid, every
+  molecule is neutral, and the run completes.  htpolynet-study measured a C-C at 3.20 A
+  in two of five *final* structures, unchanged to two decimals by a 160 ps anneal.  Ring
+  bonds always relaxed; these did not, because they are held by network tension rather
+  than by thermal motion — a monomer stretched between parts of the network that a ring
+  closure pulled apart, in a ring it was not itself part of.
+
+  This is detection and not a fix; `ROADMAP.md` has the mechanism and why no remedy has
+  been chosen.  Anything computed from a structure carrying such a bond inherits it.
+
 ## [2.11.3] - 2026-09-23
 
 ### Fixed
