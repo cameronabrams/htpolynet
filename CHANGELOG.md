@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.3] - 2026-09-23
+
 ### Fixed
 
 - **A ring cure handed its last batch of rings to postcure unrelaxed.**  Every batch
