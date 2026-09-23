@@ -30,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unconditional -- the cure has four ways to end and which of them leaves strain behind
   is not worth reasoning about per exit -- and configurable as `ring_cure.settle`.
 
+  Confirmed paired, same eight velocity seeds against the same two structures on the
+  same hardware: two anneals exploded without the settle and none with it.  The two
+  came from different source structures, one of which had never failed in production,
+  so the effect is not particular to a pathological build, and nothing exploded during
+  the settle itself -- the minimization absorbs the strain rather than the failure
+  moving earlier.  Eight seeds is a small sample and that comparison alone would be
+  weak; it is corroboration of the bond energies above, not the case on its own.
+
 ## [2.11.2] - 2026-09-23
 
 ### Fixed
