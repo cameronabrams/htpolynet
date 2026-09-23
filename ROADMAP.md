@@ -199,6 +199,51 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Cure and repair
 
+- **The closure ladder stretches some monomers' own backbones, and nothing prevents
+  it.**  Reported by htpolynet-study 2026-09-23 and reproduced across builds: an
+  inventory of bonds beyond 2.0 A in the pre-anneal structure finds, besides the
+  expected unrelaxed ring bonds, a small number of INTRA-residue bonds at 2.34 to
+  3.20 A — a monomer whose own backbone has been pulled apart.  A ca-c3 at 3.201 A
+  against r0 1.516 holds about 3,800 kJ/mol.
+
+        build       inter (unrelaxed rings)   intra (stretched monomers)
+        ring3/r1    3, up to 2.26 A           0
+        ring3/r3    3, up to 2.25 A           2, up to 3.20 A  (C5-C8, res 138)
+        ring4/r2    12, up to 2.26 A          1, up to 2.38 A  (C3-C4, res 43)
+        ring4/r4    9, up to 2.24 A           0
+
+  Two of four builds, different residues each time, one or two monomers apiece.  The
+  important negative is that it does **not** track the number of unrelaxed rings:
+  ring4/r4 has nine unrelaxed ring bonds and no stretched monomers, ring3/r3 has three
+  and two stretched monomers.  So this is a separate defect that happens to be
+  relieved by the same `ring_cure.settle` that 2.11.3 added for the rings, not another
+  symptom of it.
+
+  **The likely mechanism, and it is a design gap rather than a bug.**
+  `select_disjoint` packs triples so no *group* is used twice, and
+  `candidate_triples(same_residue=False)` keeps both arms of one dicyanate out of one
+  ring.  Neither prevents a monomer's two arms from being taken into two *different*
+  rings of the same iteration — `reactive_sites` emits one row per (residue, group), so
+  the two arms are two distinct sites and the packer sees nothing wrong.  Both rings are
+  then restrained and walked down together, pulling the monomer's two ends toward
+  different places for eight stages of NVT at 600 K.  A gentler version needs no second
+  ring at all: one arm already crosslinked into the rigid network while the other is
+  dragged 2 A toward a new ring will do it, which is the variant that fits ring3/r3,
+  where only one ring formed in the final iteration.
+
+  **To act on this, measure first.** For each stretched monomer, check whether its two
+  groups were in two triples of the same iteration (the first mechanism) or one arm was
+  already reacted (the second).  That distinguishes them and decides the fix: the first
+  wants residue-level disjointness in `select_disjoint`, or a cap on how many of one
+  residue's groups may react in one iteration; the second wants a softer ladder or a
+  per-stage relaxation, since no packing rule can help it.
+
+  **Deferred rather than dropped.** The settle relieves the strain, so nothing is
+  currently shipping broken, and the cheap fix — residue-level packing — would change
+  which rings form and therefore every ring-cure result, for a defect seen in one or two
+  monomers per build.  Worth doing when someone is already revalidating ring-cure
+  networks, not before.
+
 - **A ring cure that stalls near its target has no exit but `max_iterations`.**
   Reported by htpolynet-study 2026-09-23 from a 2.11.1 build: at conversion 0.97
   with 24 groups left, nine iterations running (32-40) produced 77 declines and no
