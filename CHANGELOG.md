@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.1] - 2026-09-22
+
 ### Fixed
 
 - **A cyclotrimerization's charges were computed on a ring that was never closed.**  The
