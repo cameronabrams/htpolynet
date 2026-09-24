@@ -235,6 +235,10 @@ Coverage as of the last measurement: **38.8%** overall.
   is the only part that is repo work; it is small, and everything else depends on it.
 
   *1. Convergence audit.*  One CURE build and one ring-cure build at stock settings.
+  One data point already exists and it cuts against the cheap end of the range: 2 ps of
+  NPT per iteration does not converge a ring cure's box at all (see the constant-volume
+  entry above), so the audit should expect the answer to be tens of ps rather than
+  single digits, and should sample within a stage rather than only at its end.
   For each stage ask a single question: at what fraction of its length does the
   observable stop changing?  A 100 ps equilibration whose density plateaus at 20 ps is
   five times longer than it needs to be, and that is measurable once, cheaply, rather
@@ -284,6 +288,27 @@ Coverage as of the last measurement: **38.8%** overall.
   CURE's `relax.equilibration` and mirroring its full `equilibrate`, Cameron chose the
   cheaper one.  The A/B measuring whether it suffices is what should settle this; 100 ps
   per iteration against a 150-iteration cap is not a cost to take on speculatively.
+
+  **MEASURED 2026-09-24, and the cheap shape is not enough.**  A two-arm A/B, both arms
+  on the same pinned image, differing only in the relax stage list:
+
+        arm        box (nm), successive iterations   rho (kg/m3)     path
+        npt r1     5.5566 -> 5.6882                  970 -> 904    0.1315
+        npt r2     5.5977 -> 5.6553 -> 5.6614        949 -> 917    0.0637
+        control    5.2382 / 5.2435, unchanged x3     1157 / 1154   0.0000
+        baseline   5.2405                            1156.0        0.0000
+
+  Two things follow.  The control arms are frozen to five decimals, which establishes
+  that the constant volume was the relax stage list alone and nothing else that changed
+  between 2.11.1 and 2.11.4.  And the NPT arm's box is not oscillating about an
+  equilibrium --- it **climbs monotonically**, reaching +27.9% in volume and a density
+  22% below the cold value, with no sign of levelling.  2 ps of barostat per iteration
+  does not converge the box; it creeps toward the 600 K equilibrium without arriving.
+
+  So a *short* cold stage will not equilibrate either, and CURE's 100 ps is the relevant
+  scale rather than an arbitrary one.  It also means the hot-only shape should not ship
+  as it stands: a network formed at a still-expanding 600 K volume is not obviously
+  better than one formed at a frozen volume, only differently wrong.
 
   **Do not score that measurement against CURE's density curve.**  CURE's 1085 -> 1170
   is read at its *cold* checkpoints.  A ring cure whose only NPT is at 600 K will sit at
