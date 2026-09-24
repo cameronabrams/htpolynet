@@ -199,6 +199,68 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Cure and repair
 
+- **Nobody has ever checked whether the intra-cure MD stages do anything, and they are
+  most of the cost.**  Raised by Cameron 2026-09-24: the annealing and relaxation runs
+  inside a cure were chosen arbitrarily and have never been justified by a convergence
+  study.  The budget, per cure iteration, from the shipped defaults:
+
+        CURE        relax.equilibration   6 stages x (min + 1 ps NVT 600 + 2 ps NPT 600)   18 ps
+                    equilibrate           1 x NPT 300 K, 50000 steps x 2 fs               100 ps
+                    drag.equilibration    disabled by default (trigger_distance 0.0)         --
+                                                                                  total ~118 ps
+
+        ring cure   closure.equilibration 8 stages x (min + 1 ps NVT 600)                   8 ps
+                    relax                 min + 1 ps NVT 600 + 2 ps NPT 600                 3 ps
+                                                                                   total ~11 ps
+
+  **85% of CURE's intra-cure MD is the single 100 ps `equilibrate`**, and nothing
+  records what it accomplishes.  Note also the order-of-magnitude asymmetry between the
+  two routes, which nobody chose deliberately either.
+
+  **Why it cannot be answered today.**  `profiling.stage` wraps whole phases and whole
+  iterations, not individual `grompp_and_mdrun` calls, so there is no per-stage wall
+  time.  And no stage records the quantity it exists to move, so "did it converge" is
+  not answerable from any existing output.  One exception worth knowing: the ring
+  closure ladder already logs its max pair distance per stage at DEBUG
+  (`ringcontroller.py`, "ring-close stage"), so that ladder's convergence can be audited
+  from a run with debug logging and no new code at all.
+
+  **A study, in four parts.**
+
+  *0. Instrument.*  Extend profiling to wrap each `grompp_and_mdrun` so `profile.json`
+  carries per-stage wall time, and have each stage record the observable it is supposed
+  to move: box and density against time for anything NPT (from the `.edr`, so the
+  within-stage trajectory is available and not just the endpoint), new-bond length
+  against its attenuated `b0` for `relax`, max pair distance for the ring ladder.  This
+  is the only part that is repo work; it is small, and everything else depends on it.
+
+  *1. Convergence audit.*  One CURE build and one ring-cure build at stock settings.
+  For each stage ask a single question: at what fraction of its length does the
+  observable stop changing?  A 100 ps equilibration whose density plateaus at 20 ps is
+  five times longer than it needs to be, and that is measurable once, cheaply, rather
+  than argued about.
+
+  *2. Truncation sweep.*  For every stage that converges early, halve and quarter it.
+
+  *3. Null arm.*  Remove the stage outright.  This is the actual test of Cameron's
+  question --- a stage whose removal changes nothing downstream is not earning its
+  keep, however well it converges.
+
+  **Fix the acceptance criteria before running anything**, because every one of these
+  arms will produce a build that looks fine.  Proposed: final density within a stated
+  tolerance of the stock build; conversion-against-iteration curves overlapping; no
+  increase in bonds beyond 0.2 nm as counted by `Runtime._report_overlong_bonds`; no
+  increase in postcure anneal failures across a fixed set of velocity seeds; and total
+  wall time, which is the point.  Deciding those numbers afterwards is how a cheaper
+  cure gets declared equivalent because it did not obviously break.
+
+  **Who runs it.**  The instrumentation is repo work.  The builds are not --- example
+  builds belong to htpolynet-sweep, and a cure-physics comparison of this kind is the
+  study's kind of work.  The ring-cure NPT A/B of 2026-09-24 is the first instance of
+  exactly this pattern and its design is worth copying: two arms differing in one stage
+  list, same pinned image, both arms written out explicitly so neither inherits a
+  default that might move underneath the comparison.
+
 - **The ring cure has no cold equilibration stage, so its box cannot breathe the way
   CURE's does.**  As of 2.11.4 `ring_cure.relax` ends with NPT at 600 K, which is what
   lets the box respond at all.  CURE has that *and* a separate per-iteration
