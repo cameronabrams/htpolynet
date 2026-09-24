@@ -302,8 +302,17 @@ Coverage as of the last measurement: **38.8%** overall.
   that the constant volume was the relax stage list alone and nothing else that changed
   between 2.11.1 and 2.11.4.  And the NPT arm's box is not oscillating about an
   equilibrium --- it **climbs monotonically**, reaching +27.9% in volume and a density
-  22% below the cold value, with no sign of levelling.  2 ps of barostat per iteration
-  does not converge the box; it creeps toward the 600 K equilibrium without arriving.
+  22% below the cold value.  Followed further, it turns over rather than growing without
+  bound --- one replicate levelled at iteration 6 and oscillated after, the other was
+  still climbing at iteration 8 --- settling near +8-9% in box length.  2 ps of barostat
+  per iteration does not equilibrate anything; it creeps toward the 600 K state and
+  eventually arrives there.
+
+  The expansion also costs conversion, which is the more practical objection.
+  ``search_radius`` is an absolute length and does not scale with the box, so at +28%
+  volume the same radius encloses fewer groups and a triple is harder to find.  The
+  hot-only arms ran about 0.09-0.10 in conversion behind their controls at matched
+  iteration, with no overlap from the second iteration on.
 
   So a *short* cold stage will not equilibrate either, and CURE's 100 ps is the relevant
   scale rather than an arbitrary one.  It also means the hot-only shape should not ship

@@ -34,10 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A ring cure had no cold equilibration, so once it could move, its box only grew.**
   Adding the constant-pressure relax stage above let the box respond, but `relax` ends
-  hot: measured with relax alone, a ring cure's box climbed monotonically to +27.9% in
-  volume and 22% below its cold density over successive iterations, with no sign of
-  levelling.  2 ps of barostat per iteration does not converge anything, it only creeps
-  toward the 600 K equilibrium.  A cure is not only shrinkage --- the hot stages enlarge
+  hot: measured with relax alone, a ring cure's box climbed for six or more iterations
+  to +27.9% in volume and 22% below its cold density before levelling near +8-9% in box
+  length.  2 ps of barostat per iteration does not equilibrate anything; it creeps
+  toward the 600 K state and eventually arrives there.  The expansion also costs
+  conversion --- `search_radius` is an absolute length and does not scale with the box,
+  so the same radius encloses fewer groups --- and hot-only runs fell 0.09-0.10 in
+  conversion behind their controls at matched iteration.  A cure is not only shrinkage --- the hot stages enlarge
   the box and a cold stage pulls it back, and on the pairwise route the box travels
   three to nine times further in length than it ends up moving.
 
