@@ -95,7 +95,7 @@ class RingController:
         'same_molecule': False,
         'same_residue': False,
         'relax': [{'ensemble': 'min'},
-                  {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2000},
+                  {'ensemble': 'nvt', 'temperature': 600, 'nsteps': 1000},
                   {'ensemble': 'npt', 'temperature': 600, 'pressure': 1, 'nsteps': 2000}],
         'settle': [{'ensemble': 'min'},
                    {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2500}],
@@ -335,6 +335,13 @@ class RingController:
         short of the 1.34 A it wants, so the system is strained the moment the bonds
         exist.  CURE relaxes its new bonds for the same reason; without it here, the
         strain is still there when postcure MD starts, and that run dies.
+
+        These stages mirror CURE's ``relax.equilibration`` exactly, and the whole
+        sequence is above Tg rather than only its last stage.  The NVT ran at 300 K
+        until 2.11.4, which cooled the network between the closure ladder at 600 K and
+        the next ladder at 600 K, and would have handed the barostat a configuration
+        equilibrated cold -- a good way to measure no densification and conclude the
+        constant-pressure stage does not work.
 
         The last stage is constant-pressure, and above Tg, because a cure that never
         runs NPT cannot densify.  Before this, every ring-cure stage was NVT: measured

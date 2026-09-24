@@ -72,6 +72,18 @@ class TestTheCureIsNoLongerConstantVolume(unittest.TestCase):
         stages = RingController.defaults['closure']['equilibration']
         self.assertNotIn('npt', [s['ensemble'] for s in stages])
 
+    def test_it_does_not_cool_before_the_barostat(self):
+        # the ladder runs at 600 K and so does the next one; relaxing at 300 K in
+        # between cooled the network and handed the barostat a cold configuration
+        stages = [s for s in RingController.defaults['relax'] if s['ensemble'] != 'min']
+        self.assertEqual({s['temperature'] for s in stages}, {600})
+
+    def test_it_mirrors_cures_relaxation(self):
+        _, cure = schema_block('CURE')
+        relax = next(a for a in cure['attributes'] if a['name'] == 'relax')
+        eq = next(a for a in relax['attributes'] if a['name'] == 'equilibration')
+        self.assertEqual(RingController.defaults['relax'], eq['default'])
+
     def test_the_schema_default_matches_the_controller(self):
         attrs, _ = schema_block('ring_cure')
         self.assertEqual(attrs['relax'], RingController.defaults['relax'])

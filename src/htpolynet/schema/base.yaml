@@ -843,12 +843,15 @@ attributes:
           in.  The constant-pressure stage is what lets the box respond as the network
           forms: with NVT only, a cure runs at fixed volume from first ring to last and
           cannot reproduce cure shrinkage at all.  It is above Tg for the same reason
-          CURE's relaxation is -- a glassy network will not densify in 2 ps.
+          CURE's relaxation is -- a glassy network will not densify in 2 ps, and these
+          stages mirror CURE's `relax.equilibration` exactly.  The NVT is above Tg too:
+          cooling here would put a cold configuration under the barostat and sit
+          between two 600 K closure ladders.
         default:
           - ensemble: min
           - ensemble: nvt
-            temperature: 300
-            nsteps: 2000
+            temperature: 600
+            nsteps: 1000
           - ensemble: npt
             temperature: 600
             pressure: 1

@@ -23,10 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accumulates internal stress with nowhere to put it, which is a plausible route to the
   stretched bonds recorded in `ROADMAP.md`.
 
-  `ring_cure.relax` now ends with an NPT stage at 600 K and 1 bar, mirroring CURE's
-  relaxation rather than its much longer per-iteration equilibration.  The closure
-  ladder stays constant-volume on purpose: NPT while restraints are actively pulling
-  groups together is not a stable combination.
+  `ring_cure.relax` now mirrors CURE's `relax.equilibration` exactly --- minimization,
+  NVT at 600 K, then NPT at 600 K and 1 bar --- rather than CURE's much longer
+  per-iteration equilibration.  The whole sequence is above Tg, not just the
+  constant-pressure stage: relaxing at 300 K in between two 600 K closure ladders cooled
+  the network and would have put a cold, less mobile configuration under the barostat,
+  which is a good way to measure no densification and wrongly conclude the stage does
+  not work.  The closure ladder itself stays constant-volume on purpose: NPT while
+  restraints are actively pulling groups together is not a stable combination.
 
 - **Three `ring_cure` settings could not be set at all**, because they were missing from
   the schema, and ycleptic rejects an unknown key outright rather than ignoring it.
