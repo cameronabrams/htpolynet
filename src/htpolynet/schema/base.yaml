@@ -857,6 +857,44 @@ attributes:
             pressure: 1
             nsteps: 2000
         value_attributes: *cure_md_record
+      - name: equilibrate
+        type: dict
+        text: >
+          The equilibration run at the end of every ring-cure iteration, identical in
+          shape and defaults to `CURE.equilibrate`.  This is the cold half of the
+          cycle: `relax` ends hot and constant-pressure, which expands the box, and
+          without something cold to pull it back the box only grows.  Like CURE's, it
+          uses a 2 fs timestep with constraints, not the 1 fs of relax.
+        attributes:
+          - name: ensemble
+            type: str
+            text: min (minimization), nvt, or npt.
+            choices: [min, nvt, npt]
+            default: npt
+          - name: temperature
+            type: float
+            text: Temperature in K.
+            default: 300
+          - name: pressure
+            type: float
+            text: Pressure in bar.
+            default: 1
+          - name: nsteps
+            type: int
+            text: >
+              Duration in timesteps.  50000 of the 2 fs step is 100 ps, matching CURE.
+              Whether 100 ps is the right number has never been measured for either
+              route; see ROADMAP.md.
+            default: 50000
+          - name: ps
+            type: float
+            text: >
+              Duration in picoseconds.  `nsteps` wins when both are set, and it has a
+              default, so this takes effect only if `nsteps` is set to 0.
+          - name: repeat
+            type: int
+            text: Times to repeat this simulation in series; 0 runs it once.
+            default: 0
       - name: settle
         type: list
         list_defaults: replace

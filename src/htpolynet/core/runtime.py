@@ -711,6 +711,9 @@ class Runtime:
             rc.form_rings(TC, bdf, sites, chosen, template, template_resids,
                           name_translations=name_translations, atom_names=arm)
             rc.relax(TC, gromacs_dict=gromacs_dict)
+            # the cold half of the cycle: relax ends hot and expanded, and without this
+            # the box only ever grows
+            rc.equilibrate(TC, gromacs_dict=gromacs_dict)
             rc.record(chosen)
             TC.write_gro(f'ring-{rc.state.iter}.gro')
             TC.write_top(f'ring-{rc.state.iter}.top')

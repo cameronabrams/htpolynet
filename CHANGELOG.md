@@ -32,6 +32,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not work.  The closure ladder itself stays constant-volume on purpose: NPT while
   restraints are actively pulling groups together is not a stable combination.
 
+- **A ring cure had no cold equilibration, so once it could move, its box only grew.**
+  Adding the constant-pressure relax stage above let the box respond, but `relax` ends
+  hot: measured with relax alone, a ring cure's box climbed monotonically to +27.9% in
+  volume and 22% below its cold density over successive iterations, with no sign of
+  levelling.  2 ps of barostat per iteration does not converge anything, it only creeps
+  toward the 600 K equilibrium.  A cure is not only shrinkage --- the hot stages enlarge
+  the box and a cold stage pulls it back, and on the pairwise route the box travels
+  three to nine times further in length than it ends up moving.
+
+  `ring_cure` now has an `equilibrate` stage identical in shape and in defaults to
+  `CURE.equilibrate` --- NPT, 300 K, 1 bar, 50000 steps of 2 fs --- run once per
+  iteration after `relax`, through the same code path the pairwise cure uses, so it
+  picks up that route's box logging and density series rather than reimplementing them.
+  The per-iteration shape of the two cures is now the same.
+
+  It is also the expensive stage, roughly 99 s against a 280 s iteration.  Whether
+  100 ps is the right number for *either* route has never been measured; `ROADMAP.md`
+  sketches the study.
+
 - **Three `ring_cure` settings could not be set at all**, because they were missing from
   the schema, and ycleptic rejects an unknown key outright rather than ignoring it.
   `ring_cure.relax` and `ring_cure.closure.equilibration` were never exposed, and

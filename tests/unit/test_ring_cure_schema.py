@@ -84,6 +84,22 @@ class TestTheCureIsNoLongerConstantVolume(unittest.TestCase):
         eq = next(a for a in relax['attributes'] if a['name'] == 'equilibration')
         self.assertEqual(RingController.defaults['relax'], eq['default'])
 
+    def test_equilibrate_matches_cures(self):
+        # "do for the ring cure exactly what is already done for the binary cures" --
+        # same stage, same defaults, not a new design
+        _, cure = schema_block('CURE')
+        theirs = next(a for a in cure['attributes'] if a['name'] == 'equilibrate')
+        _, ring = schema_block('ring_cure')
+        mine = next(a for a in ring['attributes'] if a['name'] == 'equilibrate')
+        keyed = lambda b: {a['name']: a.get('default') for a in b['attributes']}
+        self.assertEqual(keyed(mine), keyed(theirs))
+
+    def test_the_cure_now_has_a_cold_stage_to_pull_the_box_back(self):
+        # relax ends hot and constant-pressure; with nothing cold the box only grows
+        eq = RingController.defaults['equilibrate']
+        self.assertEqual(eq['ensemble'], 'npt')
+        self.assertLess(eq['temperature'], RingController.defaults['relax'][-1]['temperature'])
+
     def test_the_schema_default_matches_the_controller(self):
         attrs, _ = schema_block('ring_cure')
         self.assertEqual(attrs['relax'], RingController.defaults['relax'])

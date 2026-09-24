@@ -19,10 +19,12 @@ What one iteration does:
 Author: Cameron F. Abrams <cfa22@drexel.edu>
 """
 import logging
+import os
 
 import numpy as np
 import yaml
 
+from ..analysis.plot import trace
 from ..core import projectfilesystem as pfs
 from ..core.productsplice import map_product_from_template
 from ..cure.triplesearch import (candidate_triples, reactive_sites, residue_map,
@@ -99,6 +101,8 @@ class RingController:
                   {'ensemble': 'npt', 'temperature': 600, 'pressure': 1, 'nsteps': 2000}],
         'settle': [{'ensemble': 'min'},
                    {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2500}],
+        'equilibrate': {'ensemble': 'npt', 'temperature': 300, 'pressure': 1,
+                        'nsteps': 50000, 'repeat': 0},
         'closure': {'nstages': 8, 'target': 0.15, 'kb': 300000.0, 'max_accept': 0.30,
                     'equilibration': [{'ensemble': 'min'},
                                       {'ensemble': 'nvt', 'temperature': 600, 'nsteps': 1000}]},
@@ -360,6 +364,49 @@ class RingController:
         self._run_stages(TC, f'ringrelax-{self.state.iter}', self.dicts['relax'],
                          gromacs_dict or {})
         logger.info(f'Iteration {self.state.iter}: new ring bonds relaxed')
+
+    def equilibrate(self, TC, gromacs_dict=None):
+        """Equilibrates the system at the end of an iteration, as CURE does.
+
+        Identical in shape and in defaults to ``CURE.equilibrate``: NPT at 300 K and
+        1 bar for 50000 steps of 2 fs, once per iteration, after :meth:`relax`.  It runs
+        through the same :meth:`TopoCoord.equilibrate` that the pairwise cure uses, so
+        it picks up the plain ``npt.mdp`` with its constraints and 2 fs step, the box
+        log, and the density series, rather than reimplementing any of that.
+
+        This is the stage that makes the box *cycle*.  :meth:`relax` ends hot and
+        constant-pressure, which expands; without something cold to pull it back the box
+        only ever grows.  Measured with `relax` alone and no equilibration, a ring cure's
+        box climbed monotonically to +27.9% in volume and 22% below its cold density over
+        successive iterations, with no sign of levelling -- 2 ps of barostat per
+        iteration does not converge anything, it only creeps.  A cure is not just
+        shrinkage: the hot stages enlarge the box and the cold stage pulls it back, and
+        the surrogate route travels three to nine times further in box length than it
+        ends up moving.
+
+        It is also the expensive stage, about 99 s against a 280 s iteration, so it is
+        the first place to look when a ring cure is too slow.  Whether 100 ps is the
+        right number for either route has never been measured; see ROADMAP.md.
+
+        Args:
+            TC (TopoCoord): the system
+            gromacs_dict (dict): gromacs directives
+
+        Returns:
+            list: the edr basenames produced, empty if equilibration is disabled
+        """
+        d = self.dicts['equilibrate']
+        if not d:
+            return []
+        edr_list = TC.equilibrate(deffnm=f'ringequil-{self.state.iter}', edict=d,
+                                  gromacs_dict=gromacs_dict or {}) or []
+        if d.get('ensemble') == 'npt' and edr_list:
+            trace('Density', edr_list,
+                  outfile=os.path.join(pfs.proj(),
+                                       f'plots/ring-iter-{self.state.iter}-density.png'),
+                  yunits=r'kg/m$^3$')
+        logger.info(f'Iteration {self.state.iter}: equilibrated')
+        return edr_list
 
     def settle(self, TC, gromacs_dict=None):
         """Relaxes the network one last time before the cure hands it on.
