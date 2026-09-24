@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The installation page now says not to install `htpolynet` from conda-forge.**  The
+  package published there is several releases behind and cannot currently be updated:
+  `htpolynet` depends on `ycleptic`, which is not yet available on conda-forge, so the
+  feedstock's automatic version bumps produce a package that cannot import and none has
+  been published.  What is on conda-forge does install and run, so nothing warns a user
+  that they have an old `htpolynet`.
+
+  The conda-only recipe now installs Python and the MD binaries from conda-forge and
+  `htpolynet` itself from PyPI.  The warning is scoped to the `htpolynet` package alone
+  --- conda-forge remains the recommended source for AmberTools and Gromacs --- and it
+  gives the two commands to check the current state rather than asking the reader to
+  trust a page that may itself be stale.  The container remains the recommendation, and
+  the page now says outright that it requires no installation at all.
+
 ### Added
 
 - **A build now says so when it hands on a bond that is not a bond any more.**  At the
