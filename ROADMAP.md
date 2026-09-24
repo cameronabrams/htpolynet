@@ -199,6 +199,38 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Cure and repair
 
+- **The ring cure has no cold equilibration stage, so its box cannot breathe the way
+  CURE's does.**  As of 2.11.4 `ring_cure.relax` ends with NPT at 600 K, which is what
+  lets the box respond at all.  CURE has that *and* a separate per-iteration
+  `equilibrate` --- NPT at 300 K for 50000 steps, 100 ps --- which the ring cure has no
+  equivalent of.  So the ring cure equilibrates hot and never gets pulled back cold.
+
+  Cameron's observation is that a cure is not only shrinkage: the 600 K stages enlarge
+  the box and the 300 K equilibration pulls it back, so the box cycles every iteration.
+  htpolynet-study measured the cycle on three A2+B3 surrogates, at the cold checkpoints
+  only --- the 600 K stages log no box at all, so the real amplitude is larger:
+
+        build   iters   rises   largest rise      net   path length
+        r1         17       6        +0.0120   -0.0430        0.1450
+        r2         16       5        +0.0140   -0.0420        0.1360
+        r3         16       8        +0.0260   -0.0240        0.2100
+
+  The box travels three to nine times further than it ends up moving.  A ring cure over
+  22 iterations had a path length of exactly 0.0000 nm.
+
+  **Deliberately deferred, and by whom.**  Presented with the choice between mirroring
+  CURE's `relax.equilibration` and mirroring its full `equilibrate`, Cameron chose the
+  cheaper one.  The A/B measuring whether it suffices is what should settle this; 100 ps
+  per iteration against a 150-iteration cap is not a cost to take on speculatively.
+
+  **Do not score that measurement against CURE's density curve.**  CURE's 1085 -> 1170
+  is read at its *cold* checkpoints.  A ring cure whose only NPT is at 600 K will sit at
+  a larger box and a lower density than its own constant-volume baseline, and that is
+  the stage working rather than failing.  The signal is path length greater than zero,
+  and then the trend across hot checkpoints.  If a cold stage is added later, the open
+  question is whether a short one converges at all or whether the barostat needs
+  something like CURE's 100 ps --- which is the other thing the A/B will show.
+
 - **The closure ladder stretches some monomers' own backbones, and nothing prevents
   it.**  Reported by htpolynet-study 2026-09-23 and reproduced across builds: an
   inventory of bonds beyond 2.0 A in the pre-anneal structure finds, besides the
