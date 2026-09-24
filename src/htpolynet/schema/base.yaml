@@ -543,13 +543,6 @@ attributes:
               Minimum amount in nm by which the target distance is decreased
               per stage; with `limit`, this sets the stage count.
             default: 0.0
-          - name: max_accept
-            type: float
-            text: >
-              Refuse to form a ring whose pairs are still further apart than this after
-              the closure ladder, in nm.  The groups stay unreacted and are offered
-              again next iteration.  0 accepts any ring.
-            default: 0.30
           - name: nstages
             type: int
             text: Explicit stage count, as an alternative to deriving one from `increment`.
@@ -842,8 +835,29 @@ attributes:
           Allow two groups of one residue in a ring, which for a dicyanate is both
           arms into one triazine.
         default: false
+      - name: relax
+        type: list
+        list_defaults: replace
+        text: >
+          MD stages run after each iteration's rings are formed, easing the new bonds
+          in.  The constant-pressure stage is what lets the box respond as the network
+          forms: with NVT only, a cure runs at fixed volume from first ring to last and
+          cannot reproduce cure shrinkage at all.  It is above Tg for the same reason
+          CURE's relaxation is -- a glassy network will not densify in 2 ps.
+        default:
+          - ensemble: min
+          - ensemble: nvt
+            temperature: 300
+            nsteps: 2000
+          - ensemble: npt
+            temperature: 600
+            pressure: 1
+            nsteps: 2000
+        value_attributes: *cure_md_record
       - name: settle
         type: list
+        list_defaults: replace
+        value_attributes: *cure_md_record
         text: >
           Equilibration run once at the end of the cure, before postcure.  Every
           batch of rings but the last is relaxed again by the next iteration's
@@ -874,6 +888,27 @@ attributes:
             type: float
             text: Restraint stiffness, in kJ/mol/nm^2.
             default: 300000.0
+          - name: max_accept
+            type: float
+            text: >
+              Refuse to form a ring whose pairs are still further apart than this after
+              the closure ladder, in nm.  The groups stay unreacted and are offered
+              again next iteration, though that combination of them is passed over
+              while any untried ring is in reach.  0 accepts any ring.
+            default: 0.30
+          - name: equilibration
+            type: list
+            list_defaults: replace
+            text: >
+              The MD records run at each stage of the ladder, with the restraints in
+              place.  Constant-volume on purpose: NPT while restraints are actively
+              pulling groups together is not a stable combination.
+            default:
+              - ensemble: min
+              - ensemble: nvt
+                temperature: 600
+                nsteps: 1000
+            value_attributes: *cure_md_record
 
   - name: postcure_repair
     type: list

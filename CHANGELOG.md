@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A ring cure ran at constant volume from first ring to last, so it could not
+  densify.**  Every ring-cure stage was NVT — the relaxation after each iteration, the
+  closure ladder, and the settle — with no constant-pressure step anywhere.  Measured
+  over 22 iterations of a 233-triazine build, the box stayed at 5.241 nm to four
+  decimals and the density at 1155.9 kg/m3 from the first ring to the last, with the
+  entire volume change deferred to a single postcure NPT.  CURE's density climbs
+  through its cure, roughly 1085 to 1170, because its relaxation stages run NPT above
+  Tg and are deliberately "the only above-Tg constant-pressure time in a cure".
+
+  Cure shrinkage cannot be reproduced at fixed volume by construction — Snow measures
+  0.0324 ml/g for BADCy — and a network that forms in a box which cannot respond
+  accumulates internal stress with nowhere to put it, which is a plausible route to the
+  stretched bonds recorded in `ROADMAP.md`.
+
+  `ring_cure.relax` now ends with an NPT stage at 600 K and 1 bar, mirroring CURE's
+  relaxation rather than its much longer per-iteration equilibration.  The closure
+  ladder stays constant-volume on purpose: NPT while restraints are actively pulling
+  groups together is not a stable combination.
+
+- **Three `ring_cure` settings could not be set at all**, because they were missing from
+  the schema, and ycleptic rejects an unknown key outright rather than ignoring it.
+  `ring_cure.relax` and `ring_cure.closure.equilibration` were never exposed, and
+  `closure.max_accept` — added in 2.11.1 — was written into `CURE`'s `drag` block by
+  mistake, where a config could set it and nothing would read it.  All three now sit
+  where they belong, and a test asserts that every key the controller honors appears in
+  the schema with a matching default.
+
 ### Changed
 
 - **The installation page now says not to install `htpolynet` from conda-forge.**  The

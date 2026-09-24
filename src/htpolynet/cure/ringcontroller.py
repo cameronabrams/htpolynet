@@ -95,7 +95,8 @@ class RingController:
         'same_molecule': False,
         'same_residue': False,
         'relax': [{'ensemble': 'min'},
-                  {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2000}],
+                  {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2000},
+                  {'ensemble': 'npt', 'temperature': 600, 'pressure': 1, 'nsteps': 2000}],
         'settle': [{'ensemble': 'min'},
                    {'ensemble': 'nvt', 'temperature': 300, 'nsteps': 2500}],
         'closure': {'nstages': 8, 'target': 0.15, 'kb': 300000.0, 'max_accept': 0.30,
@@ -328,12 +329,22 @@ class RingController:
         return bdf.reset_index(drop=True), [chosen[n] for n in keep]
 
     def relax(self, TC, gromacs_dict=None):
-        """Eases a freshly closed ring's bonds in before anything else runs.
+        """Eases a freshly closed ring's bonds in, and lets the box respond.
 
         A ring bond is formed at whatever length the closure ladder reached, a good way
         short of the 1.34 A it wants, so the system is strained the moment the bonds
         exist.  CURE relaxes its new bonds for the same reason; without it here, the
         strain is still there when postcure MD starts, and that run dies.
+
+        The last stage is constant-pressure, and above Tg, because a cure that never
+        runs NPT cannot densify.  Before this, every ring-cure stage was NVT: measured
+        over 22 iterations of a 233-triazine build the box stayed at 5.241 nm to four
+        decimals and the density at 1155.9 kg/m3 from first ring to last, with the
+        entire volume change deferred to a single postcure NPT.  CURE's density climbs
+        through its cure, from about 1085 to 1170.  Cure shrinkage -- 0.0324 ml/g for
+        BADCy by Snow -- cannot be reproduced at constant volume by construction, and a
+        network formed in a box that cannot respond builds up internal stress with
+        nowhere to put it.
 
         Args:
             TC (TopoCoord): the system
@@ -389,9 +400,12 @@ class RingController:
             mdp = f'relax-{ensemble}' if ensemble != 'min' else 'relax-min'
             pfs.checkout(pfs.Dirs.mdp_file(mdp))
             if ensemble != 'min':
-                mdp_modify(f'{mdp}.mdp', {'ref_t': stage.get('temperature', 300),
-                                          'gen-temp': stage.get('temperature', 300),
-                                          'gen-vel': 'yes', 'nsteps': stage.get('nsteps', 1000)})
+                mods = {'ref_t': stage.get('temperature', 300),
+                        'gen-temp': stage.get('temperature', 300),
+                        'gen-vel': 'yes', 'nsteps': stage.get('nsteps', 1000)}
+                if ensemble == 'npt':
+                    mods['ref_p'] = stage.get('pressure', 1)
+                mdp_modify(f'{mdp}.mdp', mods)
             TC.grompp_and_mdrun(out=f'{deffnm}-{ensemble}', mdp=mdp, **gromacs_dict)
 
     def form_rings(self, TC, bdf, sites, chosen, template, template_resids, name_translations=None,
