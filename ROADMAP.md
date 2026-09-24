@@ -314,6 +314,15 @@ Coverage as of the last measurement: **38.8%** overall.
   hot-only arms ran about 0.09-0.10 in conversion behind their controls at matched
   iteration, with no overlap from the second iteration on.
 
+  What the widening actually tracks is **concentration**, which is worth knowing on its
+  own.  Both arms widened for the first time at the same iteration, on the same trigger
+  of two candidates against a floor of four, from very different states: 315 unreacted
+  groups in a 192.6 nm3 box against 237 in a 143.7 nm3 box --- 1.6352 and 1.6489 groups
+  per nm3, within 0.9% of each other, while the arms sat 0.09 apart in conversion and
+  33% apart in raw count.  A fixed `search_radius` makes `min_rings_per_iteration` an
+  implicit concentration criterion.  Since 2.11.4 the search logs that concentration,
+  because otherwise the widening looks arbitrary in any cure whose box moves.
+
   So a *short* cold stage will not equilibrate either, and CURE's 100 ps is the relevant
   scale rather than an arbitrary one.  It also means the hot-only shape should not ship
   as it stands: a network formed at a still-expanding 600 K volume is not obviously
@@ -386,6 +395,13 @@ Coverage as of the last measurement: **38.8%** overall.
   Since 2.11.4 a build at least *says so*: `Runtime._report_overlong_bonds` warns at the
   end of the ring cure and in the final data when any bond exceeds 0.2 nm, naming the
   worst by atom and residue.  That is detection, not a fix.
+
+  **A hot, expanded box plausibly makes this worse, though that is not measured.**  An
+  expanded box thins the group concentration, the search widens sooner in response, and
+  a wider radius reaches monomers further apart --- the population this entry is about.
+  Raised by htpolynet-study 2026-09-24 and recorded as a mechanism to test rather than a
+  finding: every stretched-monomer inventory above predates the constant-pressure relax
+  stage, so nothing yet connects the two beyond plausibility.
 
   **The cheapest experiment, and it needs no code.**  The ring cure restrains three
   pairs per ring and walks them down together over `closure.nstages` stages (default 8),

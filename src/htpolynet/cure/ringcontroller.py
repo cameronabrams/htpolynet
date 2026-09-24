@@ -198,7 +198,13 @@ class RingController:
             allowed = self._drop_declined(cands, sites)
             chosen = select_disjoint(allowed, max_triples=self.dicts['max_rings_per_iteration'])
             passed = len(cands) - len(allowed)
-            logger.info(f'Iteration {self.state.iter}: {len(sites)} unreacted group(s), '
+            # concentration, not count, is what decides whether a fixed radius finds
+            # enough candidates -- log it or the widening looks arbitrary in a cure
+            # whose box is moving
+            volume = float(np.prod(np.asarray(box, dtype=float)))
+            conc = len(sites) / volume if volume > 0 else float('nan')
+            logger.info(f'Iteration {self.state.iter}: {len(sites)} unreacted group(s) '
+                        f'({conc:.4f} per nm^3), '
                         f'{len(cands)} candidate ring(s) within {self.radius:.3f} nm'
                         + (f' ({passed} passed over as already failed)' if passed else '')
                         + f', {len(chosen)} accepted')
