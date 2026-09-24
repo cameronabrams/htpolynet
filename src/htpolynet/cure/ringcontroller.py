@@ -383,18 +383,20 @@ class RingController:
         This is the stage that makes the box *cycle*.  :meth:`relax` ends hot and
         constant-pressure, which expands; without something cold to pull it back the box
         only ever grows.  Measured with `relax` alone and no equilibration, a ring cure's
-        box climbed for six or more iterations before turning over, levelling near +8-9%
-        in box length and +28% in volume at 22% below its cold density.  2 ps of
-        barostat per iteration does not equilibrate anything; it creeps toward the 600 K
-        state and eventually arrives there.  A cure is not just shrinkage: the hot
-        stages enlarge the box and the cold stage pulls it back, and the surrogate route
-        travels three to nine times further in box length than it ends up moving.
+        box expands thermally for six iterations to +28% in volume and then comes back
+        down as the network forms, the two legs nearly cancelling: path 0.4104 nm for a
+        net of -0.0038 nm.  A cure is not just shrinkage -- the hot stages enlarge the
+        box and the cold stage pulls it back -- which is why path length rather than net
+        is the statistic to look at, and why the surrogate route travels three to nine
+        times further in box length than it ends up moving.
 
-        Expanding the box also costs conversion, because ``search_radius`` is an
-        absolute length and does not scale with it: at +28% volume the same radius
-        encloses fewer groups, and three of them are correspondingly harder to find.
-        Hot-only arms fell about 0.09-0.10 in conversion behind their controls at
-        matched iteration, with no overlap from the second iteration on.
+        Running hot without this stage is not a disaster; it reaches the same
+        conversion.  It is untrustworthy, because 2 ps at 600 K does not equilibrate, so
+        what the box does mixes network formation with thermal relaxation that has not
+        finished.  It also costs iterations: ``search_radius`` is an absolute length and
+        does not scale with the box, so an expanded box encloses fewer groups per sphere
+        and a triple is harder to find -- 25 iterations against 22 for the same
+        conversion.
 
         It is also the expensive stage, about 99 s against a 280 s iteration, so it is
         the first place to look when a ring cure is too slow.  Whether 100 ps is the

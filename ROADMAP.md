@@ -298,21 +298,38 @@ Coverage as of the last measurement: **38.8%** overall.
         control    5.2382 / 5.2435, unchanged x3     1157 / 1154   0.0000
         baseline   5.2405                            1156.0        0.0000
 
-  Two things follow.  The control arms are frozen to five decimals, which establishes
-  that the constant volume was the relax stage list alone and nothing else that changed
-  between 2.11.1 and 2.11.4.  And the NPT arm's box is not oscillating about an
-  equilibrium --- it **climbs monotonically**, reaching +27.9% in volume and a density
-  22% below the cold value.  Followed further, it turns over rather than growing without
-  bound --- one replicate levelled at iteration 6 and oscillated after, the other was
-  still climbing at iteration 8 --- settling near +8-9% in box length.  2 ps of barostat
-  per iteration does not equilibrate anything; it creeps toward the 600 K state and
-  eventually arrives there.
+  The control arms are frozen to five decimals, which establishes that the constant
+  volume was the relax stage list alone and nothing else that changed between 2.11.1
+  and 2.11.4.
 
-  The expansion also costs conversion, which is the more practical objection.
-  ``search_radius`` is an absolute length and does not scale with the box, so at +28%
-  volume the same radius encloses fewer groups and a triple is harder to find.  The
-  hot-only arms ran about 0.09-0.10 in conversion behind their controls at matched
-  iteration, with no overlap from the second iteration on.
+  **Read the whole run, not its first quarter.**  Over a complete 25-iteration build the
+  hot-only box has two regimes, and only the first was visible early:
+
+        iter     1      6     12     18     21     24     25
+        box   5.5977 5.7223 5.6639 5.6701 5.6442 5.5757 5.5939
+        rho    948.5  887.9  915.6  912.7  925.3  959.8  950.4
+                                      path 0.4104 nm, net -0.0038 nm
+
+  Thermal expansion to iteration 6, then the box comes back **down** as the network
+  forms: peak to minimum is -7.49% in volume, +71.9 kg/m3, 0.0844 ml/g.  The net is
+  near zero only because the two legs nearly cancel, which is exactly why path length
+  rather than net is the statistic to quote.  A frozen box captures none of it.
+
+  This retires two judgements made on the first four iterations --- mine, that a
+  still-expanding box was "differently wrong", and the reading that the climb had no
+  bound.  Nor is there a conversion ceiling: the hot-only arm finished at 233 rings and
+  conversion 0.971, the same endpoint as both controls and the baseline, in 25
+  iterations against 22.  The 0.09-0.10 conversion deficit at matched iteration is real
+  but is a **rate** effect worth about 14% in iterations, not a limit.  Its mechanism is
+  worth keeping: ``search_radius`` is an absolute length and does not scale with the
+  box, so an expanded box encloses fewer groups per sphere and a triple is harder to
+  find.
+
+  **What the descending leg is not** is a measurement of cure shrinkage.  2 ps at 600 K
+  does not equilibrate, so that leg mixes in residual thermal relaxation, and it spans
+  conversion 0.55 to 0.971.  It captures shrinkage; it does not measure it.  That, and
+  Cameron's instruction to match what the binary cures already do, are what the cold
+  equilibration rests on --- not on hot-only being worse, which it is not.
 
   What the widening actually tracks is **concentration**, which is worth knowing on its
   own.  Both arms widened for the first time at the same iteration, on the same trigger
@@ -324,9 +341,7 @@ Coverage as of the last measurement: **38.8%** overall.
   because otherwise the widening looks arbitrary in any cure whose box moves.
 
   So a *short* cold stage will not equilibrate either, and CURE's 100 ps is the relevant
-  scale rather than an arbitrary one.  It also means the hot-only shape should not ship
-  as it stands: a network formed at a still-expanding 600 K volume is not obviously
-  better than one formed at a frozen volume, only differently wrong.
+  scale rather than an arbitrary one.
 
   **Do not score that measurement against CURE's density curve.**  CURE's 1085 -> 1170
   is read at its *cold* checkpoints.  A ring cure whose only NPT is at 600 K will sit at
