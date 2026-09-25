@@ -709,6 +709,8 @@ class Runtime:
             work = rc.close_rings(TC, bdf, gromacs_dict=gromacs_dict)
             # a ring the ladder could not pull shut would be bonded long and stay that way
             bdf, chosen = rc.accept(bdf, work, chosen)
+            # now that the loop is nearly ring-sized, ask what it actually encloses
+            bdf, chosen = rc.reject_threaded(TC, bdf, chosen)
             if not chosen:
                 rc.state.iter += 1
                 continue

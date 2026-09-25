@@ -175,7 +175,7 @@ def _segment_pierces_triangle(p0, p1, a, b, c, eps=1e-12):
     return 0.0 < t < 1.0
 
 
-def ring_threading_bonds(ring, positions, bonds_of, box, margin=0.2):
+def ring_threading_bonds(ring, positions, bonds_of, box, margin=0.3):
     """Existing bonds that pass through the loop a candidate ring would close.
 
     The loop is triangulated as a fan from its centroid rather than treated as a plane,
@@ -192,7 +192,11 @@ def ring_threading_bonds(ring, positions, bonds_of, box, margin=0.2):
         positions (dict): global atom index -> position, in nm
         bonds_of (dict): global atom index -> list of (ai, aj) bonds it belongs to
         box (array-like): box diagonal, in nm
-        margin (float): how far beyond the loop's own radius to look for bonds, in nm
+        margin (float): how far beyond the loop's own radius to look for bonds, in nm.
+            Bonds are gathered by endpoint, so this has to exceed the longest bond in
+            the system or one could cross the loop with both ends outside the search.
+            0.3 nm is generous: the longest real bond here is about 0.18 nm, and even
+            the pathological stretched ones top out near 0.32 nm
 
     Returns:
         list: the (ai, aj) bonds found threading it

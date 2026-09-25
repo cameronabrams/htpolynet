@@ -7,6 +7,7 @@
 .. moduleauthor: Cameron F. Abrams, <cfa22@drexel.edu>
 
 """
+import types
 import unittest
 
 import numpy as np
@@ -388,7 +389,8 @@ class TestRejectingRingsThatWouldThreadAMonomer(unittest.TestCase):
 
     def setup(self):
         adf, pos = triangle(side=0.25)
-        c = RingController({'search_radius': 0.6})
+        c = RingController({'search_radius': 0.6,
+                            'prefilter_threaded_candidates': True})
         c.setup(total_groups=3, max_radius=1.0)
         return c, adf, pos
 
@@ -424,12 +426,68 @@ class TestRejectingRingsThatWouldThreadAMonomer(unittest.TestCase):
             _, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),), bonds_of=bonds_of)
         self.assertEqual(len(chosen), 1)
 
-    def test_the_check_can_be_turned_off(self):
-        # so a build can reproduce pre-2.11.4 behaviour for comparison
+    def test_the_candidate_screen_can_be_left_off(self):
+        # off by default: it surveys many times the area the triazine ends up enclosing
         adf, pos = triangle(side=0.25)
-        c = RingController({'search_radius': 0.6, 'reject_threaded_rings': False})
+        c = RingController({'search_radius': 0.6,
+                            'prefilter_threaded_candidates': False})
         c.setup(total_groups=3, max_radius=1.0)
         pos, bonds_of = self.through_the_middle(pos)
         with self.assertLogs(LOG, level='INFO'):
             _, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),), bonds_of=bonds_of)
         self.assertEqual(len(chosen), 1)
+
+
+class TestTheAuthoritativeThreadingTestRunsAtClosure(unittest.TestCase):
+    """The candidate loop is three groups a search radius apart and encloses roughly
+    nine times the triazine's area at 1.0 nm and twenty-odd at 1.6 nm.  Threading would
+    survive the shrink if nothing moved, but the ladder runs six stages of NVT at 600 K.
+    So the real test is at closure, where the loop is nearly ring-sized."""
+
+    def system(self, thread=True):
+        """A ring pulled shut, with or without a bond skewered through it."""
+        ring = [1, 2, 3, 4, 5, 6]
+        ang = np.linspace(0, 2 * np.pi, 6, endpoint=False)
+        pos = {i + 1: np.array([5 + 0.137 * np.cos(t), 5 + 0.137 * np.sin(t), 5.0])
+               for i, t in enumerate(ang)}
+        far = np.array([9.0, 9.0, 9.0])
+        # a real bond length, straddling the ring plane
+        pos[7] = np.array([5.0, 5.0, 4.925]) if thread else far
+        pos[8] = np.array([5.0, 5.0, 5.075]) if thread else far + np.array([0, 0, 0.15])
+        A = pd.DataFrame([{'globalIdx': k, 'posX': v[0], 'posY': v[1], 'posZ': v[2]}
+                          for k, v in sorted(pos.items())])
+        bonds = pd.DataFrame([{'ai': 7, 'aj': 8}])
+        TC = types.SimpleNamespace(
+            Coordinates=types.SimpleNamespace(A=A, box=np.diag([10.0, 10.0, 10.0])),
+            Topology=types.SimpleNamespace(D={'bonds': bonds}))
+        bdf = pd.DataFrame([{'ai': ring[0], 'aj': ring[1], 'triple': 0},
+                            {'ai': ring[2], 'aj': ring[3], 'triple': 0},
+                            {'ai': ring[4], 'aj': ring[5], 'triple': 0}])
+        return TC, bdf, [object()]
+
+    def test_a_threaded_ring_is_declined_at_closure(self):
+        c = RingController({})
+        TC, bdf, chosen = self.system(thread=True)
+        with self.assertLogs(LOG, level='INFO') as cm:
+            out_b, out_c = c.reject_threaded(TC, bdf, chosen)
+        self.assertEqual(out_c, [])
+        self.assertTrue(out_b.empty)
+        self.assertIn('close around bond 7-8', '\n'.join(cm.output))
+
+    def test_a_clean_ring_is_kept(self):
+        c = RingController({})
+        TC, bdf, chosen = self.system(thread=False)
+        out_b, out_c = c.reject_threaded(TC, bdf, chosen)
+        self.assertEqual(len(out_c), 1)
+        self.assertEqual(out_b.shape[0], 3)
+
+    def test_it_can_be_turned_off(self):
+        c = RingController({'reject_threaded_rings': False})
+        TC, bdf, chosen = self.system(thread=True)
+        _, out_c = c.reject_threaded(TC, bdf, chosen)
+        self.assertEqual(len(out_c), 1)
+
+    def test_the_candidate_screen_is_off_by_default(self):
+        # it surveys many times the area that ends up enclosed, so it over-rejects
+        self.assertFalse(RingController.defaults['prefilter_threaded_candidates'])
+        self.assertTrue(RingController.defaults['reject_threaded_rings'])

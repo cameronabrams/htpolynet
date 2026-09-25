@@ -23,14 +23,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decimals, and why they hold roughly 700 kT without being thermal --- escaping a
   topological trap needs a bond to break, not a barrier to be crossed.
 
-  The test runs at candidate time, before the closure ladder has spent eight stages
-  dragging the groups together, and treats the prospective ring as a triangle fan from
-  its centroid rather than as a plane, because at that point it is three reactive groups
-  a search radius apart rather than a ring.  Testing it at that size is the right
-  question: the ladder shrinks the loop continuously, so a bond inside it stays inside.
-  Coordinates are imaged against an anchor atom, since a centroid of raw wrapped
-  positions produces false positives across a periodic boundary.  Set
-  `ring_cure.reject_threaded_rings: false` to reproduce the old behavior.
+  The test runs after the closure ladder and before the bonds are formed, which is
+  where the question is unambiguous: the loop is down to nearly its final size, so what
+  is inside it is what the triazine will enclose.  It treats the loop as a triangle fan
+  from its centroid rather than as a plane, and images every coordinate against an
+  anchor atom, since a centroid of raw wrapped positions gives false positives across a
+  periodic boundary.
+
+  `ring_cure.prefilter_threaded_candidates` applies the same test at candidate time as
+  well, to avoid spending a ladder on a ring that is already threaded.  It is **off by
+  default**, because a candidate loop is three groups a search radius apart: a formed
+  triazine's circumscribed radius is about 1.37 A and near enough rigid across 233 of
+  them, while the candidate loop encloses roughly nine times that area at a 1.0 nm
+  search radius and over twenty at 1.6 nm, which is where late iterations run.
+  Threading would carry through the shrink if nothing moved, but the ladder runs six
+  stages of NVT at 600 K, so a bond inside the candidate loop need not still be inside
+  at closure.  Set `ring_cure.reject_threaded_rings: false` to reproduce the old
+  behavior entirely.
 
 ### Fixed
 

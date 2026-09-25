@@ -27,12 +27,28 @@ import yaml
 from ..analysis.plot import trace
 from ..core import projectfilesystem as pfs
 from ..core.productsplice import map_product_from_template
-from ..cure.triplesearch import (candidate_triples, drop_threaded, reactive_sites,
-                                 residue_map, select_disjoint, site_name_maps)
+from ..cure.triplesearch import (bonds_by_atom, candidate_triples, drop_threaded,
+                                 reactive_sites, residue_map, ring_threading_bonds,
+                                 select_disjoint, site_name_maps)
 from ..external.gromacs import mdp_modify
 from ..repair.topology_surgery import neutralize_touched_fragments
 
 logger = logging.getLogger(__name__)
+
+
+def _ring_atoms(bdf, triple):
+    """The six atoms of one formed ring, in cyclic order.
+
+    ``triple_bonds_dataframe`` writes a triple's three new bonds in the cycle order
+    ``candidate_triples`` chose -- (a,b), (b,c), (c,a) -- as (donor of the first group,
+    acceptor of the second).  Each group's own donor and acceptor are already bonded to
+    each other, so reading the rows out as ai, aj, ai, aj, ai, aj walks the ring.
+    """
+    rows = bdf[bdf['triple'] == triple]
+    ring = []
+    for r in rows.itertuples():
+        ring.extend((int(r.ai), int(r.aj)))
+    return ring
 
 
 def _triple_key(donors):
@@ -95,6 +111,7 @@ class RingController:
         'max_rings_per_iteration': 0,
         'min_rings_per_iteration': 4,
         'reject_threaded_rings': True,
+        'prefilter_threaded_candidates': False,
         'same_molecule': False,
         'same_residue': False,
         'relax': [{'ensemble': 'min'},
@@ -198,7 +215,7 @@ class RingController:
             cands = candidate_triples(sites, positions, self.radius, box,
                                       same_molecule=self.dicts['same_molecule'],
                                       same_residue=self.dicts['same_residue'])
-            if self.dicts['reject_threaded_rings'] and bonds_of:
+            if self.dicts['prefilter_threaded_candidates'] and bonds_of:
                 cands, threaded = drop_threaded(cands, sites, positions, bonds_of, box)
                 if threaded:
                     logger.info(f'Iteration {self.state.iter}: rejected {threaded} '
@@ -342,10 +359,66 @@ class RingController:
                             f'{worst[n]:.3f} nm from closing (limit {limit:.3f} nm); its '
                             f'groups stay unreacted, and this combination waits until '
                             f'nothing untried is in reach')
+        return self._keep_rings(bdf, chosen, keep)
+
+    def _keep_rings(self, bdf, chosen, keep):
+        """Reduces a bond table and its ring list to `keep`, renumbered contiguously.
+
+        ``form_rings`` zips its residue and name maps against the triple column, so a
+        gap would silently misalign them.
+        """
+        if len(keep) == len(chosen):
+            return bdf, chosen
         renumber = {old: new for new, old in enumerate(keep)}
         bdf = bdf[bdf['triple'].isin(keep)].copy()
         bdf['triple'] = [renumber[t] for t in bdf['triple']]
         return bdf.reset_index(drop=True), [chosen[n] for n in keep]
+
+    def reject_threaded(self, TC, bdf, chosen):
+        """Drops a ring that has an existing bond through it, at the geometry it will
+        actually be formed at.
+
+        This is the authoritative threading test, and it runs here rather than at
+        candidate time because here the question is unambiguous: the ladder has pulled
+        the loop down to nearly its final size, so what is inside it now is what the
+        triazine will enclose.
+
+        The candidate-time screen surveys a much larger region.  A formed triazine has a
+        circumscribed radius of about 1.37 A, near enough rigid across 233 of them, while
+        a candidate loop is three groups a search radius apart -- nine times the enclosed
+        area at a 1.0 nm radius and over twenty at 1.6 nm, which is where a cure spends
+        its late iterations.  Threading would be preserved through the shrink if nothing
+        moved, but the ladder runs six stages of NVT at 600 K and bonds move while the
+        loop contracts, so a bond inside the candidate loop need not still be inside at
+        closure.  Hence a cheap screen there, off by default, and the real test here.
+
+        Args:
+            TC (TopoCoord): the system
+            bdf (pandas.DataFrame): this iteration's bonds, three rows per ring
+            chosen (list): the rings that survived the closure ladder
+
+        Returns:
+            tuple: (bdf, chosen) keeping only the rings nothing is threaded through
+        """
+        if not self.dicts['reject_threaded_rings'] or not chosen:
+            return bdf, chosen
+        A = TC.Coordinates.A
+        positions = {int(r.globalIdx): np.array([r.posX, r.posY, r.posZ])
+                     for r in A.itertuples()}
+        bonds_of = bonds_by_atom(TC.Topology.D['bonds'])
+        box = TC.Coordinates.box.diagonal()
+        keep = []
+        for n in range(len(chosen)):
+            ring = _ring_atoms(bdf, n)
+            threading = ring_threading_bonds(ring, positions, bonds_of, box)
+            if threading:
+                ai, aj = threading[0]
+                logger.info(f'Iteration {self.state.iter}: declining a ring that would '
+                            f'close around bond {ai}-{aj}; threading it would trap that '
+                            f'monomer for good, since escaping needs a bond to break')
+                continue
+            keep.append(n)
+        return self._keep_rings(bdf, chosen, keep)
 
     def relax(self, TC, gromacs_dict=None):
         """Eases a freshly closed ring's bonds in, and lets the box respond.
