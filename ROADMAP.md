@@ -351,145 +351,19 @@ Coverage as of the last measurement: **38.8%** overall.
   question is whether a short one converges at all or whether the barostat needs
   something like CURE's 100 ps --- which is the other thing the A/B will show.
 
-- **A ring cure applies no ring-pierce filter, and the stretched monomers are threaded
-  ones.**  Reported by htpolynet-study 2026-09-23 and reproduced across builds: an
-  inventory of bonds beyond 2.0 A in the pre-anneal structure finds, besides the
-  expected unrelaxed ring bonds, a small number of INTRA-residue bonds at 2.34 to
-  3.20 A — a monomer whose own backbone has been pulled apart.  A ca-c3 at 3.201 A
-  against r0 1.516 holds about 3,800 kJ/mol.
+- **Properties measured before the threading filter may carry threaded rings.**  The
+  filter shipped in 2.11.4; every build made before it could contain a triazine closed
+  around a monomer, which happened in 2 of 4 unfiltered builds at about one per build.
+  A threaded monomer is a permanent topological defect carrying a bond stretched past
+  2 A, so it is not obvious that Tg, density or modulus from those builds are unbiased,
+  and it is not obvious that they are biased either --- nobody has measured it.
 
-        build       inter (unrelaxed rings)   intra (stretched monomers)
-        ring3/r1    3, up to 2.26 A           0
-        ring3/r3    3, up to 2.25 A           2, up to 3.20 A  (C5-C8, res 138)
-        ring4/r2    12, up to 2.26 A          1, up to 2.38 A  (C3-C4, res 43)
-        ring4/r4    9, up to 2.24 A           0
+  The comparison is cheap now that both arms exist: build a small set with
+  `reject_threaded_rings` true and false and compare the properties, rather than
+  re-running any campaign on faith.  Whoever owns a property campaign predating 2.11.4
+  should decide whether to rebuild; htpolynet-study raised this about their own and it
+  is their call, not the repo's.
 
-  Two of four builds, different residues each time, one or two monomers apiece.  The
-  important negative is that it does **not** track the number of unrelaxed rings:
-  ring4/r4 has nine unrelaxed ring bonds and no stretched monomers, ring3/r3 has three
-  and two stretched monomers.  So this is a separate defect that happens to be
-  relieved by the same `ring_cure.settle` that 2.11.3 added for the rings, not another
-  symptom of it.
-
-  **SOLVED 2026-09-24: they are threaded.**  htpolynet-study scanned ten finished
-  builds.  Six contain a triazine with a bond passing through it, and the piercing bonds
-  *are* the stretched bonds: 15 stretched, 13 piercing, **zero pierce-only**.  A monomer
-  threaded through a triazine is trapped topologically, which explains every property
-  that made this puzzling --- why it is a bystander, why it survives a 160 ps anneal
-  unchanged to two decimals, and why it sits at ~700 kT without being thermal.  Escaping
-  needs a bond to break, not a barrier to be crossed.  "Network tension" was the right
-  intuition and the wrong picture.
-
-  **The direction is the part that matters for a fix.**  10 of 11 piercing bonds are
-  *pre-existing monomer backbone* bonds --- C2-O1, C1-O, C11-C8.  The triazine closes
-  **around** a monomer that was already there.  So the existing test is the wrong way
-  round: `TopoCoord.pierces_ring(i, j)` asks whether a new bond passes through an
-  existing ring, which is what CURE needs and what CURE calls
-  (`curecontroller.py` -> `bondtest_df` -> `bondtest` -> `pierces_ring`).  A ring cure
-  needs the converse --- reject a candidate ring whose closure would leave an existing
-  bond threaded through it --- and would not be helped by calling `pierces_ring` even if
-  it did, which it does not: `ringcontroller.py` has no reference to `bondtest`,
-  `pierces_ring`, `BTRC` or `linkcell` at all.  **The ring cure filters candidate rings
-  for nothing.**
-
-  **Implementation path, with the traps found while checking it.**  The geometry
-  primitive is reusable: `Ring(idx)` takes any list of global indices,
-  `injest_coordinates(A)` fits the plane, and `pierced_by(seg)` does the test.
-  `RingController._ring_atoms(bdf, triple)` already returns a triple's six atoms in
-  cyclic order.  Four things to know:
-
-  - Unwrap against an anchor atom, as `pierces_ring` does with
-    `r.unwrap(seg[0], pbc=...)`.  A centroid of raw wrapped coordinates gives about 15%
-    false positives, measured.
-  - `Ring.P` is filled by a DataFrame `isin` and so follows **ascending globalIdx, not
-    `idx` order**.  Do not index into it positionally.  Checked: the plane normal comes
-    out identical for cyclic and scrambled index order on a planar ring, so this does
-    not corrupt the test --- but it would bite anyone assuming `P[k]` is `idx[k]`.
-  - There is no linkcell during a ring cure.  `linkcell_initialize` is called only from
-    `CureController`, and `pierces_ring` asserts on a `linkcell_idx` column.  Either
-    initialize one or reuse the `cKDTree` that `candidate_triples` already builds.
-  - Test at **candidate** time, not after the closure ladder.  A threaded ring that is
-    declined late has already cost eight stages of restrained MD, and the groups have
-    already been dragged.
-
-  htpolynet-study has the scan working as `pierce_scan.py` (segment against ring-fan
-  triangles, minimum-image), which is the reference to port from rather than starting
-  over.
-
-  **This changes which rings form, so it changes every ring-cure result.**  That is the
-  reason it is written down here rather than simply done.
-
-  **Two earlier mechanisms, both wrong, and the evidence that retired them.**  Keep the
-  evidence: it is what the threading explanation has to account for, and it does.  It is not that the packer takes a dicyanate's
-  two arms into two different rings of one iteration — it can (`select_disjoint` packs
-  so no *group* repeats, and `reactive_sites` emits one row per (residue, group), so the
-  two arms are two distinct sites; `same_residue=False` only keeps them out of the same
-  ring) — and it is not that one arm is anchored while the other is dragged.  Diffing
-  the last two iteration topologies shows the stretched monomers are **bystanders**:
-  res 138 is not among ring3/r3's 35/123/348, and res 43 is not among ring4/r2's twelve.
-  Neither is in any ring formed that iteration.
-
-  htpolynet-study traced res 138's C5-C8 (r0 1.516) across every iteration: 1.51-1.62 A
-  through iteration 15, 2.965 A at 16, then 3.20-3.24 A for the remaining six.  At 3.2 A
-  it holds about 3,500 kJ/mol, roughly 700 kT at 600 K, so it cannot be sitting there
-  thermally — something holds it.  It need never touch the ring being closed.
-
-  Read against the threading result above, every one of those facts falls out: a
-  bystander is exactly what a threaded monomer is, the jump at one iteration is the
-  triazine closing around it, and 700 kT with no relaxation over six further iterations
-  is what a topological trap looks like rather than a force balance.
-
-  **It is in shipped output, annealing does not remove it, and it is common.**  Measured
-  on final, post-anneal structures — a full 160 ps anneal, far more than
-  `ring_cure.settle` — with minimum-image distances:
-
-        route                          builds carrying a stretched monomer
-        ring cure (2.11.0 / 2.11.1)    5 of 8, worst 3.20 A
-        A2+B3 surrogate                0 of 6
-
-  Three of the six surrogate builds were fresh rebuilds on the same binary as the ring
-  cure builds, so this is a **route difference, not a force-field or protocol artifact**.
-  Not one intra-residue bond over 2.0 A in any surrogate build.
-
-  The contrast within the ring-cure builds is as sharp: ring bonds relax, these do not.
-  ring3/r3's 3.20 A C5-C8 came through the whole anneal unchanged to two decimals, while
-  twelve and three overlong ring bonds in other builds went to zero.  A mild 2.38 A
-  monomer did relax.  So `ring_cure.settle` was never going to fix these — an earlier
-  version of this entry assumed it would, which was wrong, and finding that out is what
-  produced the post-anneal measurement.
-
-  Since 2.11.4 a build at least *says so*: `Runtime._report_overlong_bonds` warns at the
-  end of the ring cure and in the final data when any bond exceeds 0.2 nm, naming the
-  worst by atom and residue.  That is detection, not a fix.
-
-  **A hot, expanded box plausibly makes this worse, though that is not measured.**  An
-  expanded box thins the group concentration, the search widens sooner in response, and
-  a wider radius reaches monomers further apart --- the population this entry is about.
-  Raised by htpolynet-study 2026-09-24 and recorded as a mechanism to test rather than a
-  finding: every stretched-monomer inventory above predates the constant-pressure relax
-  stage, so nothing yet connects the two beyond plausibility.
-
-  **The cheapest experiment, and it needs no code.**  The ring cure restrains three
-  pairs per ring and walks them down together over `closure.nstages` stages (default 8),
-  many rings at once, while the surrogate forms one exocyclic bond at a time.  If the
-  stretch is the network being dragged faster than it can accommodate — kinetic trapping
-  rather than a real force balance — then raising `nstages` to 16 or 24 should lower the
-  rate, at proportionate cost in wall time and with no change to which rings form or to
-  any parameter.  That is a configuration sweep, and it distinguishes "pulled too fast"
-  from "pulled too far" before anyone writes a remedy.  Run it before the rest of this.
-
-  **If it is not kinetic**, the remaining options all change results, which is why none
-  has been taken: fewer rings per iteration, or a softer ladder, both of which change
-  which rings close; or a relief pass that restrains any flagged bond back toward its
-  equilibrium length and re-relaxes, which treats the symptom, may simply redistribute
-  the strain, and needs care not to move charges or break the network elsewhere.
-
-  **One anomaly, recorded and deliberately not used.**  htpolynet-study's table also
-  shows 3-4 *inter*-residue bonds over 2.0 A surviving the anneal in the ring1 and ring2
-  builds where ring3 and ring4 show zero, and since ring2/r3 is 2.11.1 like ring3 and
-  ring4, it is not a version effect.  Unexplained, flagged by them as not to be leaned
-  on, and noted here only so the next person does not rediscover it and assume it means
-  something.
 
 - **A ring cure that stalls near its target has no exit but `max_iterations`.**
   Reported by htpolynet-study 2026-09-23 from a 2.11.1 build: at conversion 0.97

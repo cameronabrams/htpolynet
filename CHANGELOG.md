@@ -63,6 +63,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   at closure.  Set `ring_cure.reject_threaded_rings: false` to reproduce the old
   behavior entirely.
 
+  **Measured across three arms, same image, no mdp override.**  Filtered builds came out
+  clean 4 of 4; unfiltered builds carried a pierced triazine and a stretched bond in 2
+  of 4, about one per build.  The filter's cost is one or two declined closures per
+  build and no conversion --- 0.971 to 0.983 in 21 to 23 iterations against 0.971 to
+  0.979 in 20 to 22 without it.
+
+  The closure-time test declines at the same rate the unfiltered builds pierce, one to
+  two per build against one per build, which is the check that it is catching real
+  events rather than over-rejecting.  The candidate-time prefilter, by contrast, threw
+  out 1216 to 1335 candidates per build to catch what the closure test catches with one
+  or two, and both arms finished equally clean --- which is why it stays off by
+  default.
+
 ### Fixed
 
 - **A ring cure ran at constant volume from first ring to last, so it could not
