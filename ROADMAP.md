@@ -353,7 +353,8 @@ Coverage as of the last measurement: **38.8%** overall.
 
 - **Properties measured before the threading filter may carry threaded rings.**  The
   filter shipped in 2.11.4; every build made before it could contain a triazine closed
-  around a monomer, which happened in 2 of 4 unfiltered builds at about one per build.
+  around a monomer, which happened in 2 of 4 unfiltered builds --- 4, 2, 0 and 0
+  piercings, a mean of 1.5 each.
   A threaded monomer is a permanent topological defect carrying a bond stretched past
   2 A, so it is not obvious that Tg, density or modulus from those builds are unbiased,
   and it is not obvious that they are biased either --- nobody has measured it.
