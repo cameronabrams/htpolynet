@@ -155,6 +155,136 @@ def candidate_triples(sites, positions, radius, box, same_molecule=False, same_r
     return out
 
 
+def _segment_pierces_triangle(p0, p1, a, b, c, eps=1e-12):
+    """Moller-Trumbore, restricted to a segment rather than an infinite ray."""
+    e1, e2, d = b - a, c - a, p1 - p0
+    h = np.cross(d, e2)
+    det = float(np.dot(e1, h))
+    if abs(det) < eps:
+        return False
+    inv = 1.0 / det
+    s = p0 - a
+    u = inv * float(np.dot(s, h))
+    if u < 0.0 or u > 1.0:
+        return False
+    q = np.cross(s, e1)
+    v = inv * float(np.dot(d, q))
+    if v < 0.0 or u + v > 1.0:
+        return False
+    t = inv * float(np.dot(e2, q))
+    return 0.0 < t < 1.0
+
+
+def ring_threading_bonds(ring, positions, bonds_of, box, margin=0.2):
+    """Existing bonds that pass through the loop a candidate ring would close.
+
+    The loop is triangulated as a fan from its centroid rather than treated as a plane,
+    because at candidate time it is not a triazine yet -- it is three reactive groups up
+    to a search radius apart, and markedly non-planar.
+
+    Testing it at this size is the right thing to do even though the ring ends up much
+    smaller.  Threading is topological: the closure ladder shrinks the loop continuously,
+    so a bond inside it stays inside and a bond outside cannot get in.  The test is
+    therefore asking the question at the moment the trap would be set.
+
+    Args:
+        ring (list): the six atoms of the prospective ring, in cyclic order
+        positions (dict): global atom index -> position, in nm
+        bonds_of (dict): global atom index -> list of (ai, aj) bonds it belongs to
+        box (array-like): box diagonal, in nm
+        margin (float): how far beyond the loop's own radius to look for bonds, in nm
+
+    Returns:
+        list: the (ai, aj) bonds found threading it
+    """
+    box = np.asarray(box, dtype=float)
+    anchor = np.asarray(positions[ring[0]], dtype=float)
+    # every point brought into the anchor's periodic image; a centroid of raw wrapped
+    # coordinates is what produces false positives here
+    P = np.array([anchor + _mic(np.asarray(positions[i], dtype=float) - anchor, box)
+                  for i in ring])
+    O = P.mean(axis=0)
+    reach = float(np.linalg.norm(P - O, axis=1).max()) + margin
+    ring_set = set(ring)
+
+    ids = np.fromiter(positions.keys(), dtype=int, count=len(positions))
+    pts = np.array([positions[i] for i in ids], dtype=float)
+    within = np.linalg.norm(_mic(pts - O, box), axis=1) <= reach
+    nearby = set()
+    for j in ids[within]:
+        if int(j) not in ring_set:
+            nearby.update(bonds_of.get(int(j), ()))
+
+    seen, out = set(), []
+    for ai, aj in nearby:
+        if ai in ring_set or aj in ring_set:
+            continue
+        key = (min(ai, aj), max(ai, aj))
+        if key in seen:
+            continue
+        seen.add(key)
+        p0 = anchor + _mic(np.asarray(positions[ai], dtype=float) - anchor, box)
+        # keep the bond contiguous: its far end is imaged against its near end
+        p1 = p0 + _mic(np.asarray(positions[aj], dtype=float)
+                       - np.asarray(positions[ai], dtype=float), box)
+        for k in range(len(P)):
+            if _segment_pierces_triangle(p0, p1, O, P[k], P[(k + 1) % len(P)]):
+                out.append((ai, aj))
+                break
+    return out
+
+
+def bonds_by_atom(bonds):
+    """Inverts a bond table into {atom: [(ai, aj), ...]}, for threading lookups."""
+    out = {}
+    for r in bonds.itertuples():
+        ai, aj = int(r.ai), int(r.aj)
+        out.setdefault(ai, []).append((ai, aj))
+        out.setdefault(aj, []).append((ai, aj))
+    return out
+
+
+def drop_threaded(candidates, sites, positions, bonds_of, box):
+    """Removes candidate rings that would close around an existing bond.
+
+    CURE refuses a bond that pierces a ring; the ring cure has the converse problem and
+    refused nothing.  Measured over ten builds: six carried a threaded triazine, and the
+    threading bonds were the same bonds found stretched past 2 A -- 15 stretched, 13
+    threading, none threading without being stretched.  10 of 11 were pre-existing
+    monomer backbones, so the ring closes around a monomer that was already there and
+    traps it.  It cannot relax out afterwards; escaping needs a bond to break.
+
+    Returns:
+        tuple: (kept candidates, number dropped)
+    """
+    if not bonds_of:
+        return candidates, 0
+    kept = []
+    dropped = 0
+    for cand in candidates:
+        ring = ring_atom_order(cand, sites)
+        if ring_threading_bonds(ring, positions, bonds_of, box):
+            dropped += 1
+            continue
+        kept.append(cand)
+    return kept, dropped
+
+
+def ring_atom_order(candidate, sites):
+    """The six atoms of a candidate ring, in cyclic order.
+
+    A triple is (score, order, bonds) with `order` the three groups in ring order; each
+    group contributes its donor and the acceptor that the previous group's donor reaches,
+    and a group's own donor and acceptor are already bonded to each other.
+    """
+    score, order, bonds = candidate
+    ring = []
+    for a, b in bonds:
+        ring.append(int(sites.at[a, 'donor']))
+        ring.append(int(sites.at[b, 'acceptor']))
+    return ring
+
+
 def select_disjoint(candidates, max_triples=0):
     """Chooses triples so that no group is used twice, shortest total bonds first.
 

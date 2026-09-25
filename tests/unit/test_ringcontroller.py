@@ -14,6 +14,8 @@ import pandas as pd
 
 from htpolynet.cure.ringcontroller import RingController, RingCureState, _triple_key
 
+from htpolynet.cure.triplesearch import bonds_by_atom
+
 from .test_triplesearch import BOX, triangle
 
 LOG = 'htpolynet.cure.ringcontroller'
@@ -376,3 +378,58 @@ class TestSettlingTheNetworkOnExit(unittest.TestCase):
     def test_a_caller_can_replace_the_stages(self):
         c = RingController({'settle': [{'ensemble': 'npt', 'temperature': 400}]})
         self.assertEqual(c.dicts['settle'], [{'ensemble': 'npt', 'temperature': 400}])
+
+
+class TestRejectingRingsThatWouldThreadAMonomer(unittest.TestCase):
+    """CURE refuses a new bond that pierces an existing ring.  The ring cure has the
+    converse problem -- a triazine closing AROUND a bond that is already there -- and
+    refused nothing.  Over ten builds, six carried a threaded triazine, and the
+    threading bonds were the same bonds found stretched past 2 A."""
+
+    def setup(self):
+        adf, pos = triangle(side=0.25)
+        c = RingController({'search_radius': 0.6})
+        c.setup(total_groups=3, max_radius=1.0)
+        return c, adf, pos
+
+    def through_the_middle(self, pos):
+        """A bond skewered through the centroid of the three groups."""
+        centre = np.mean(np.array(list(pos.values())), axis=0)
+        pos = dict(pos)
+        pos[901] = centre + np.array([0.0, 0.0, -0.4])
+        pos[902] = centre + np.array([0.0, 0.0, 0.4])
+        return pos, bonds_by_atom(pd.DataFrame([{'ai': 901, 'aj': 902}]))
+
+    def test_without_the_bond_table_the_ring_is_found(self):
+        c, adf, pos = self.setup()
+        with self.assertLogs(LOG, level='INFO'):
+            _, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),))
+        self.assertEqual(len(chosen), 1)
+
+    def test_a_ring_that_would_close_around_a_bond_is_rejected(self):
+        c, adf, pos = self.setup()
+        pos, bonds_of = self.through_the_middle(pos)
+        with self.assertLogs(LOG, level='INFO') as cm:
+            _, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),), bonds_of=bonds_of)
+        self.assertEqual(chosen, [])
+        self.assertIn('close around an existing bond', '\n'.join(cm.output))
+
+    def test_a_bond_that_misses_does_not_reject_it(self):
+        c, adf, pos = self.setup()
+        pos = dict(pos)
+        pos[901] = np.array([9.0, 9.0, 9.0])
+        pos[902] = np.array([9.0, 9.0, 9.4])
+        bonds_of = bonds_by_atom(pd.DataFrame([{'ai': 901, 'aj': 902}]))
+        with self.assertLogs(LOG, level='INFO'):
+            _, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),), bonds_of=bonds_of)
+        self.assertEqual(len(chosen), 1)
+
+    def test_the_check_can_be_turned_off(self):
+        # so a build can reproduce pre-2.11.4 behaviour for comparison
+        adf, pos = triangle(side=0.25)
+        c = RingController({'search_radius': 0.6, 'reject_threaded_rings': False})
+        c.setup(total_groups=3, max_radius=1.0)
+        pos, bonds_of = self.through_the_middle(pos)
+        with self.assertLogs(LOG, level='INFO'):
+            _, chosen = c.search(adf, pos, BOX, 'BCY', (('N1', 'C1'),), bonds_of=bonds_of)
+        self.assertEqual(len(chosen), 1)

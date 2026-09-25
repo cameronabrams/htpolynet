@@ -12,8 +12,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from htpolynet.cure.triplesearch import (candidate_triples, reactive_sites, residue_map,
-                                         select_disjoint, triple_bonds_dataframe)
+from htpolynet.cure.triplesearch import (bonds_by_atom, candidate_triples,
+                                         reactive_sites, residue_map,
+                                         ring_threading_bonds, select_disjoint,
+                                         triple_bonds_dataframe)
 
 BOX = np.array([10.0, 10.0, 10.0])
 
@@ -206,3 +208,64 @@ class TestBondTableAndResidueMap(unittest.TestCase):
     def test_a_template_of_the_wrong_size_is_refused(self):
         with pytest.raises(ValueError, match='residue'):
             residue_map(self.chosen, self.sites, [1, 2])
+
+
+class TestThreadingRejection(unittest.TestCase):
+    """A ring that closes around an existing bond threads that monomer through it for
+    good: 15 stretched bonds over ten builds, 13 of them threading, none threading
+    without being stretched.  10 of 11 were pre-existing monomer backbones, so the
+    triazine closes around a monomer that was already there."""
+
+    def hexagon(self, radius=1.0, z=0.0):
+        a = np.linspace(0, 2 * np.pi, 6, endpoint=False)
+        return {i + 1: np.array([radius * np.cos(t), radius * np.sin(t), z])
+                for i, t in enumerate(a)}
+
+    def bonds(self, pairs):
+        return bonds_by_atom(pd.DataFrame(pairs, columns=['ai', 'aj']))
+
+    def test_a_bond_through_the_middle_is_found(self):
+        pos = self.hexagon()
+        pos[7], pos[8] = np.array([0., 0., -0.5]), np.array([0., 0., 0.5])
+        found = ring_threading_bonds([1, 2, 3, 4, 5, 6], pos, self.bonds([(7, 8)]), BOX)
+        self.assertEqual(found, [(7, 8)])
+
+    def test_a_bond_beside_the_ring_is_not(self):
+        pos = self.hexagon()
+        pos[7], pos[8] = np.array([0.9, 0.9, -0.5]), np.array([0.9, 0.9, 0.5])
+        self.assertEqual(ring_threading_bonds([1, 2, 3, 4, 5, 6], pos,
+                                              self.bonds([(7, 8)]), BOX), [])
+
+    def test_a_bond_that_stops_short_does_not_thread(self):
+        # both endpoints on the same side: a segment, not an infinite ray
+        pos = self.hexagon()
+        pos[7], pos[8] = np.array([0., 0., 0.5]), np.array([0., 0., 1.5])
+        self.assertEqual(ring_threading_bonds([1, 2, 3, 4, 5, 6], pos,
+                                              self.bonds([(7, 8)]), BOX), [])
+
+    def test_the_ring_s_own_bonds_are_not_counted(self):
+        pos = self.hexagon()
+        self.assertEqual(ring_threading_bonds([1, 2, 3, 4, 5, 6], pos,
+                                              self.bonds([(1, 2), (3, 4)]), BOX), [])
+
+    def test_it_works_across_a_periodic_boundary(self):
+        # the same threaded arrangement, translated so the ring straddles the edge; a
+        # centroid of raw wrapped coordinates is what gives false positives here
+        pos = self.hexagon()
+        shift = np.array([BOX[0], 0.0, 0.0])
+        pos = {k: np.mod(v + shift * 0.5 + np.array([BOX[0] / 2, 0, 0]), BOX)
+               for k, v in pos.items()}
+        centre = np.array([0., 0., 0.]) + shift * 0.5 + np.array([BOX[0] / 2, 0, 0])
+        pos[7] = np.mod(centre + np.array([0., 0., -0.5]), BOX)
+        pos[8] = np.mod(centre + np.array([0., 0., 0.5]), BOX)
+        found = ring_threading_bonds([1, 2, 3, 4, 5, 6], pos, self.bonds([(7, 8)]), BOX)
+        self.assertEqual(found, [(7, 8)])
+
+    def test_a_non_planar_loop_still_works(self):
+        # at candidate time the loop is three groups a search radius apart, not a ring
+        pos = self.hexagon(radius=2.0)
+        for k in (2, 4, 6):
+            pos[k] = pos[k] + np.array([0., 0., 0.8])
+        pos[7], pos[8] = np.array([0., 0., -1.0]), np.array([0., 0., 1.4])
+        found = ring_threading_bonds([1, 2, 3, 4, 5, 6], pos, self.bonds([(7, 8)]), BOX)
+        self.assertEqual(found, [(7, 8)])

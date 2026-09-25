@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A ring cure now refuses a ring that would close around an existing bond.**  CURE
+  tests every candidate bond for piercing an existing ring; the ring cure has the
+  converse problem and tested nothing at all --- `ringcontroller.py` had no reference to
+  `bondtest`, `pierces_ring` or `BTRC`.  A triazine could therefore form *around* a
+  monomer that was already there and thread it permanently.
+
+  That is what the stretched monomers were.  Over ten finished builds, six carried a
+  threaded triazine, and the threading bonds are the same bonds found stretched past
+  2 A: 15 stretched, 13 threading, none threading without being stretched.  10 of 11
+  were pre-existing monomer backbone bonds.  It explains why those bonds sit on monomers
+  that took no part in the ring, why a 160 ps anneal left them unchanged to two
+  decimals, and why they hold roughly 700 kT without being thermal --- escaping a
+  topological trap needs a bond to break, not a barrier to be crossed.
+
+  The test runs at candidate time, before the closure ladder has spent eight stages
+  dragging the groups together, and treats the prospective ring as a triangle fan from
+  its centroid rather than as a plane, because at that point it is three reactive groups
+  a search radius apart rather than a ring.  Testing it at that size is the right
+  question: the ladder shrinks the loop continuously, so a bond inside it stays inside.
+  Coordinates are imaged against an anchor atom, since a centroid of raw wrapped
+  positions produces false positives across a periodic boundary.  Set
+  `ring_cure.reject_threaded_rings: false` to reproduce the old behavior.
+
 ### Fixed
 
 - **A ring cure ran at constant volume from first ring to last, so it could not

@@ -27,8 +27,8 @@ import yaml
 from ..analysis.plot import trace
 from ..core import projectfilesystem as pfs
 from ..core.productsplice import map_product_from_template
-from ..cure.triplesearch import (candidate_triples, reactive_sites, residue_map,
-                                 select_disjoint, site_name_maps)
+from ..cure.triplesearch import (candidate_triples, drop_threaded, reactive_sites,
+                                 residue_map, select_disjoint, site_name_maps)
 from ..external.gromacs import mdp_modify
 from ..repair.topology_surgery import neutralize_touched_fragments
 
@@ -94,6 +94,7 @@ class RingController:
         'desired_conversion': 0.95,
         'max_rings_per_iteration': 0,
         'min_rings_per_iteration': 4,
+        'reject_threaded_rings': True,
         'same_molecule': False,
         'same_residue': False,
         'relax': [{'ensemble': 'min'},
@@ -176,7 +177,7 @@ class RingController:
             floor = min(floor, int(self.dicts['max_rings_per_iteration']))
         return max(1, floor)
 
-    def search(self, adf, positions, box, resname, groups):
+    def search(self, adf, positions, box, resname, groups, bonds_of=None):
         """Finds and packs this iteration's rings, widening the radius until it has enough.
 
         Args:
@@ -185,6 +186,8 @@ class RingController:
             box (array-like): box diagonal
             resname (str): residue carrying the reactive groups
             groups (iterable): (donor, acceptor) atom-name pairs
+            bonds_of (dict): atom -> the bonds it belongs to, for threading rejection;
+                omit it to skip that check
 
         Returns:
             tuple: (sites, chosen) -- the groups considered and the rings accepted
@@ -195,6 +198,12 @@ class RingController:
             cands = candidate_triples(sites, positions, self.radius, box,
                                       same_molecule=self.dicts['same_molecule'],
                                       same_residue=self.dicts['same_residue'])
+            if self.dicts['reject_threaded_rings'] and bonds_of:
+                cands, threaded = drop_threaded(cands, sites, positions, bonds_of, box)
+                if threaded:
+                    logger.info(f'Iteration {self.state.iter}: rejected {threaded} '
+                                f'candidate ring(s) that would close around an existing '
+                                f'bond')
             allowed = self._drop_declined(cands, sites)
             chosen = select_disjoint(allowed, max_triples=self.dicts['max_rings_per_iteration'])
             passed = len(cands) - len(allowed)

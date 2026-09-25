@@ -32,7 +32,7 @@ from ..cure.reaction import (Reaction, ReactionList, parse_reaction_list, extrac
                              is_reactant, is_ring_closing, reaction_stage)
 from ..core.productsplice import nearer_site_atoms
 from ..cure.ringcontroller import RingController, RingCureState
-from ..cure.triplesearch import reactive_sites, triple_bonds_dataframe
+from ..cure.triplesearch import bonds_by_atom, reactive_sites, triple_bonds_dataframe
 from ..external import software as software
 from ..external.gromacs import insert_molecules, mdp_modify, mdp_get
 from ..external.smiles_input import materialize_smiles_inputs
@@ -695,7 +695,11 @@ class Runtime:
             adf = TC.Coordinates.A
             positions = {int(r.globalIdx): np.array([r.posX, r.posY, r.posZ])
                          for r in adf.itertuples()}
-            sites, chosen = rc.search(adf, positions, TC.Coordinates.box.diagonal(), resname, groups)
+            # a ring that closes around an existing bond threads that monomer through
+            # it for good; CURE refuses the mirror image of this and the ring cure did not
+            bonds_of = bonds_by_atom(TC.Topology.D['bonds'])
+            sites, chosen = rc.search(adf, positions, TC.Coordinates.box.diagonal(), resname,
+                                      groups, bonds_of=bonds_of)
             if not chosen:
                 if rc.widen():
                     break

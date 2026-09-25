@@ -821,6 +821,16 @@ attributes:
           min_bonds_per_iteration, counted in rings.  Clamped against the rings still
           needed to reach desired_conversion.
         default: 4
+      - name: reject_threaded_rings
+        type: bool
+        text: >
+          Refuse a candidate ring that would close around an existing bond.  CURE
+          refuses a new bond that pierces an existing ring; this is the converse, and
+          without it a triazine can form around a monomer that was already there and
+          trap it.  A threaded monomer cannot relax out -- escaping needs a bond to
+          break -- and it is the same monomer that then shows up stretched past 2 A in
+          the final structure.  Set false to reproduce pre-2.11.4 behavior.
+        default: true
       - name: same_molecule
         type: bool
         text: >
