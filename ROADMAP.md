@@ -351,8 +351,8 @@ Coverage as of the last measurement: **38.8%** overall.
   question is whether a short one converges at all or whether the barostat needs
   something like CURE's 100 ps --- which is the other thing the A/B will show.
 
-- **The closure ladder stretches some monomers' own backbones, and nothing prevents
-  it.**  Reported by htpolynet-study 2026-09-23 and reproduced across builds: an
+- **A ring cure applies no ring-pierce filter, and the stretched monomers are threaded
+  ones.**  Reported by htpolynet-study 2026-09-23 and reproduced across builds: an
   inventory of bonds beyond 2.0 A in the pre-anneal structure finds, besides the
   expected unrelaxed ring bonds, a small number of INTRA-residue bonds at 2.34 to
   3.20 A — a monomer whose own backbone has been pulled apart.  A ca-c3 at 3.201 A
@@ -371,8 +371,56 @@ Coverage as of the last measurement: **38.8%** overall.
   relieved by the same `ring_cure.settle` that 2.11.3 added for the rings, not another
   symptom of it.
 
-  **The mechanism is network tension, and it is longer-ranged than it looks.**  Two
-  guesses were tried and both are wrong.  It is not that the packer takes a dicyanate's
+  **SOLVED 2026-09-24: they are threaded.**  htpolynet-study scanned ten finished
+  builds.  Six contain a triazine with a bond passing through it, and the piercing bonds
+  *are* the stretched bonds: 15 stretched, 13 piercing, **zero pierce-only**.  A monomer
+  threaded through a triazine is trapped topologically, which explains every property
+  that made this puzzling --- why it is a bystander, why it survives a 160 ps anneal
+  unchanged to two decimals, and why it sits at ~700 kT without being thermal.  Escaping
+  needs a bond to break, not a barrier to be crossed.  "Network tension" was the right
+  intuition and the wrong picture.
+
+  **The direction is the part that matters for a fix.**  10 of 11 piercing bonds are
+  *pre-existing monomer backbone* bonds --- C2-O1, C1-O, C11-C8.  The triazine closes
+  **around** a monomer that was already there.  So the existing test is the wrong way
+  round: `TopoCoord.pierces_ring(i, j)` asks whether a new bond passes through an
+  existing ring, which is what CURE needs and what CURE calls
+  (`curecontroller.py` -> `bondtest_df` -> `bondtest` -> `pierces_ring`).  A ring cure
+  needs the converse --- reject a candidate ring whose closure would leave an existing
+  bond threaded through it --- and would not be helped by calling `pierces_ring` even if
+  it did, which it does not: `ringcontroller.py` has no reference to `bondtest`,
+  `pierces_ring`, `BTRC` or `linkcell` at all.  **The ring cure filters candidate rings
+  for nothing.**
+
+  **Implementation path, with the traps found while checking it.**  The geometry
+  primitive is reusable: `Ring(idx)` takes any list of global indices,
+  `injest_coordinates(A)` fits the plane, and `pierced_by(seg)` does the test.
+  `RingController._ring_atoms(bdf, triple)` already returns a triple's six atoms in
+  cyclic order.  Four things to know:
+
+  - Unwrap against an anchor atom, as `pierces_ring` does with
+    `r.unwrap(seg[0], pbc=...)`.  A centroid of raw wrapped coordinates gives about 15%
+    false positives, measured.
+  - `Ring.P` is filled by a DataFrame `isin` and so follows **ascending globalIdx, not
+    `idx` order**.  Do not index into it positionally.  Checked: the plane normal comes
+    out identical for cyclic and scrambled index order on a planar ring, so this does
+    not corrupt the test --- but it would bite anyone assuming `P[k]` is `idx[k]`.
+  - There is no linkcell during a ring cure.  `linkcell_initialize` is called only from
+    `CureController`, and `pierces_ring` asserts on a `linkcell_idx` column.  Either
+    initialize one or reuse the `cKDTree` that `candidate_triples` already builds.
+  - Test at **candidate** time, not after the closure ladder.  A threaded ring that is
+    declined late has already cost eight stages of restrained MD, and the groups have
+    already been dragged.
+
+  htpolynet-study has the scan working as `pierce_scan.py` (segment against ring-fan
+  triangles, minimum-image), which is the reference to port from rather than starting
+  over.
+
+  **This changes which rings form, so it changes every ring-cure result.**  That is the
+  reason it is written down here rather than simply done.
+
+  **Two earlier mechanisms, both wrong, and the evidence that retired them.**  Keep the
+  evidence: it is what the threading explanation has to account for, and it does.  It is not that the packer takes a dicyanate's
   two arms into two different rings of one iteration — it can (`select_disjoint` packs
   so no *group* repeats, and `reactive_sites` emits one row per (residue, group), so the
   two arms are two distinct sites; `same_residue=False` only keeps them out of the same
@@ -384,9 +432,12 @@ Coverage as of the last measurement: **38.8%** overall.
   htpolynet-study traced res 138's C5-C8 (r0 1.516) across every iteration: 1.51-1.62 A
   through iteration 15, 2.965 A at 16, then 3.20-3.24 A for the remaining six.  At 3.2 A
   it holds about 3,500 kJ/mol, roughly 700 kT at 600 K, so it cannot be sitting there
-  thermally — something holds it.  The monomer is covalently caught between parts of the
-  network that closure pulled apart, and stretches until the surrounding stiffness
-  balances.  It need never touch the ring being closed.
+  thermally — something holds it.  It need never touch the ring being closed.
+
+  Read against the threading result above, every one of those facts falls out: a
+  bystander is exactly what a threaded monomer is, the jump at one iteration is the
+  triazine closing around it, and 700 kT with no relaxation over six further iterations
+  is what a topological trap looks like rather than a force balance.
 
   **It is in shipped output, annealing does not remove it, and it is common.**  Measured
   on final, post-anneal structures — a full 160 ps anneal, far more than
