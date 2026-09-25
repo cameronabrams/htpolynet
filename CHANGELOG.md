@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A file of your own that replaces a packaged one now says so.**  `pfs.checkout`
+  searches the user library, then the user cache, then what htpolynet ships, and took
+  the first hit silently.  Overriding a packaged file is supported and often the point;
+  the trap is that a copy taken from an older version keeps that version's settings for
+  as long as it stays on the search path, and nothing said which file a run actually
+  used.
+
+  Found the hard way.  A study's `npt.mdp`, copied from 2.6.2 and edited in one place,
+  stayed on its path across four upgrades.  From 2.7.0 the packaged file sets
+  `lincs_order = 8`, because at `dt = 0.002` GROMACS' default of 4 is marginal --- it
+  was fatal on one chemistry in 7 of 7 builds, with exit codes 1 and 139.  The stale
+  copy reverted every run to order 4, and the instability that produced was written up
+  for weeks as a property of the systems being built.
+
+  **This bears on the 2.11.3 notes below.**  "Eleven of twenty builds died in the
+  anneal" is the rate from builds carrying that stale mdp, so it overstates what the
+  unrelaxed final batch alone causes.  The defect and the remedy are unaffected: the
+  bond energies entering the anneal are single-point energies of the structure and owe
+  nothing to integration settings, and the paired seed test showed the settle helping
+  even at LINCS order 4.  Only the headline failure rate is in doubt.
+
+
 - **A ring cure now refuses a ring that would close around an existing bond.**  CURE
   tests every candidate bond for piercing an existing ring; the ring cure has the
   converse problem and tested nothing at all --- `ringcontroller.py` had no reference to

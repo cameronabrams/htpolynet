@@ -472,8 +472,37 @@ def resolve_user_library(pathname, default='lib'):
     return default if os.path.isdir(default) else None
 
 
+def _note_if_shadowing(filename, source):
+    """Says so when a file of your own replaces one htpolynet ships.
+
+    Overriding a packaged file is supported and often the point.  The trap is that a
+    copy taken from an older version keeps that version's settings, silently, for as
+    long as it stays on the search path -- so a setting the packaged file has since
+    gained never reaches the run, and nothing says which file was used.
+
+    Seen 2026-09-24: an `npt.mdp` copied from 2.6.2 and edited in one place stayed on a
+    study's path across four upgrades.  From 2.7.0 the packaged file sets
+    ``lincs_order = 8``, because at ``dt = 0.002`` GROMACS' default of 4 is marginal and
+    was fatal on one chemistry in 7 of 7 builds.  The stale copy reverted every run to
+    order 4, and the resulting instability was written up for weeks as a property of the
+    systems being built.
+    """
+    try:
+        if _SYSTEM_LIBRARY_ and _SYSTEM_LIBRARY_._root.joinpath(filename).exists():
+            logger.warning(
+                f'{filename} was taken from your {source} and replaces the copy '
+                f'htpolynet ships.  That is supported -- but if it was copied from an '
+                f'older version it still carries that version\'s settings.  Compare it '
+                f'against the packaged file after any upgrade.')
+    except Exception:
+        pass
+
+
 def checkout(filename, altpath=[]):
     """Copies a file to cwd; searches user library, then user cache, then system library.
+
+    A file found in the user library or cache shadows the packaged one, and
+    :func:`_note_if_shadowing` says so, because a stale copy is otherwise invisible.
 
     Args:
         filename (str): path relative to library root
@@ -484,8 +513,10 @@ def checkout(filename, altpath=[]):
     """
     if _PFS_ and _PFS_.userlibrary and _PFS_.userlibrary.checkout(
             filename, searchpath=[_PFS_.rootPath, _PFS_.projPath], altpath=altpath):
+        _note_if_shadowing(filename, 'user library')
         return True
     if _USER_CACHE_.checkout(filename):
+        _note_if_shadowing(filename, 'user cache')
         return True
     return _SYSTEM_LIBRARY_.checkout(filename)
 
