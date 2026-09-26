@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.5] - 2026-09-26
+
 ### Fixed
 
 - **A ring cure relaxed and equilibrated against the wrong topology.**  Gromacs reads
