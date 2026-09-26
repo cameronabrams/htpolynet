@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.4] - 2026-09-26
+
 ### Added
 
 - **A file of your own that replaces a packaged one now says so.**  `pfs.checkout`
