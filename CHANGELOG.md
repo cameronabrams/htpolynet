@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A ring cure relaxed and equilibrated against the wrong topology.**  Gromacs reads
+  the topology from disk; `form_rings` changes it only in memory and writes nothing.
+  `close_rings` writes one per ladder stage, so after the rings were formed the newest
+  file on disk was still the *ladder* topology --- restraints in place at
+  `kb = 3e5`, and the new C-N bonds not yet present.  `relax` and `equilibrate` both
+  grompp'd against it.  Only `settle` and the ladder itself wrote what they ran.
+
+  Counted on one iteration of 89 rings: `ringclose-1-6.top` carries 267 type-6
+  restraints, exactly 3 per ring, and 11880 bonds; the post-formation `ring-1.top` has
+  0 restraints and 12147 bonds.  The command issued was
+  `grompp -c ringrelax-1-npt.gro -p ringclose-1-6.top` --- current coordinates against a
+  stale topology, because each mdrun refreshes the coordinate file and nothing refreshed
+  the topology.
+
+  So for the whole 100 ps equilibration the rings were held together by restraints
+  rather than bonded, with the ladder ending around 0.229 nm against its 0.150 nm
+  target, meaning those restraints were still loaded.  Successful runs carried a
+  Harmonic Pot. term of 2.1e5 kJ/mol throughout.  One failure reached 775 K in a 300 K
+  stage at -57429 bar with 1809 LINCS warnings, which is that restraint energy coming
+  out.
+
+  Every MD stage now writes the topology it is about to run.  **`relax` has had this
+  defect since the ring cure was introduced**, and `equilibrate` since 2.11.4, so box
+  and density traces from any ring-cure build to date are not trustworthy and need
+  re-measuring.  Conversion, ring counts and the threading filter are unaffected ---
+  all are decided before this stage runs.
+
+
 ## [2.11.4] - 2026-09-26
 
 ### Added

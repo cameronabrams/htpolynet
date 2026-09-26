@@ -9,6 +9,7 @@
 """
 import types
 import unittest
+from unittest import mock
 
 import numpy as np
 import pandas as pd
@@ -491,3 +492,65 @@ class TestTheAuthoritativeThreadingTestRunsAtClosure(unittest.TestCase):
         # it surveys many times the area that ends up enclosed, so it over-rejects
         self.assertFalse(RingController.defaults['prefilter_threaded_candidates'])
         self.assertTrue(RingController.defaults['reject_threaded_rings'])
+
+
+class TestEveryMDStageWritesItsTopologyFirst(unittest.TestCase):
+    """Gromacs reads the topology from disk, and `form_rings` changes it only in memory.
+    Until 2.11.5 `relax` and `equilibrate` wrote nothing, so both grompp'd against
+    whatever `close_rings` last wrote -- the ladder topology, restraints still loaded at
+    kb 3e5 and the ring bonds not yet formed.  One iteration showed 267 type-6
+    restraints (89 rings x 3) still present through 100 ps of NPT."""
+
+    def recorder(self):
+        """A TopoCoord stub that records the order of calls made against it."""
+        calls = []
+
+        class TC:
+            Coordinates = types.SimpleNamespace(
+                A=pd.DataFrame([{'globalIdx': 1, 'posX': 0.0, 'posY': 0.0, 'posZ': 0.0}]),
+                box=np.diag([5.0, 5.0, 5.0]))
+            Topology = types.SimpleNamespace(D={'bonds': pd.DataFrame(columns=['ai', 'aj'])})
+
+            @staticmethod
+            def write_top(fn):
+                calls.append(('write_top', fn))
+
+            @staticmethod
+            def write_gro(fn):
+                calls.append(('write_gro', fn))
+
+            @staticmethod
+            def grompp_and_mdrun(**kw):
+                calls.append(('mdrun', kw.get('out')))
+
+            @staticmethod
+            def equilibrate(deffnm=None, **kw):
+                calls.append(('mdrun', deffnm))
+                return []
+
+        return TC(), calls
+
+    def test_relax_writes_the_topology_before_running(self):
+        c = RingController({'relax': [{'ensemble': 'min'}]})
+        TC, calls = self.recorder()
+        with mock.patch.object(RingController, '_run_stages',
+                               lambda self, tc, deffnm, st, gd: calls.append(('mdrun', deffnm))):
+            with self.assertLogs(LOG, level='INFO'):
+                c.relax(TC)
+        self.assertEqual([k for k, _ in calls], ['write_top', 'write_gro', 'mdrun'])
+
+    def test_equilibrate_writes_the_topology_before_running(self):
+        c = RingController({})
+        TC, calls = self.recorder()
+        with self.assertLogs(LOG, level='INFO'):
+            c.equilibrate(TC)
+        self.assertEqual([k for k, _ in calls][:3], ['write_top', 'write_gro', 'mdrun'])
+
+    def test_settle_still_does_too(self):
+        c = RingController({})
+        TC, calls = self.recorder()
+        with mock.patch.object(RingController, '_run_stages',
+                               lambda self, tc, deffnm, st, gd: calls.append(('mdrun', deffnm))):
+            with self.assertLogs(LOG, level='INFO'):
+                c.settle(TC)
+        self.assertEqual([k for k, _ in calls], ['write_top', 'write_gro', 'mdrun'])

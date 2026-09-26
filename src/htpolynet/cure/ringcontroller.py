@@ -423,6 +423,12 @@ class RingController:
     def relax(self, TC, gromacs_dict=None):
         """Eases a freshly closed ring's bonds in, and lets the box respond.
 
+        Writes the topology first, as every stage here must: Gromacs reads it from disk,
+        and :meth:`form_rings` changes it only in memory.  Until 2.11.5 this stage and
+        :meth:`equilibrate` both ran against whatever :meth:`close_rings` last wrote --
+        the ladder topology, with its restraints still loaded and the ring bonds not yet
+        formed.
+
         A ring bond is formed at whatever length the closure ladder reached, a good way
         short of the 1.34 A it wants, so the system is strained the moment the bonds
         exist.  CURE relaxes its new bonds for the same reason; without it here, the
@@ -449,6 +455,11 @@ class RingController:
             TC (TopoCoord): the system
             gromacs_dict (dict): gromacs directives
         """
+        # form_rings changed the topology in memory and wrote nothing, so without this
+        # the run grompps against the last file on disk -- the ladder topology, whose
+        # restraints are still in place and whose ring bonds do not exist yet
+        TC.write_top(f'ringrelax-{self.state.iter}.top')
+        TC.write_gro(f'ringrelax-{self.state.iter}.gro')
         self._run_stages(TC, f'ringrelax-{self.state.iter}', self.dicts['relax'],
                          gromacs_dict or {})
         logger.info(f'Iteration {self.state.iter}: new ring bonds relaxed')
@@ -494,6 +505,10 @@ class RingController:
         d = self.dicts['equilibrate']
         if not d:
             return []
+        # as in relax: grompp reads the topology from disk, so it has to be the one
+        # with the rings bonded and the restraints gone
+        TC.write_top(f'ringequil-{self.state.iter}.top')
+        TC.write_gro(f'ringequil-{self.state.iter}.gro')
         edr_list = TC.equilibrate(deffnm=f'ringequil-{self.state.iter}', edict=d,
                                   gromacs_dict=gromacs_dict or {}) or []
         if d.get('ensemble') == 'npt' and edr_list:
