@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The box and density figures in the 2.11.5 and 2.11.4 notes below are retracted.**
+  Both releases quote traces --- +27.9% in volume, path 0.4104 nm, a two-regime
+  expansion and contraction --- produced by `relax` and `equilibrate` running against
+  the ladder topology, which is the defect 2.11.5 fixes.  The box was responding to a
+  restrained, unbonded system, so those numbers describe nothing real and should not be
+  requoted.  They are left in place rather than rewritten, because the releases went out
+  with them.
+
+  What survives unaffected: conversion, ring counts and iteration counts, which are
+  decided before those stages run; the threading filter's validation; the constant-volume
+  control, since NVT cannot move the box whatever topology it reads; and every
+  measurement from the pairwise route, which writes its topology correctly.
+
+
 ## [2.11.5] - 2026-09-26
 
 ### Fixed

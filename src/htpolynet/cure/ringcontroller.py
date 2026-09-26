@@ -478,7 +478,11 @@ class RingController:
         only ever grows.  Measured with `relax` alone and no equilibration, a ring cure's
         box expands thermally for six iterations to +28% in volume and then comes back
         down as the network forms, the two legs nearly cancelling: path 0.4104 nm for a
-        net of -0.0038 nm.  A cure is not just shrinkage -- the hot stages enlarge the
+        net of -0.0038 nm.  Those figures are RETRACTED as of 2.11.5 --- they were
+        produced by this stage and :meth:`relax` running against the ladder topology,
+        restraints loaded and rings unbonded, so the box was responding to the wrong
+        system.  They are left here only because the shape of the argument survives:
+        a cure is not just shrinkage.  A cure is not just shrinkage -- the hot stages enlarge the
         box and the cold stage pulls it back -- which is why path length rather than net
         is the statistic to look at, and why the surrogate route travels three to nine
         times further in box length than it ends up moving.

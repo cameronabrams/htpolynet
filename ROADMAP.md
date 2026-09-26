@@ -235,10 +235,12 @@ Coverage as of the last measurement: **38.8%** overall.
   is the only part that is repo work; it is small, and everything else depends on it.
 
   *1. Convergence audit.*  One CURE build and one ring-cure build at stock settings.
-  One data point already exists and it cuts against the cheap end of the range: 2 ps of
-  NPT per iteration does not converge a ring cure's box at all (see the constant-volume
-  entry above), so the audit should expect the answer to be tens of ps rather than
-  single digits, and should sample within a stage rather than only at its end.
+  There was a data point here --- that 2 ps of NPT per iteration does not converge a
+  ring cure's box --- but it is retracted with the rest of those traces (see the
+  constant-volume entry), because the stage that produced it was running against a
+  restrained, unbonded topology.  The audit therefore has no prior to lean on at the
+  cheap end, which is an argument for running it rather than against.  Sample within a
+  stage, not only at its end.
   For each stage ask a single question: at what fraction of its length does the
   observable stop changing?  A 100 ps equilibration whose density plateaus at 20 ps is
   five times longer than it needs to be, and that is measurable once, cheaply, rather
@@ -289,6 +291,19 @@ Coverage as of the last measurement: **38.8%** overall.
   cheaper one.  The A/B measuring whether it suffices is what should settle this; 100 ps
   per iteration against a 150-iteration cap is not a cost to take on speculatively.
 
+  > **RETRACTED 2026-09-26 --- every box and density number below is contaminated.**
+  > Until 2.11.5, a ring cure's `relax` and `equilibrate` grompp'd against the topology
+  > `close_rings` last wrote: restraints loaded at `kb = 3e5`, ring bonds not yet formed.
+  > So every trace here is the box responding to a restrained, unbonded system rather
+  > than to the network. Re-measure on 2.11.5 or later before quoting any of it.
+  >
+  > **Still good:** the frozen control at 5.2405 / 1155.9, because NVT cannot move the
+  > box whatever topology it reads; the surrogate box-breathing table further down,
+  > because the pairwise route writes its topology correctly
+  > (`curecontroller.py` writes gro and top after `update_topology_and_coordinates`, and
+  > a topology per relax stage); and conversion, ring counts and iteration counts, which
+  > are decided before these stages run.
+
   **MEASURED 2026-09-24, and the cheap shape is not enough.**  A two-arm A/B, both arms
   on the same pinned image, differing only in the relax stage list:
 
@@ -331,8 +346,9 @@ Coverage as of the last measurement: **38.8%** overall.
   Cameron's instruction to match what the binary cures already do, are what the cold
   equilibration rests on --- not on hot-only being worse, which it is not.
 
-  What the widening actually tracks is **concentration**, which is worth knowing on its
-  own.  Both arms widened for the first time at the same iteration, on the same trigger
+  What the widening actually tracks is **concentration** --- worth knowing on its own,
+  though the two numbers below divide by box volumes from the retracted traces above and
+  need re-deriving, even if the equality between arms is likely to survive it.  Both arms widened for the first time at the same iteration, on the same trigger
   of two candidates against a floor of four, from very different states: 315 unreacted
   groups in a 192.6 nm3 box against 237 in a 143.7 nm3 box --- 1.6352 and 1.6489 groups
   per nm3, within 0.9% of each other, while the arms sat 0.09 apart in conversion and
