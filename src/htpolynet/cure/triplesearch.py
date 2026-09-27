@@ -238,6 +238,57 @@ def ring_threading_bonds(ring, positions, bonds_of, box, margin=0.3):
     return out
 
 
+def rings_threaded_by(bond_pairs, ring_atom_lists, positions, box, margin=0.3):
+    """Which of `ring_atom_lists` each of `bond_pairs` passes through.
+
+    The mirror of :func:`ring_threading_bonds`: there a prospective ring is tested
+    against the bonds around it, here existing rings are tested against bonds that have
+    just been moved.  A ring cure needs both, because dragging three monomers together
+    can push one of their own backbones through a ring that was already there --- a
+    phenyl, usually, since those outnumber triazines about six to one in these systems.
+
+    Args:
+        bond_pairs (iterable): (ai, aj) bonds to test
+        ring_atom_lists (iterable): existing rings, each a list of atoms in cyclic order
+        positions (dict): global atom index -> position, in nm
+        box (array-like): box diagonal, in nm
+        margin (float): how far beyond a ring's own radius to consider a bond, in nm
+
+    Returns:
+        set: (ring key, bond) pairs found threaded, where the ring key is its sorted
+            atom tuple so the result can be compared between two moments in time
+    """
+    box = np.asarray(box, dtype=float)
+    out = set()
+    pairs = [(int(a), int(b)) for a, b in bond_pairs]
+    for ring in ring_atom_lists:
+        ring = [int(x) for x in ring]
+        if any(i not in positions for i in ring):
+            continue
+        anchor = np.asarray(positions[ring[0]], dtype=float)
+        P = np.array([anchor + _mic(np.asarray(positions[i], dtype=float) - anchor, box)
+                      for i in ring])
+        O = P.mean(axis=0)
+        reach = float(np.linalg.norm(P - O, axis=1).max()) + margin
+        ring_set = set(ring)
+        key = tuple(sorted(ring))
+        for ai, aj in pairs:
+            if ai in ring_set or aj in ring_set:
+                continue
+            if ai not in positions or aj not in positions:
+                continue
+            p0 = anchor + _mic(np.asarray(positions[ai], dtype=float) - anchor, box)
+            if float(np.linalg.norm(p0 - O)) > reach + margin:
+                continue
+            p1 = p0 + _mic(np.asarray(positions[aj], dtype=float)
+                           - np.asarray(positions[ai], dtype=float), box)
+            for k in range(len(P)):
+                if _segment_pierces_triangle(p0, p1, O, P[k], P[(k + 1) % len(P)]):
+                    out.add((key, (min(ai, aj), max(ai, aj))))
+                    break
+    return out
+
+
 def bonds_by_atom(bonds):
     """Inverts a bond table into {atom: [(ai, aj), ...]}, for threading lookups."""
     out = {}

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A ring cure now refuses a closure that threads a ring already present, and registers
+  the rings it makes.**  Two halves of one gap.
+
+  `reject_threaded_rings`, added in 2.11.4, asks whether a *new* ring would close around
+  an existing bond.  It does not ask the converse --- whether dragging three monomers
+  together has run one of *their* bonds through a ring that was already there.  Over ten
+  builds htpolynet-study found that second kind is mostly phenyls, which outnumber
+  triazines about six to one here, and that two of three were made by the cure rather
+  than by packing: one appeared in the same iteration as a triazine piercing, which is
+  what identifies the two as a single event.  `reject_new_threading` closes it.
+
+  Only threadings the ladder *creates* count.  The participating monomers are surveyed
+  before the closure ladder and again after it, so a monomer that arrived from packing
+  already threaded is not silently refused every reaction for the rest of the build ---
+  one of those exists in their data.
+
+  The second half is that **`Topology.rings` never contained a cure-formed ring.**
+  `detect_rings()` runs once per molecule template and the list is replicated at system
+  build; nothing updated it afterwards, and the product splice did not register the
+  triazine it creates.  So every ring the ring cure ever made was invisible to every
+  ring-aware check in htpolynet --- including CURE's own `pierces_ring`, which means a
+  pairwise crosslink could thread a previously formed triazine with nothing noticing.
+  `form_rings` now registers each ring as it makes it.
+
+  No evidence yet that threading of either kind measurably affects Tg or density; the
+  case for both filters is mechanism, not measured harm.  Set
+  `ring_cure.reject_new_threading: false` to reproduce the old behavior.
+
+
 ### Changed
 
 - **The box and density figures in the 2.11.5 and 2.11.4 notes below are retracted.**

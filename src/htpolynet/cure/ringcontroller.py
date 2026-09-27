@@ -27,9 +27,10 @@ import yaml
 from ..analysis.plot import trace
 from ..core import projectfilesystem as pfs
 from ..core.productsplice import map_product_from_template
-from ..cure.triplesearch import (bonds_by_atom, candidate_triples, drop_threaded,
+from ..cure.triplesearch import (_mic, bonds_by_atom, candidate_triples, drop_threaded,
                                  reactive_sites, residue_map, ring_threading_bonds,
-                                 select_disjoint, site_name_maps)
+                                 rings_threaded_by, select_disjoint, site_name_maps)
+from ..geometry.ring import Ring
 from ..external.gromacs import mdp_modify
 from ..repair.topology_surgery import neutralize_touched_fragments
 
@@ -112,6 +113,7 @@ class RingController:
         'min_rings_per_iteration': 4,
         'reject_threaded_rings': True,
         'prefilter_threaded_candidates': False,
+        'reject_new_threading': True,
         'same_molecule': False,
         'same_residue': False,
         'relax': [{'ensemble': 'min'},
@@ -420,6 +422,110 @@ class RingController:
             keep.append(n)
         return self._keep_rings(bdf, chosen, keep)
 
+    def _system_rings(self, TC, positions, box):
+        """The system's known rings, with a centroid each for cheap proximity filtering.
+
+        ``Topology.rings`` is built once per molecule template and replicated; nothing
+        updates it during a cure, which is why :meth:`form_rings` now registers each
+        triazine it makes.  Before that it held only the rings monomers were built with
+        --- overwhelmingly phenyls.
+        """
+        out = []
+        for r in getattr(TC.Topology, 'rings', []) or []:
+            idx = [int(x) for x in r.idx]
+            if len(idx) < 3 or any(i not in positions for i in idx):
+                continue
+            anchor_pos = positions[idx[0]]
+            pts = np.array([anchor_pos + _mic(positions[i] - anchor_pos, box) for i in idx])
+            out.append((idx, pts.mean(axis=0)))
+        return out
+
+    def threading_census(self, TC, bdf, chosen):
+        """What the participating monomers' bonds already thread, per candidate ring.
+
+        Taken before the closure ladder and again after it, so only threadings the drag
+        *created* count against a candidate.  Without the before-picture a monomer that
+        arrived from packing already threaded through a phenyl would be refused every
+        reaction forever, silently, and htpolynet-study found one of those.
+
+        Returns:
+            dict: triple number -> set of (ring key, bond) currently threaded
+        """
+        if not self.dicts['reject_new_threading'] or not chosen or bdf.empty:
+            return {}
+        A = TC.Coordinates.A
+        positions = {int(r.globalIdx): np.array([r.posX, r.posY, r.posZ])
+                     for r in A.itertuples()}
+        box = np.asarray(TC.Coordinates.box.diagonal(), dtype=float)
+        rings = self._system_rings(TC, positions, box)
+        if not rings:
+            return {}
+        centroids = np.array([c for _, c in rings])
+        bonds_of = bonds_by_atom(TC.Topology.D['bonds'])
+        res_atoms = {}
+        for r in A.itertuples():
+            res_atoms.setdefault(int(r.resNum), []).append(int(r.globalIdx))
+
+        census = {}
+        for t in sorted(set(int(x) for x in bdf['triple'])):
+            rows = bdf[bdf['triple'] == t]
+            resids = {int(x) for x in rows['ri']} | {int(x) for x in rows['rj']}
+            atoms = [a for rn in resids for a in res_atoms.get(rn, []) if a in positions]
+            if not atoms:
+                continue
+            pts = np.array([positions[a] for a in atoms])
+            here = pts.mean(axis=0)
+            span = float(np.linalg.norm(_mic(pts - here, box), axis=1).max())
+            near = np.linalg.norm(_mic(centroids - here, box), axis=1) <= span + 1.0
+            bonds = set()
+            for a in atoms:
+                bonds.update(bonds_of.get(a, ()))
+            census[t] = rings_threaded_by(bonds,
+                                          [rings[i][0] for i in np.flatnonzero(near)],
+                                          positions, box)
+        return census
+
+    def reject_new_threading(self, TC, bdf, chosen, before):
+        """Drops a ring whose closure ladder pushed a monomer through an existing ring.
+
+        :meth:`reject_threaded` asks whether the new ring would close around a bond.
+        This asks the converse: whether dragging these three monomers together has run
+        one of *their* bonds through a ring that was already there.  Both happen.
+        htpolynet-study scanned ten builds and found the second kind is mostly phenyls,
+        which outnumber triazines about six to one here, and that two of three were made
+        by the cure rather than by packing -- one appearing in the same iteration as a
+        triazine piercing, which is what identifies it as one event.
+
+        Declining does not itself pull the monomer back out.  What it prevents is the
+        threading being made permanent: without the ring bonds the dragged monomers have
+        nothing holding them, and the relaxation that follows can undo what the
+        restraints did.
+
+        Args:
+            TC (TopoCoord): the system
+            bdf (pandas.DataFrame): this iteration's bonds, three rows per ring
+            chosen (list): the rings still standing
+            before (dict): the census taken before the ladder
+
+        Returns:
+            tuple: (bdf, chosen) without the rings that created a threading
+        """
+        if not self.dicts['reject_new_threading'] or not chosen:
+            return bdf, chosen
+        after = self.threading_census(TC, bdf, chosen)
+        keep = []
+        for n in range(len(chosen)):
+            created = after.get(n, set()) - before.get(n, set())
+            if created:
+                ring_key, bond = sorted(created)[0]
+                logger.info(f'Iteration {self.state.iter}: declining a ring whose closure '
+                            f'pulled bond {bond[0]}-{bond[1]} through the existing '
+                            f'{len(ring_key)}-ring at {ring_key[0]}; that monomer would be '
+                            f'threaded for good once the ring formed')
+                continue
+            keep.append(n)
+        return self._keep_rings(bdf, chosen, keep)
+
     def relax(self, TC, gromacs_dict=None):
         """Eases a freshly closed ring's bonds in, and lets the box respond.
 
@@ -609,6 +715,10 @@ class RingController:
             touched.update(stats['atoms'])
         # the splice replaces charges wholesale over three residues at a time, so the
         # molecules it touched have to be brought back to neutral
+        # Topology.rings is template-derived and nothing else updates it, so a triazine
+        # formed here is invisible to every ring-aware check until it is registered
+        for n in range(len(chosen)):
+            TC.Topology.rings.append(Ring(_ring_atoms(bdf, n)))
         neutralize_touched_fragments(TC, touched)
         for r in bdf.itertuples():
             for idx in (int(r.ai), int(r.aj)):

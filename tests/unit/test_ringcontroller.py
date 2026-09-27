@@ -554,3 +554,110 @@ class TestEveryMDStageWritesItsTopologyFirst(unittest.TestCase):
             with self.assertLogs(LOG, level='INFO'):
                 c.settle(TC)
         self.assertEqual([k for k, _ in calls], ['write_top', 'write_gro', 'mdrun'])
+
+
+class TestRejectingARingThatThreadsAnExistingOne(unittest.TestCase):
+    """`reject_threaded` asks whether a new ring closes around a bond.  This asks the
+    converse: whether dragging three monomers together ran one of THEIR bonds through a
+    ring already present.  Over ten builds that second kind was mostly phenyls, which
+    outnumber triazines about six to one, and two of three were made by the cure."""
+
+    def system(self, bond_through=True):
+        """A phenyl at the origin, and a monomer bond either through it or clear of it."""
+        ang = np.linspace(0, 2 * np.pi, 6, endpoint=False)
+        pos = {i + 1: np.array([0.14 * np.cos(t), 0.14 * np.sin(t), 0.0])
+               for i, t in enumerate(ang)}
+        # the candidate ring's own six atoms, far away and irrelevant to this test
+        for k in range(11, 17):
+            pos[k] = np.array([3.0 + 0.02 * k, 3.0, 3.0])
+        # a bond belonging to residue 7, one of the participating monomers
+        pos[21] = np.array([0.0, 0.0, -0.07]) if bond_through else np.array([2.0, 2.0, -0.07])
+        pos[22] = np.array([0.0, 0.0, 0.07]) if bond_through else np.array([2.0, 2.0, 0.07])
+        rows = []
+        for k in sorted(pos):
+            resnum = 1 if k <= 6 else (7 if k >= 21 else 8)
+            rows.append({'globalIdx': k, 'posX': pos[k][0], 'posY': pos[k][1],
+                         'posZ': pos[k][2], 'resNum': resnum})
+        A = pd.DataFrame(rows)
+        rings = [types.SimpleNamespace(idx=[1, 2, 3, 4, 5, 6])]
+        bonds = pd.DataFrame([{'ai': 21, 'aj': 22}])
+        TC = types.SimpleNamespace(
+            Coordinates=types.SimpleNamespace(A=A, box=np.diag([10.0, 10.0, 10.0])),
+            Topology=types.SimpleNamespace(D={'bonds': bonds}, rings=rings))
+        bdf = pd.DataFrame([{'ai': 11, 'aj': 12, 'ri': 7, 'rj': 7, 'triple': 0},
+                            {'ai': 13, 'aj': 14, 'ri': 7, 'rj': 7, 'triple': 0},
+                            {'ai': 15, 'aj': 16, 'ri': 7, 'rj': 7, 'triple': 0}])
+        return TC, bdf, [object()]
+
+    def test_a_threading_the_ladder_created_is_declined(self):
+        c = RingController({})
+        clear_TC, bdf, chosen = self.system(bond_through=False)
+        before = c.threading_census(clear_TC, bdf, chosen)
+        self.assertEqual(before[0], set())
+        threaded_TC, _, _ = self.system(bond_through=True)
+        with self.assertLogs(LOG, level='INFO') as cm:
+            out_b, out_c = c.reject_new_threading(threaded_TC, bdf, chosen, before)
+        self.assertEqual(out_c, [])
+        self.assertIn('through the existing 6-ring', '\n'.join(cm.output))
+
+    def test_a_threading_that_was_already_there_is_not_blamed_on_the_cure(self):
+        # a monomer that arrived from packing already threaded must not be refused
+        # every reaction forever
+        c = RingController({})
+        TC, bdf, chosen = self.system(bond_through=True)
+        before = c.threading_census(TC, bdf, chosen)
+        self.assertEqual(len(before[0]), 1)
+        _, out_c = c.reject_new_threading(TC, bdf, chosen, before)
+        self.assertEqual(len(out_c), 1)
+
+    def test_a_clean_closure_is_kept(self):
+        c = RingController({})
+        TC, bdf, chosen = self.system(bond_through=False)
+        before = c.threading_census(TC, bdf, chosen)
+        _, out_c = c.reject_new_threading(TC, bdf, chosen, before)
+        self.assertEqual(len(out_c), 1)
+
+    def test_it_can_be_turned_off(self):
+        c = RingController({'reject_new_threading': False})
+        TC, bdf, chosen = self.system(bond_through=True)
+        self.assertEqual(c.threading_census(TC, bdf, chosen), {})
+        _, out_c = c.reject_new_threading(TC, bdf, chosen, {})
+        self.assertEqual(len(out_c), 1)
+
+
+class TestARingIsRegisteredWhenItIsMade(unittest.TestCase):
+    """`Topology.rings` is built once per molecule template and replicated; nothing
+    updated it during a cure, so every triazine the ring cure made was invisible to
+    every ring-aware check in htpolynet, including CURE's own `pierces_ring`."""
+
+    def test_form_rings_registers_each_ring_it_makes(self):
+        from htpolynet.cure.ringcontroller import _ring_atoms
+        bdf = pd.DataFrame([{'ai': 1, 'aj': 2, 'triple': 0},
+                            {'ai': 3, 'aj': 4, 'triple': 0},
+                            {'ai': 5, 'aj': 6, 'triple': 0},
+                            {'ai': 7, 'aj': 8, 'triple': 1},
+                            {'ai': 9, 'aj': 10, 'triple': 1},
+                            {'ai': 11, 'aj': 12, 'triple': 1}])
+        self.assertEqual(_ring_atoms(bdf, 0), [1, 2, 3, 4, 5, 6])
+        self.assertEqual(_ring_atoms(bdf, 1), [7, 8, 9, 10, 11, 12])
+
+    def test_a_registered_ring_is_then_visible_to_the_threading_census(self):
+        # the point of registering: a later drag that threads THIS ring can be seen
+        c = RingController({})
+        ang = np.linspace(0, 2 * np.pi, 6, endpoint=False)
+        pos = {i + 1: np.array([0.14 * np.cos(t), 0.14 * np.sin(t), 0.0])
+               for i, t in enumerate(ang)}
+        pos[21] = np.array([0.0, 0.0, -0.07])
+        pos[22] = np.array([0.0, 0.0, 0.07])
+        A = pd.DataFrame([{'globalIdx': k, 'posX': v[0], 'posY': v[1], 'posZ': v[2],
+                           'resNum': 1 if k <= 6 else 7} for k, v in sorted(pos.items())])
+        TC = types.SimpleNamespace(
+            Coordinates=types.SimpleNamespace(A=A, box=np.diag([10.0, 10.0, 10.0])),
+            Topology=types.SimpleNamespace(D={'bonds': pd.DataFrame([{'ai': 21, 'aj': 22}])},
+                                           rings=[]))
+        bdf = pd.DataFrame([{'ai': 21, 'aj': 22, 'ri': 7, 'rj': 7, 'triple': 0}])
+        # with no rings registered the census sees nothing
+        self.assertEqual(c.threading_census(TC, bdf, [object()]), {})
+        # register the triazine, and the same geometry is now a threading
+        TC.Topology.rings = [types.SimpleNamespace(idx=[1, 2, 3, 4, 5, 6])]
+        self.assertEqual(len(c.threading_census(TC, bdf, [object()])[0]), 1)

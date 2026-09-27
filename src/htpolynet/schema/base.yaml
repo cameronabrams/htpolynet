@@ -832,6 +832,17 @@ attributes:
           monomer that shows up stretched past 2 A in the final structure.  Set false
           to reproduce pre-2.11.4 behavior.
         default: true
+      - name: reject_new_threading
+        type: bool
+        text: >
+          Refuse a ring whose closure ladder dragged one of its own monomers' bonds
+          through a ring that was already there.  The converse of
+          `reject_threaded_rings`, and mostly a different population: phenyls
+          outnumber triazines about six to one in these systems.  Only threadings the
+          ladder creates count -- the same monomers are surveyed before and after it,
+          so one that arrived from packing already threaded is not refused every
+          reaction forever.  Set false to reproduce pre-2.11.6 behavior.
+        default: true
       - name: prefilter_threaded_candidates
         type: bool
         text: >

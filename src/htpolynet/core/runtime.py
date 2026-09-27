@@ -706,11 +706,15 @@ class Runtime:
                 rc.state.iter += 1
                 continue
             bdf = triple_bonds_dataframe(chosen, sites, R.product, order=R.bonds[0].get('order', 1))
+            # what these monomers already thread, so only what the ladder creates counts
+            before_threading = rc.threading_census(TC, bdf, chosen)
             work = rc.close_rings(TC, bdf, gromacs_dict=gromacs_dict)
             # a ring the ladder could not pull shut would be bonded long and stay that way
             bdf, chosen = rc.accept(bdf, work, chosen)
             # now that the loop is nearly ring-sized, ask what it actually encloses
             bdf, chosen = rc.reject_threaded(TC, bdf, chosen)
+            # and the converse: did the drag push one of their own bonds through a ring
+            bdf, chosen = rc.reject_new_threading(TC, bdf, chosen, before_threading)
             if not chosen:
                 rc.state.iter += 1
                 continue
