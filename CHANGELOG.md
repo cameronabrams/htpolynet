@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.6] - 2026-09-27
+
 ### Added
 
 - **A ring cure now refuses a closure that threads a ring already present, and registers
