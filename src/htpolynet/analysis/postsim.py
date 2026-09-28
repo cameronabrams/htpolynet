@@ -297,7 +297,11 @@ class PostSimDeform(PostSimMD):
             'tau_t':0.5,
             'tau_p':1.0,
             'refcoord_scaling': 'com',
-            'pcoupltype': 'anisotropic'
+            'pcoupltype': 'anisotropic',
+            # required from Gromacs 2025 whenever deform is combined with generated
+            # velocities: the initial velocities must carry the flow profile the
+            # deformation implies, and grompp refuses the run outright without it
+            'deform-init-flow': 'yes'
             }
         if direction=='x':
             strain_vel=box[0][0]*edot
@@ -344,10 +348,14 @@ class PostSimShear(PostSimMD):
     # box element driven, the box length the strain is measured against, and the two
     # energy terms to trace, per shear plane.  The deform slot order is Gromacs'
     # own: XX YY ZZ YX ZX ZY.
+    # 'zero' is the diagonal compressibility that must be switched off: driving an
+    # off-diagonal element moves one Cartesian component of a box vector, and Gromacs
+    # refuses to have the barostat acting on that same component of another vector
+    # ("spurious periodicity effects").  Shearing YX or ZX moves x; ZY moves y.
     _planes={
-        'xy': {'slot': 3, 'ref': 1, 'box': 'Box-YX', 'pres': 'Pres-XY'},
-        'xz': {'slot': 4, 'ref': 2, 'box': 'Box-ZX', 'pres': 'Pres-XZ'},
-        'yz': {'slot': 5, 'ref': 2, 'box': 'Box-ZY', 'pres': 'Pres-ZY'},
+        'xy': {'slot': 3, 'ref': 1, 'zero': 0, 'box': 'Box-YX', 'pres': 'Pres-XY'},
+        'xz': {'slot': 4, 'ref': 2, 'zero': 0, 'box': 'Box-ZX', 'pres': 'Pres-XZ'},
+        'yz': {'slot': 5, 'ref': 2, 'zero': 1, 'box': 'Box-ZY', 'pres': 'Pres-ZY'},
     }
     default_params={
         'subdir': f'{pfs.Dirs.postsim}/shear-xy',
@@ -390,6 +398,8 @@ class PostSimShear(PostSimMD):
         rate=box[plane['ref']][plane['ref']]*params.get('edot',0.0)
         deform=['0']*6
         deform[plane['slot']]=f'{rate:.3e}'
+        compress=['4.5e-5','4.5e-5','4.5e-5','0','0','0']
+        compress[plane['zero']]='0'
         mod_dict={
             'ref_t':params['T'],
             'gen-temp':params['T'],
@@ -403,11 +413,15 @@ class PostSimShear(PostSimMD):
             'tau_p':1.0,
             'refcoord_scaling': 'com',
             'pcoupltype': 'anisotropic',
-            # normal directions held at P; off-diagonals given zero compressibility so
-            # the barostat does not oppose the element `deform` is driving
+            # the Cartesian component the shear moves is uncoupled; the other two
+            # normal directions stay at P.  Gromacs rejects the run otherwise.
             'ref_p':f'{params["P"]} {params["P"]} {params["P"]} 0 0 0',
-            'compressibility':'4.5e-5 4.5e-5 4.5e-5 0 0 0',
+            'compressibility':' '.join(compress),
             'deform':' '.join(deform),
+            # required from Gromacs 2025 whenever deform is combined with generated
+            # velocities: without it the initial velocities carry no flow profile and
+            # grompp refuses the run outright
+            'deform-init-flow':'yes',
             }
         params['output_deffnm']=f'shear-{direction}'
         params['traces']=[plane['box'],plane['pres']]

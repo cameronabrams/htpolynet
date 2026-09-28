@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Uniaxial deformation was rejected by Gromacs 2025 before it started, so Young's
+  modulus could not be measured at all.**  From Gromacs 2025, combining `deform` with
+  generated velocities is a hard grompp *error* unless `deform-init-flow = yes` is set,
+  because the initial velocities have to carry the flow profile the deformation implies.
+  htpolynet never set it.  Every `deform` stage therefore failed at grompp on a current
+  Gromacs --- not with a bad number, but with no run.  Both `deform` and the new `shear`
+  now set it.
+
+  This was invisible because nothing ran the stage: `analysis/postsim.py` had no tests,
+  and the deformation traces on hand were produced by an older Gromacs.  It was found by
+  putting a real mdp through `gmx grompp` while trying to build a shear fixture.
+
 ### Added
 
 - **A `shear` postsim stage, for the shear modulus.**  The counterpart of `deform`:
@@ -25,12 +39,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shear strain is the driven box element over the length of the sheared face and starts
   at **zero**, so it carries no `-1`.
 
-  **Not yet validated against a real run.**  The mdp construction is unit-tested ---
-  which box element each plane drives, that the rate scales with the box length and
-  `edot`, that the off-diagonal compressibilities are zero while the normal ones are
-  not --- and the Gromacs energy terms it traces (`Box-YX`, `Box-ZX`, `Box-ZY`,
-  `Pres-XY`, `Pres-XZ`, `Pres-ZY`) were confirmed to exist in Gromacs 2025.4.  But no
-  shear run has been executed, so no measured *G* has come back from it yet.
+  **The mdp is accepted by Gromacs; no *G* has been measured.**  Putting it through
+  `gmx grompp` found two defects the unit tests could not: the barostat must be
+  uncoupled for the Cartesian component the shear moves, not merely off the diagonal ---
+  grompp warns of "spurious periodicity effects" otherwise --- and `deform-init-flow`
+  must be set, which is a hard error without.  Both are fixed and grompp now accepts
+  every plane.  The energy terms it traces (`Box-YX`, `Box-ZX`, `Box-ZY`, `Pres-XY`,
+  `Pres-XZ`, `Pres-ZY`) were confirmed present in Gromacs 2025.4.
+
+  What is still missing is a measured modulus on a real network, and with it a trace
+  fixture beside the Tg and *E* ones.  Until that exists, treat *G* from this stage as
+  unverified.
 
 - **Real simulation traces as test fixtures, for Tg and Young's modulus.**  Until now
   every test of those fits used synthetic data, where a clean straight line recovers its

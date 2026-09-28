@@ -115,7 +115,11 @@ class TestUniaxialDeformationMdp(unittest.TestCase):
             return open(f).read(), d.params
 
     def value(self, text, key):
-        return [l for l in text.split('\n') if l.strip().startswith(key)][0].split('=')[1].split()
+        # match the key exactly: a prefix match picks up `deform-init-flow` for `deform`
+        for l in text.split('\n'):
+            if '=' in l and l.split('=')[0].strip() == key:
+                return l.split('=')[1].split()
+        raise AssertionError(f'{key} not in the mdp')
 
     def test_each_direction_drives_its_own_diagonal_element(self):
         for i, (d, L) in enumerate((('x', 5.0), ('y', 6.0), ('z', 7.0))):
@@ -141,6 +145,14 @@ class TestUniaxialDeformationMdp(unittest.TestCase):
                 _, p = self.built(d)
                 self.assertEqual(p['traces'], [box_t, pres_t])
                 self.assertEqual(p['output_deffnm'], f'deform-{d}')
+
+    def test_the_flow_profile_is_initialized(self):
+        # htpolynet shipped without this, so every deform run -- the Young's modulus
+        # measurement -- was rejected by grompp on Gromacs 2025 before it started
+        for d in 'xyz':
+            with self.subTest(d):
+                text, _ = self.built(d)
+                self.assertEqual(self.value(text, 'deform-init-flow'), ['yes'])
 
     def test_an_unknown_direction_is_refused(self):
         d = PostSimDeform({'direction': 'q'})

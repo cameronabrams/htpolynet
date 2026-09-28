@@ -40,8 +40,10 @@ class TestTheDeformedBoxElement(unittest.TestCase):
     driven decides which plane is sheared."""
 
     def slot(self, text):
-        line = [l for l in text.split('\n') if l.strip().startswith('deform')][0]
-        return [v for v in line.split('=')[1].split()]
+        for l in text.split('\n'):
+            if '=' in l and l.split('=')[0].strip() == 'deform':
+                return l.split('=')[1].split()
+        raise AssertionError('deform not in the mdp')
 
     def test_xy_drives_the_yx_element_at_the_y_length(self):
         text, _ = built('xy')
@@ -71,15 +73,34 @@ class TestTheBarostatDoesNotFightTheDeformation(unittest.TestCase):
     zero while the normal directions stay coupled at P."""
 
     def value(self, text, key):
-        return [l for l in text.split('\n') if l.strip().startswith(key)][0].split('=')[1].split()
+        # match the key exactly: a prefix match picks up `deform-init-flow` for `deform`
+        for l in text.split('\n'):
+            if '=' in l and l.split('=')[0].strip() == key:
+                return l.split('=')[1].split()
+        raise AssertionError(f'{key} not in the mdp')
 
     def test_off_diagonal_compressibility_is_zero(self):
         text, _ = built('xy')
         self.assertEqual(self.value(text, 'compressibility')[3:], ['0', '0', '0'])
 
-    def test_the_normal_directions_stay_coupled(self):
+    def test_the_sheared_cartesian_component_is_uncoupled(self):
+        # grompp refuses a run where an off-diagonal element is deformed while the
+        # barostat still acts on that same Cartesian component of another box vector:
+        # "spurious periodicity effects".  YX and ZX move x; ZY moves y.
+        for d, zeroed in (('xy', 0), ('xz', 0), ('yz', 1)):
+            with self.subTest(d):
+                c = self.value(built(d)[0], 'compressibility')
+                self.assertEqual(float(c[zeroed]), 0.0)
+                self.assertTrue(all(float(c[j]) > 0 for j in range(3) if j != zeroed))
+
+    def test_the_flow_profile_is_initialized(self):
+        # from Gromacs 2025 this is not optional: deform plus generated velocities is a
+        # hard grompp ERROR without it, so the stage simply would not run
         text, _ = built('xy')
-        self.assertTrue(all(float(x) > 0 for x in self.value(text, 'compressibility')[:3]))
+        self.assertEqual(self.value(text, 'deform-init-flow'), ['yes'])
+
+    def test_the_other_normal_directions_stay_coupled(self):
+        text, _ = built('xy')
         self.assertEqual(self.value(text, 'ref_p')[3:], ['0', '0', '0'])
 
     def test_the_run_length_follows_ps_and_dt(self):
