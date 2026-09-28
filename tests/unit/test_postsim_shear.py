@@ -99,6 +99,11 @@ class TestTheBarostatDoesNotFightTheDeformation(unittest.TestCase):
         text, _ = built('xy')
         self.assertEqual(self.value(text, 'deform-init-flow'), ['yes'])
 
+    def test_stress_is_sampled_ten_times_per_ps(self):
+        text, _ = built('xy')
+        self.assertEqual(self.value(text, 'nstenergy'), ['50'])
+        self.assertEqual(self.value(text, 'nstcalcenergy'), ['50'])
+
     def test_the_other_normal_directions_stay_coupled(self):
         text, _ = built('xy')
         self.assertEqual(self.value(text, 'ref_p')[3:], ['0', '0', '0'])

@@ -124,10 +124,23 @@ Coverage as of the last measurement: **38.8%** overall.
                                                           0.07 of each other
 
   So neither is a zero-strain tangent, and `compute_E` and `compute_G` both return one
-  window's slope as though it were.  The one encouraging difference: *G* flattens over
-  the last three windows while *E* is still dropping by more than a GPa across them, so
-  a plateau may be reachable for shear with better sampling where tension may need
-  extrapolation regardless.
+  window's slope as though it were.
+
+  **Sampling harder does not fix it, and that has now been tested.**  Repeating the shear
+  run at ten times the energy output --- 10,003 frames per unit strain against 1003 ---
+  cut the standard error by sqrt(10), confirming the frames were already near-independent
+  and that denser output buys real information cheaply.  htpolynet now asks for it: both
+  stages set `nstenergy` and `nstcalcenergy` to 50 rather than inheriting the packaged
+  1 ps.  But the slide survived: *G* over the same windows went 1.41, 1.30, 1.22 GPa at
+  standard errors of 0.11, 0.07, 0.05, so the fall is larger than the error bars and is
+  **physical, not statistical**.  An apparent plateau in the sparser data was the error
+  bars, not the material.
+
+  What that leaves is a choice rather than a bug.  At the strain rates MD can reach there
+  may be no linear regime to find, in which case the honest output is a secant modulus
+  with its strain window quoted alongside, not a single number called *E* or *G*.  The
+  alternatives are extrapolating the tangent to zero strain, or ramping slowly enough
+  that a linear regime appears --- which is being tested.
 
   Worth doing: fit over a ladder of windows and report the trend, or extrapolate to zero
   strain, rather than returning one slope.  Per-frame virial noise is 355-456 bar on

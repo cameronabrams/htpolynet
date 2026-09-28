@@ -298,6 +298,12 @@ class PostSimDeform(PostSimMD):
             'tau_p':1.0,
             'refcoord_scaling': 'com',
             'pcoupltype': 'anisotropic',
+            # stress is what this stage exists to measure, so sample it far more often
+            # than the packaged npt.mdp does.  At 1 ps the frames are already
+            # near-independent, so ten times as many cut the standard error on a fitted
+            # modulus by sqrt(10) for nothing but a larger edr.
+            'nstcalcenergy': 50,
+            'nstenergy': 50,
             # required from Gromacs 2025 whenever deform is combined with generated
             # velocities: the initial velocities must carry the flow profile the
             # deformation implies, and grompp refuses the run outright without it
@@ -418,6 +424,10 @@ class PostSimShear(PostSimMD):
             'ref_p':f'{params["P"]} {params["P"]} {params["P"]} 0 0 0',
             'compressibility':' '.join(compress),
             'deform':' '.join(deform),
+            # as in PostSimDeform: the fitted modulus is only as good as the stress
+            # sampling, and denser output is the cheapest way to improve it
+            'nstcalcenergy': 50,
+            'nstenergy': 50,
             # required from Gromacs 2025 whenever deform is combined with generated
             # velocities: without it the initial velocities carry no flow profile and
             # grompp refuses the run outright

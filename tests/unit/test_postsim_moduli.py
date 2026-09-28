@@ -154,6 +154,14 @@ class TestUniaxialDeformationMdp(unittest.TestCase):
                 text, _ = self.built(d)
                 self.assertEqual(self.value(text, 'deform-init-flow'), ['yes'])
 
+    def test_stress_is_sampled_ten_times_per_ps(self):
+        # the packaged npt.mdp writes energies once per ps; at that rate the frames are
+        # already near-independent, so ten times as many cut the standard error on a
+        # fitted modulus by sqrt(10) for nothing but a bigger edr
+        text, _ = self.built('x')
+        self.assertEqual(self.value(text, 'nstenergy'), ['50'])
+        self.assertEqual(self.value(text, 'nstcalcenergy'), ['50'])
+
     def test_an_unknown_direction_is_refused(self):
         d = PostSimDeform({'direction': 'q'})
         with tempfile.TemporaryDirectory() as t:

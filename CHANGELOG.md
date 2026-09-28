@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Deformation and shear stages now sample stress ten times more often.**  Both
+  inherited `nstenergy = 500` from the packaged `npt.mdp`, one frame per ps --- and
+  stress is the quantity these stages exist to measure.  Tested on a real shear run:
+  going to a frame every 0.1 ps cut the standard error on the fitted modulus by
+  sqrt(10), which is the independent-sample scaling, so the extra frames carry real
+  information rather than repeating themselves.  The cost is a larger `edr` and nothing
+  else --- no change to the trajectory, the ensemble, or the physics.
+
 ### Fixed
 
 - **Uniaxial deformation was rejected by Gromacs 2025 before it started, so Young's
