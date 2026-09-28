@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A test now fails when a configuration section is added without documenting it.**
+  `configs-for-run.rst` still opens by saying a run config has "at most ten distinct
+  sections" while the schema has fourteen: `ncpu`, `ring_cure` and `postcure_repair` have
+  never been written up.  The new test carries those three in a named list so the
+  existing debt does not block the suite, fails on any *new* undocumented section, and
+  fails again if one of the three is documented and left on the list.
+
 - **`htpolynet piercings` reports any bond threaded through a ring in a finished
   network.**  Since 2.11.4 a ring cure can *refuse* to create a threading, and there was
   no way to ask whether one is there.  That asymmetry is the reason this exists: a
@@ -43,6 +50,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The angle is reported as `angle_from_normal`, and **0 degrees means the bond runs
   straight through**, perpendicular to the ring plane.  The report says so in a legend,
   because the obvious reading of such a field is the opposite one.
+
+  Documented in the user guide, in the subcommand table and with a section of its own,
+  alongside a note that a threaded ring is a topological defect rather than a strain
+  relaxation removes: if one is found in a finished build, rebuilding with the ring-cure
+  filters on is the remedy and there is no post-hoc repair.
 
   **Image before you average.**  Every ring atom is brought into one periodic image
   before the centroid is taken.  Without that, a ring straddling a boundary gets a

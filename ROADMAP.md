@@ -1414,6 +1414,22 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Configuration
 
+- **Three config sections have no user documentation**: `ncpu`, `ring_cure` and
+  `postcure_repair`.  `docs/source/user-guide/configs/configs-for-run.rst` opens by
+  saying a run config has "at most ten distinct sections"; the schema has fourteen.  A
+  user can write any of the three and get no guidance at all, and `ring_cure` is the
+  worst of them --- about fifteen settings, several added during 2.11.x, including two
+  threading filters that change which rings form.
+
+  `tests/unit/test_config_docs_coverage.py` now fails if a *new* section is added
+  undocumented, and carries these three in a named `UNDOCUMENTED` list so the existing
+  debt does not block the suite while a new lapse does.  The test also fails if one of
+  them is documented and left on the list, so the list cannot outlive the debt.
+
+  Writing `ring_cure` up properly is worth doing once its settings stop moving; doing it
+  now would document a moving target.  `postcure_repair` and `ncpu` are small and could
+  go at any time.
+
 - **Move config handling onto ycleptic.** Approved by Cameron 2026-09-08.
   `core/configuration.py` (85 lines) reads YAML/JSON and `.get()`s eleven
   known top-level sections into attributes with **no validation at all**: an
