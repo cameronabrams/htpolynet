@@ -178,6 +178,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   case for both filters is mechanism, not measured harm.  Set
   `ring_cure.reject_new_threading: false` to reproduce the old behavior.
 
+  **Acceptance test, 24 builds on one image, filters the only difference:**
+
+        filtered (both on)    0 of 12 builds affected,  0 piercings
+        control  (both off)   8 of 12 builds affected, 10 piercings
+
+  Fisher two-tailed p = 0.00135, reproduced here.  All 24 completed at 233-234 rings and
+  conversion 0.971-0.975, so the filters cost no conversion and no rings.  Eleven
+  threading declines prevented ten piercings --- a near-match worth quoting, since many
+  more would mean over-rejection and many fewer would mean missed cases --- at 0 to 3 per
+  build.  The ladder's own `max_accept` declines are counted separately, so the two are
+  not summed by mistake.
+
+  Two limits stated rather than buried.  Zero of twelve bounds the filtered rate below
+  **22%** at 95% confidence, not below zero.  And the measurement used
+  `htpolynet piercings`, four of whose regression fixtures came from the control builds,
+  so the independence is in the implementation rather than in the test data.
+
 
 ### Changed
 

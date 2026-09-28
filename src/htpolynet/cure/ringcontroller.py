@@ -496,10 +496,13 @@ class RingController:
         by the cure rather than by packing -- one appearing in the same iteration as a
         triazine piercing, which is what identifies it as one event.
 
-        Declining does not itself pull the monomer back out.  What it prevents is the
-        threading being made permanent: without the ring bonds the dragged monomers have
-        nothing holding them, and the relaxation that follows can undo what the
-        restraints did.
+        Declining does not itself pull the monomer back out, and the relaxation that
+        follows does not reliably do it either -- one build declined the same bond at two
+        consecutive iterations, so the candidate came back and was refused again rather
+        than the threading dissolving.  What declining reliably prevents is the threading
+        being made **permanent**: no ring forms around it, so nothing locks it in, and the
+        groups go back into the pool.  Measured over twelve builds, none of the declined
+        threadings survived into the final structure.
 
         Args:
             TC (TopoCoord): the system
