@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-09-28
+
 ### Added
 
 - **A test now fails when a configuration section is added without documenting it.**

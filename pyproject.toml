@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "htpolynet"
-version = "2.11.6"
+version = "2.12.0"
 authors = [
   { name="Cameron F Abrams", email="cfa22@drexel.edu" },
 ]
