@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Tests for the two numbers postsim exists to produce.**  `analysis/postsim.py` was a
+  zero-coverage module, and `compute_E` and `compute_tg` --- the fits behind Young's
+  modulus and the glass transition --- had no tests at all, while the `shear` stage added
+  hours earlier did.  Now covered: both fits against known slopes and a known
+  intersection, the mdp construction for every `deform` and `shear` direction, that the
+  driven axis is not pressure-coupled while the others are, and that an unknown direction
+  is refused rather than guessed.
+
+  Two of those tests document behavior rather than assert it is good.  `compute_E` fitted
+  across a rolled-over stress curve understates the modulus by more than a factor of two,
+  which is what the fit window exists to prevent.  And `compute_tg` trusts its windows: a
+  hot window reaching about 20 K below the transition biases Tg roughly 7 K low, with no
+  check and no warning.  `ROADMAP.md` carries what a fix would look like.
+
+
+### Added
+
 - **A `shear` postsim stage, for the shear modulus.**  The counterpart of `deform`:
   Gromacs' `deform` drives one off-diagonal element of the box matrix at a constant
   rate, and *G* is the slope of shear stress against engineering shear strain, exactly

@@ -97,9 +97,20 @@ Coverage as of the last measurement: **38.8%** overall.
   statements, both at 0% — in the only way that is honest, since faking
   the whole AmberTools/Gromacs tool chain to unit-test the orchestration
   is a large effort for less confidence.
-- **Remaining zero-coverage modules**: `analysis/postsim.py` (203),
-  `cli.py` (165), `analysis/analyze.py` (137), `utils/vmd_viz.py` (75),
-  `utils/checkpoint.py` (54).
+- **Remaining zero-coverage modules**: `cli.py` (165),
+  `analysis/analyze.py` (137), `utils/vmd_viz.py` (75),
+  `utils/checkpoint.py` (54).  `analysis/postsim.py` came off this list in
+  2.12.1: the mdp construction for `deform` and `shear` is covered, as are
+  `compute_E` and `compute_tg`, which produce the two numbers postsim exists
+  to produce.  What is still untested there is the parts that run Gromacs.
+- **`compute_tg` trusts its fit windows and does not check them.**  It fits the
+  first `n_points[0]` and last `n_points[1]` points of a temperature ladder and
+  takes it on faith that each window lies wholly on one side of the transition.
+  It does not verify that, and it does not warn.  A hot window reaching about
+  20 K below Tg biases the answer roughly 7 K low --- small enough to look like
+  a real Tg and be quoted as one.  A test now documents the bias.  A fix would
+  be to check each window's residuals against its own line and report when a
+  window is not straight, which is what a straddled window looks like.
 - **`analysis/plot.py` is at 34%** after the smoke-test pass. The
   diagnostics-log parsers (`diagnostics_graphs`, `_token_match`,
   `_parse_data`) are the part most likely to rot silently — they already
