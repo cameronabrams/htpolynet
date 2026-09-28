@@ -9,18 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Deformation and shear stages now report the strain they will reach, and warn when
-  the rate is too fast to measure a modulus.**  Measured on a cured 12,600-atom network:
-  at the default `edot = 1e-3` a run passes strain 0.02 after 20 ps and spends the rest
-  of its time past the elastic region, and a modulus fitted from it comes out about
-  **threefold low** --- 1.2 GPa against the 3.5 to 4.5 that the same system gives at
-  `edot = 1e-4`, which reaches strain 0.03 in the same wall time.  It is not a sampling
-  problem: the identical run at ten times the energy output gave the identical answer.
+- **Deformation and shear stages now say what a modulus from them is worth.**  Every run
+  reports the strain it will reach and is told that **one ramp is not quotable**: two
+  runs of the same protocol on the same structure, differing only in the velocity seed,
+  gave binned mean stresses 5.7 and 6.1 standard errors apart at 100,000 frames per unit
+  strain.  Between-trajectory scatter beats within-trajectory standard error sixfold, so
+  the error bar a single fit reports badly understates the real uncertainty.  Replicates
+  come before rate and before sampling.
 
-  The default is deliberately unchanged.  The slow ramp has not found a plateau either,
-  so choosing a new number now would swap a known-wrong default for a guess; the warning
-  names `1e-4` as what to use for a modulus and says to keep the faster rate for yield
-  behaviour.  One rate cannot serve both.
+  A run fast enough that little of it sits at low strain also draws a warning, since what
+  gets fitted is then a secant over a large window.  It does not claim a bias, because
+  none is established: a single slow ramp appeared to show the default understating *G*
+  threefold and a replicate of that same protocol refuted it.  Rate dependence past yield
+  is real and does replicate --- 1.22 +/- 0.06 GPa at `edot = 1e-3` against
+  0.96 +/- 0.02 at `1e-4`.  The default is unchanged.
 
 - **Deformation and shear stages now sample stress ten times more often.**  Both
   inherited `nstenergy = 500` from the packaged `npt.mdp`, one frame per ps --- and

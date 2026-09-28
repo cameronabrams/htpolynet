@@ -248,28 +248,34 @@ class PostSimLadder(PostSimMD):
         mdp_modify(mdpname,mod_dict)
 
 def _strain_advice(edot,ps,logger=logger,what='strain'):
-    """Says what strain a deformation will reach, and whether a modulus can come of it.
+    """Says what strain a deformation will reach, and what a modulus from it is worth.
 
-    Measured on a 12,600-atom cured network: at ``edot = 1e-3`` the run is past the
-    elastic region before it has sampled it, and a modulus fitted from such a run is
-    about three times too low.  Halving the noise does not help --- the same run at ten
-    times the energy output gave the same answer --- because the problem is where the
-    strain is, not how well it is measured.  At ``edot = 1e-4`` the low-strain fit
-    resolves and finds 3.5 to 4.5 GPa where the faster ramp's chord gave 1.2.
+    The measured warning is not about the rate.  Two runs of the *same* protocol on the
+    *same* starting structure, differing only in the velocity seed, gave binned mean
+    stresses 5.7 and 6.1 standard errors apart, at 100,000 frames per unit strain.
+    Trajectory-to-trajectory scatter exceeded within-trajectory standard error sixfold,
+    so a modulus from a single ramp is not a measurement at any rate or sampling density,
+    and its error bar understates the real uncertainty badly.
 
-    One rate cannot serve both purposes.  A yield stress wants to reach strains of
-    order 0.3; a modulus wants many frames below about 0.02, which is the same wall
-    time at a tenth the rate.
+    Rate does matter past yield --- 1.22 +/- 0.06 GPa at ``edot = 1e-3`` against
+    0.96 +/- 0.02 at ``1e-4`` over the same window --- and a fast ramp spends little of
+    its time at the low strains a tangent modulus would come from.  Whether that biases
+    the modulus is not established: the one experiment that appeared to show it was a
+    single trajectory and a replicate refuted it.
     """
     total=edot*ps
     logger.info(f'This run reaches {what} {total:.3f} at {edot:g} ps^-1 over {ps} ps')
+    logger.info('A modulus from one ramp is not quotable: replicates of an identical '
+                'protocol have been measured 6 standard errors apart, so run several '
+                'seeds and take the scatter between them as the uncertainty.')
     if edot>=1e-3:
         logger.warning(
-            f'{what} passes 0.02 after only {0.02/edot:.0f} ps at edot={edot:g}, so very '
-            f'little of this run samples the elastic region.  A modulus fitted from it is '
-            f'a secant over a large strain window and is measurably too low -- about '
-            f'threefold on a cured thermoset.  For a modulus use edot=1e-4, which reaches '
-            f'0.03 in the same wall time; keep this rate for yield behaviour.')
+            f'{what} passes 0.02 after only {0.02/edot:.0f} ps at edot={edot:g}, so '
+            f'little of this run samples the low strains a modulus would come from; what '
+            f'is fitted is a secant over a large window.  edot=1e-4 reaches 0.03 in the '
+            f'same wall time if that is what you want.  Rate dependence past yield is '
+            f'real and measured; whether the rate biases the modulus itself is not '
+            f'established.')
 
 
 class PostSimDeform(PostSimMD):

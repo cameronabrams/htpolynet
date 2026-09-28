@@ -159,7 +159,25 @@ class TestItSaysWhenTheRateCannotResolveAModulus(unittest.TestCase):
         self.assertIn('20 ps', msg)
         self.assertIn('edot=1e-4', msg)
 
-    def test_a_rate_that_can_resolve_it_does_not(self):
+    def test_it_does_not_claim_a_bias_it_cannot_support(self):
+        # an earlier version said a modulus from the default rate was "about threefold"
+        # too low.  That rested on one trajectory and a replicate refuted it.
+        with self.assertLogs('htpolynet.analysis.postsim', level='WARNING') as cm:
+            built('xy', edot=0.001)
+        msg = '\n'.join(cm.output)
+        self.assertNotIn('threefold', msg)
+        self.assertIn('not established', msg)
+
+    def test_every_run_is_told_that_one_ramp_is_not_enough(self):
+        # the finding that survived: trajectory scatter beat within-trajectory SE
+        # sixfold, so replicates come before rate or sampling
+        for rate in (0.001, 0.0001):
+            with self.subTest(rate):
+                with self.assertLogs('htpolynet.analysis.postsim', level='INFO') as cm:
+                    built('xy', edot=rate)
+                self.assertIn('replicates', '\n'.join(cm.output))
+
+    def test_a_slow_rate_draws_no_warning(self):
         with self.assertLogs('htpolynet.analysis.postsim', level='INFO') as cm:
             built('xy', edot=0.0001)
         self.assertNotIn('WARNING', '\n'.join(cm.output))

@@ -136,27 +136,31 @@ Coverage as of the last measurement: **38.8%** overall.
   **physical, not statistical**.  An apparent plateau in the sparser data was the error
   bars, not the material.
 
-  **And the rate matters more than either.**  Repeating the shear at `edot = 1e-4` ---
-  reaching gamma 0.03 in the same 300 ps the default spends reaching 0.30:
+  **What actually dominates is trajectory-to-trajectory scatter, and it is large.**  Two
+  runs of the same protocol on the same starting structure, differing only in the
+  velocity seed, at 100,000 frames per unit strain:
 
-        window     edot 1e-3        edot 1e-4
-        0.0075    -5.03 +/- 2.58    4.52 +/- 1.44
-        0.0100     0.80 +/- 1.89    3.51 +/- 0.80
-        0.0200     1.88 +/- 0.68    1.45 +/- 0.29
-        0.0300     1.48 +/- 0.36    1.51 +/- 0.15
+        gamma bin       run B        run C      separation
+        0.005-0.010   287 +/- 21   122 +/- 20     5.7 sigma
+        0.025-0.030   547 +/- 20   369 +/- 22     6.1 sigma
 
-  The two agree at gamma >= 0.02.  Below that the default resolves nothing at all, while
-  the slow ramp finds 3.5 to 4.5 GPa against the 1.22 chord the default gives at
-  gamma <= 0.10.  **So a modulus quoted from the shipped `edot` is low by roughly
-  threefold**, and it is not a sampling problem: the same run at ten times the output
-  gave the same answer.  The autocorrelation time was measured at 0.06-0.10 ps, under
-  one frame, so the frames really are independent.
+  Between-trajectory scatter beats within-trajectory standard error sixfold.  So **a
+  modulus from a single ramp is not a measurement at any rate or sampling density**, and
+  the error bar such a fit reports badly understates the real uncertainty.  Replicates
+  are the first requirement for a modulus fixture, ahead of rate and ahead of sampling.
 
-  htpolynet now says so rather than changing the default: both stages report the strain
-  the run will reach and warn when `edot` is high enough that little of the run samples
-  the elastic region.  The default is left alone because the slow ramp has not found a
-  plateau either --- picking a new number now would be trading a known-wrong default for
-  a guess.  A 3 ns arm is running.
+  A single slow ramp appeared to show the default rate understating *G* threefold ---
+  3.5-4.5 GPa against 1.22.  A replicate of that same protocol refuted it, giving
+  1.35 +/- 0.50 where the first gave 3.51 +/- 0.80.  That claim is withdrawn, and this
+  entry previously asserted it.
+
+  Rate dependence past yield is real and does survive replication: 1.22 +/- 0.06 GPa at
+  `edot = 1e-3` against 0.96 +/- 0.02 at `1e-4` over gamma <= 0.10.  Whether rate biases
+  the *modulus* is unresolved.
+
+  htpolynet reports the strain a run will reach, tells every run that one ramp is not
+  quotable, and warns when the rate is fast enough that little of the run sits at low
+  strain --- without claiming a bias it cannot support.  The default is unchanged.
 
   What that leaves is a choice rather than a bug.  At the strain rates MD can reach there
   may be no linear regime to find, in which case the honest output is a secant modulus
