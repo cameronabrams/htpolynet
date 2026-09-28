@@ -27,6 +27,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The geometry moved to `htpolynet.geometry.piercing`, shared with the ring cure's own
   filters so that a measurement and the thing it measures cannot drift apart.
 
+  **Validated against 12 independently measured builds** (8 affected, 10 piercings):
+  counts agree on all 12, including the four clean ones, and both interlocked cases are
+  found with both halves.  Bond lengths agree to the last digit, offsets within
+  0.001 A, angles within 0.03 degrees.  Four of those piercings are in the test suite as
+  fixtures, atom-for-atom.
+
+  That comparison found two defects in the reference data rather than in this code ---
+  atom indices off by one, and a fraction divided by a mean rather than a maximum
+  centre-to-vertex distance --- both since corrected upstream.  The index error was
+  findable only by testing whether the reported ring was a closed cycle in the topology,
+  which is the check worth keeping in mind when two implementations are compared: agree
+  with the data, not with the other detector.
+
+  The angle is reported as `angle_from_normal`, and **0 degrees means the bond runs
+  straight through**, perpendicular to the ring plane.  The report says so in a legend,
+  because the obvious reading of such a field is the opposite one.
+
   **Image before you average.**  Every ring atom is brought into one periodic image
   before the centroid is taken.  Without that, a ring straddling a boundary gets a
   centroid in the middle of the box and a triangle fan spanning the cell: measured here

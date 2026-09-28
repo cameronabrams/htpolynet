@@ -115,6 +115,6 @@ def pierces_ring(ring, bond, positions, box):
             cos = abs(float(np.dot(d / length, n))) if length > 0 else 0.0
             return {'point': point, 'offset': offset,
                     'offset_frac': offset / radius if radius > 0 else float('nan'),
-                    'angle': float(np.degrees(np.arccos(min(1.0, cos)))),
+                    'angle_from_normal': float(np.degrees(np.arccos(min(1.0, cos)))),
                     'length': length}
     return None

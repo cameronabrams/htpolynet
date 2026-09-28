@@ -14,6 +14,7 @@ import pandas as pd
 
 from htpolynet.analysis.piercings import (detect_rings, find_piercings, format_report,
                                           ring_composition)
+from htpolynet.geometry.piercing import pierces_ring
 
 BOX = np.array([2.0, 2.0, 2.0])
 
@@ -108,7 +109,7 @@ class TestABoundaryStraddlingRingStillReportsARealPiercing(unittest.TestCase):
         found = find_piercings(s.TC())
         self.assertEqual(len(found), 1)
         self.assertLess(found[0]['offset'], 0.01)
-        self.assertLess(found[0]['angle'], 1.0)
+        self.assertLess(found[0]['angle_from_normal'], 1.0)
 
     def test_it_is_found_when_the_ring_wraps_two_axes(self):
         s = System()
@@ -218,3 +219,60 @@ class TestReport(unittest.TestCase):
         s.add_ring((1.0, 1.0, 1.0), elements='CNCNCN')
         s.add_bond(np.array([1.0, 1.0, 0.92]), np.array([1.0, 1.0, 1.08]))
         self.assertIn('C3N3 1', format_report(find_piercings(s.TC())))
+
+
+MEASURED = [
+    dict(case='r3-triazine', box=[5.2279, 5.2279, 5.2279], ring=[352, 9941, 9942, 9906, 9907, 351], bond=[9909, 9914],
+         length_A=2.567, offset_A=0.177, offset_frac=0.093, angle_deg=8.0,
+         pos={352: [1.643, 1.114, 0.714], 9941: [1.479, 1.198, 0.871], 9942: [1.474, 1.35, 0.898], 9906: [1.566, 1.45, 0.816], 9907: [1.648, 1.378, 0.687], 351: [1.724, 1.236, 0.649], 9909: [1.52, 1.287, 0.681], 9914: [1.687, 1.253, 0.873]}),
+    dict(case='r3-phenyl', box=[5.2279, 5.2279, 5.2279], ring=[9909, 9914, 9913, 9912, 9911, 9910], bond=[352, 9941],
+         length_A=2.421, offset_A=0.326, offset_frac=0.16, angle_deg=0.7,
+         pos={9909: [1.52, 1.287, 0.681], 9914: [1.687, 1.253, 0.873], 9913: [1.669, 1.089, 0.941], 9912: [1.547, 0.98, 0.884], 9911: [1.438, 1.004, 0.744], 9910: [1.424, 1.146, 0.652], 352: [1.643, 1.114, 0.714], 9941: [1.479, 1.198, 0.871]}),
+    dict(case='r10-triazine', box=[5.2153, 5.2153, 5.2153], ring=[963, 964, 10763, 10764, 11638, 11639], bond=[10761, 10760],
+         length_A=2.596, offset_A=0.173, offset_frac=0.091, angle_deg=7.2,
+         pos={963: [0.155, 2.856, 1.601], 964: [0.034, 2.803, 1.508], 10763: [0.086, 2.809, 1.35], 10764: [0.178, 2.904, 1.252], 11638: [0.304, 2.964, 1.318], 11639: [0.329, 2.953, 1.473], 10761: [0.225, 2.771, 1.418], 10760: [0.12, 3.006, 1.452]}),
+    dict(case='r10-phenyl', box=[5.2153, 5.2153, 5.2153], ring=[10758, 10766, 10765, 10761, 10760, 10759], bond=[963, 11639],
+         length_A=2.368, offset_A=0.314, offset_frac=0.154, angle_deg=1.3,
+         pos={10758: [0.311, 3.004, 1.696], 10766: [0.378, 2.843, 1.673], 10765: [0.338, 2.732, 1.545], 10761: [0.225, 2.771, 1.418], 10760: [0.12, 3.006, 1.452], 10759: [0.186, 3.083, 1.593], 963: [0.155, 2.856, 1.601], 11639: [0.329, 2.953, 1.473]}),
+]
+"""Four real piercings, lifted atom-for-atom out of two finished builds.
+
+Two interlocked pairs.  In each, a triazine is pierced by a bond inside one of its own
+member monomers, while the phenyl of that same monomer is pierced by the bond joining
+the other two members; both halves form in one iteration.  A detector that finds one
+half and not the other is the failure these guard against.
+
+Coordinates and expected values come from an independent detector, after reconciling
+two disagreements: its atom indices were +1, found by testing whether the reported
+ring was a closed cycle in the topology rather than by comparing detectors, and its
+offset_frac divided by a mean rather than a maximum centre-to-vertex distance.
+Everything else agreed to the last digit on first comparison.
+"""
+
+
+class TestAgainstMeasuredPiercings(unittest.TestCase):
+    def geometry(self, c):
+        pos = {int(k): np.array(v) for k, v in c['pos'].items()}
+        return pierces_ring(c['ring'], tuple(c['bond']), pos, np.array(c['box']))
+
+    def test_each_one_is_found(self):
+        for c in MEASURED:
+            with self.subTest(c['case']):
+                self.assertIsNotNone(self.geometry(c))
+
+    def test_the_geometry_reproduces_the_measurement(self):
+        for c in MEASURED:
+            with self.subTest(c['case']):
+                h = self.geometry(c)
+                self.assertAlmostEqual(h['length'] * 10, c['length_A'], places=2)
+                self.assertAlmostEqual(h['offset'] * 10, c['offset_A'], places=2)
+                self.assertAlmostEqual(h['offset_frac'], c['offset_frac'], places=2)
+                self.assertAlmostEqual(h['angle_from_normal'], c['angle_deg'], places=1)
+
+    def test_a_bond_of_the_ring_itself_is_never_counted(self):
+        for c in MEASURED:
+            pos = {int(k): np.array(v) for k, v in c['pos'].items()}
+            r = c['ring']
+            for k in range(len(r)):
+                self.assertIsNone(pierces_ring(r, (r[k], r[(k + 1) % len(r)]),
+                                               pos, np.array(c['box'])))

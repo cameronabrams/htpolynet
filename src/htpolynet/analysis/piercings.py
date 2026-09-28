@@ -26,6 +26,31 @@ from ..geometry.piercing import pierces_ring, ring_frame
 logger = logging.getLogger(__name__)
 
 
+def _bounded_path(G, u, v, max_depth):
+    """Shortest path from u to v of at most `max_depth` edges, or None."""
+    if u not in G or v not in G:
+        return None
+    prev, frontier = {u: None}, [u]
+    for _ in range(max_depth):
+        nxt = []
+        for a in frontier:
+            for b in G[a]:
+                if b in prev:
+                    continue
+                prev[b] = a
+                if b == v:
+                    path, cur = [], v
+                    while cur is not None:
+                        path.append(cur)
+                        cur = prev[cur]
+                    return path[::-1]
+                nxt.append(b)
+        if not nxt:
+            return None
+        frontier = nxt
+    return None
+
+
 def detect_rings(bonds, max_size=8):
     """Smallest ring through each bond, for a topology with no ring list of its own.
 
@@ -47,12 +72,12 @@ def detect_rings(bonds, max_size=8):
     seen, out = set(), []
     for u, v in list(G.edges()):
         G.remove_edge(u, v)
-        try:
-            path = nx.shortest_path(G, u, v)
-        except (nx.NetworkXNoPath, nx.NodeNotFound):
-            path = None
+        # depth-limited on purpose: an unbounded search on a percolated network walks
+        # the whole component for every bond that is not in a small ring, which is most
+        # of them
+        path = _bounded_path(G, u, v, max_size - 1)
         G.add_edge(u, v)
-        if path is None or len(path) > max_size:
+        if path is None:
             continue
         key = frozenset(path)
         if key in seen:
@@ -157,13 +182,15 @@ def format_report(piercings, overlong=0.2):
     lines.append(f'  {n_long} of {len(piercings)} piercing bond(s) are longer than '
                  f'{overlong} nm, which is longer than any real bond')
     lines.append('')
-    lines.append('  ring          composition  bond            offset  frac  angle  length')
+    lines.append('  (from-normal 0 deg means the bond runs straight through the ring)')
+    lines.append('')
+    lines.append('  ring          composition  bond            offset  frac  from-norm  length')
     for p in sorted(piercings, key=lambda x: -x['length']):
         r = ','.join(str(x) for x in p['ring'][:3]) + '...'
         lines.append(f'  {r:<13} {p["composition"]:<12} '
                      f'{p["bond"][0]}-{p["bond"][1]:<10} '
                      f'{p["offset"] * 10:6.2f} {p["offset_frac"]:5.2f} '
-                     f'{p["angle"]:5.1f} {p["length"] * 10:6.2f}   (A, deg)')
+                     f'{p["angle_from_normal"]:9.1f} {p["length"] * 10:6.2f}   (A, deg)')
     return '\n'.join(lines)
 
 
