@@ -103,6 +103,29 @@ Coverage as of the last measurement: **38.8%** overall.
   2.13.0: the mdp construction for `deform` and `shear` is covered, as are
   `compute_E` and `compute_tg`, which produce the two numbers postsim exists
   to produce.  What is still untested there is the parts that run Gromacs.
+- **No deformation run htpolynet produces resolves an elastic region.**  Measured on
+  both a real uniaxial trace and the first real shear trace, fitting over increasing
+  upper strain limits:
+
+        E, furan epoxy, 1001 frames    5.13 -> 4.74 -> 3.90 -> 2.72 GPa as the window
+                                       grows from 0.02 to 0.10; no plateau
+        G, BADCy ring cure, 301 frames -0.63 (SE 1.79) at 0.02, no power at all below
+                                       0.03; 1.3 +/- 0.2 over 0.08-0.10
+
+  Two distinct problems, and they want different fixes.  The shear run has too few
+  **frames per unit strain** --- 1003 against the uniaxial trace's 7526 --- so the
+  low-strain fit has no statistical power.  That is cured by a slower ramp or, more
+  cheaply, by writing energies more often at the same rate.
+
+  The uniaxial trace has plenty of points and still has no plateau: its tangent modulus
+  falls monotonically with the window, so a small standard error is being reported on a
+  quantity that is still sloping.  A single-window number is not a zero-strain tangent,
+  and both `compute_E` and `compute_G` return one as though it were.
+
+  Worth doing: fit over a ladder of windows and report the trend, or extrapolate to zero
+  strain, rather than returning one slope.  Per-frame virial noise is 355-456 bar on
+  these systems, which is the floor any scheme has to work against.
+
 - **Neither `compute_tg` nor `compute_E` records the fit window that produced a
   number, and on real data the window moves the answer a lot.**  Measured on the two
   traces now in `tests/unit/fixtures/`:

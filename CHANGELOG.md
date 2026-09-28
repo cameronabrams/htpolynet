@@ -47,9 +47,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every plane.  The energy terms it traces (`Box-YX`, `Box-ZX`, `Box-ZY`, `Pres-XY`,
   `Pres-XZ`, `Pres-ZY`) were confirmed present in Gromacs 2025.4.
 
-  What is still missing is a measured modulus on a real network, and with it a trace
-  fixture beside the Tg and *E* ones.  Until that exists, treat *G* from this stage as
-  unverified.
+  **First real run, on a threading-filtered BADCy network of 12,600 atoms:** both stages
+  completed, the stress-strain curve has the right shape for a glassy thermoset --- an
+  elastic rise to about gamma 0.08, a roll-over, then a yield plateau near 160-175 MPa
+  --- and *G* comes out 1.3 +/- 0.2 GPa over gamma 0.08-0.10.  `deform` with
+  `deform-init-flow` was also verified on Gromacs 2026.3, not only the 2025.4 used here.
+
+  That *G* is a modulus over a window, not a zero-strain tangent.  Below gamma 0.03 the
+  fit has no power at all --- the standard error exceeds the estimate and the sign
+  flips --- because per-frame virial noise is 456 bar and a 300 ps ramp at
+  `edot = 1e-3` puts only 20 frames below that strain.  A slower ramp, or more frequent
+  energy output at the same rate, is what a modulus fixture needs.  `ROADMAP.md` carries
+  this, and the related finding that the uniaxial trace has no resolved elastic region
+  either.
 
 - **Real simulation traces as test fixtures, for Tg and Young's modulus.**  Until now
   every test of those fits used synthetic data, where a clean straight line recovers its
