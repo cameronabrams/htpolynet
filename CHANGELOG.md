@@ -53,10 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   --- and *G* comes out 1.3 +/- 0.2 GPa over gamma 0.08-0.10.  `deform` with
   `deform-init-flow` was also verified on Gromacs 2026.3, not only the 2025.4 used here.
 
-  That *G* is a modulus over a window, not a zero-strain tangent.  Below gamma 0.03 the
-  fit has no power at all --- the standard error exceeds the estimate and the sign
-  flips --- because per-frame virial noise is 456 bar and a 300 ps ramp at
-  `edot = 1e-3` puts only 20 frames below that strain.  A slower ramp, or more frequent
+  That *G* is one window's slope, not a zero-strain tangent, and should not be quoted as
+  a converged modulus.  Below gamma 0.03 the fit has no power at all --- the standard
+  error exceeds the estimate and the sign flips --- because per-frame virial noise is
+  456 bar and a 300 ps ramp at `edot = 1e-3` puts only 20 frames below that strain.
+  Above it the fitted *G* falls from 2.08 to 1.31 GPa as the window grows, the same way
+  the uniaxial fixture's *E* falls from 4.74 to 2.72.  A slower ramp, or more frequent
   energy output at the same rate, is what a modulus fixture needs.  `ROADMAP.md` carries
   this, and the related finding that the uniaxial trace has no resolved elastic region
   either.

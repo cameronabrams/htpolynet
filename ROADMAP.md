@@ -112,15 +112,22 @@ Coverage as of the last measurement: **38.8%** overall.
         G, BADCy ring cure, 301 frames -0.63 (SE 1.79) at 0.02, no power at all below
                                        0.03; 1.3 +/- 0.2 over 0.08-0.10
 
-  Two distinct problems, and they want different fixes.  The shear run has too few
-  **frames per unit strain** --- 1003 against the uniaxial trace's 7526 --- so the
-  low-strain fit has no statistical power.  That is cured by a slower ramp or, more
-  cheaply, by writing energies more often at the same rate.
+  The shear run has both problems; an earlier version of this entry said it had only the
+  first.  It has too few **frames per unit strain** --- 1003 against the uniaxial trace's
+  7526 --- so the low-strain fit has no statistical power, which a slower ramp cures, or
+  more cheaply a higher `nstenergy` at the same rate.  And its fitted modulus also falls
+  with the window, the same way the uniaxial one does:
 
-  The uniaxial trace has plenty of points and still has no plateau: its tangent modulus
-  falls monotonically with the window, so a small standard error is being reported on a
-  quantity that is still sloping.  A single-window number is not a zero-strain tangent,
-  and both `compute_E` and `compute_G` return one as though it were.
+        window      0.04   0.05   0.06   0.08   0.10
+        E (GPa)     4.74   4.32   3.90   3.31   2.72     falls 43%, still falling
+        G (GPa)     2.08   1.58   1.37   1.38   1.31     falls 37%, last three within
+                                                          0.07 of each other
+
+  So neither is a zero-strain tangent, and `compute_E` and `compute_G` both return one
+  window's slope as though it were.  The one encouraging difference: *G* flattens over
+  the last three windows while *E* is still dropping by more than a GPa across them, so
+  a plateau may be reachable for shear with better sampling where tension may need
+  extrapolation regardless.
 
   Worth doing: fit over a ladder of windows and report the trend, or extrapolate to zero
   strain, rather than returning one slope.  Per-frame virial noise is 355-456 bar on
