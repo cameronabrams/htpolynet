@@ -375,6 +375,25 @@ def compute_tg(T,v,n_points=[10,20]):
         Tg=-(hot_par[1]-cold_par[1])/(hot_par[0]-cold_par[0])
     return Tg,cold_par,hot_par
 
+def compute_G(shear_strain,shear_stress,fit_domain=[10,100]):
+    """Computes the shear modulus by a linear fit to the elastic regime of a simple shear.
+
+    The same fit as :func:`compute_E`, named separately because the inputs are not the
+    same quantities: the engineering shear strain is the driven off-diagonal box element
+    over the length of the sheared face (it starts at zero, so there is no -1), and the
+    shear stress is the negated off-diagonal of the pressure tensor.
+    ``htpolynet postsim`` writes both columns for a ``shear`` stage.
+
+    Args:
+        shear_strain (numpy.array): engineering shear strain, dimensionless
+        shear_stress (numpy.array): shear stress, in the units of the pressure trace
+        fit_domain (list): domain over which the fit is made, defaults to [10,100]
+
+    Returns:
+        tuple(float,float): G and R2 from the fit
+    """
+    return compute_E(shear_strain,shear_stress,fit_domain=fit_domain)
+
 def compute_E(strain,stress,fit_domain=[10,100]):
     """Computes the Young's modulus by performing a linear fit to an elastic regime in stress-vs-strain data.
 

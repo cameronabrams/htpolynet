@@ -92,7 +92,13 @@ class PostSimMD:
                 L0=box[0][0] if sznm=='Box-X' else box[1][1] if sznm=='Box-Y' else box[2][2]
                 temp_x=f'{sznm}-strain'
                 df[temp_x]=df[sznm]/L0-1.0
-        for sznm in ['Pres-XX','Pres-YY','Pres-ZZ']:
+        # shear: the off-diagonal box element starts at zero, so the engineering shear
+        # strain is the element itself over the length of the sheared face -- no -1
+        for sznm,ref in [('Box-YX',1),('Box-ZX',2),('Box-ZY',2)]:
+            if sznm in p['traces']:
+                temp_x=f'{sznm}-strain'
+                df[temp_x]=df[sznm]/box[ref][ref]
+        for sznm in ['Pres-XX','Pres-YY','Pres-ZZ','Pres-XY','Pres-XZ','Pres-ZY']:
             if sznm in p['traces']:
                 df[f'{sznm}-stress']=df[sznm]*(-1)
                 temp_y=[f'{sznm}-stress']
@@ -322,6 +328,93 @@ class PostSimDeform(PostSimMD):
 
         mdp_modify(mdpname,mod_dict)
 
+class PostSimShear(PostSimMD):
+    """ a class to handle a constant-rate simple shear MD simulation
+
+    The shear counterpart of :class:`PostSimDeform`.  Gromacs' ``deform`` moves one
+    off-diagonal element of the box matrix at a constant rate; the shear modulus is then
+    the slope of shear stress against engineering shear strain, exactly as Young's
+    modulus is the slope of tensile stress against tensile strain.
+
+    ``direction`` names the plane: ``xy`` shears the x face along y (box element YX),
+    ``xz`` and ``yz`` likewise.  The normal pressures stay coupled at ``P`` while the
+    off-diagonal is driven, because the anisotropic barostat is given zero
+    compressibility off the diagonal and so does not fight the deformation.
+    """
+    # box element driven, the box length the strain is measured against, and the two
+    # energy terms to trace, per shear plane.  The deform slot order is Gromacs'
+    # own: XX YY ZZ YX ZX ZY.
+    _planes={
+        'xy': {'slot': 3, 'ref': 1, 'box': 'Box-YX', 'pres': 'Pres-XY'},
+        'xz': {'slot': 4, 'ref': 2, 'box': 'Box-ZX', 'pres': 'Pres-XZ'},
+        'yz': {'slot': 5, 'ref': 2, 'box': 'Box-ZY', 'pres': 'Pres-ZY'},
+    }
+    default_params={
+        'subdir': f'{pfs.Dirs.postsim}/shear-xy',
+        'input_top': f'{pfs.Dirs.systems_final}/final.top',
+        'input_gro': f'{pfs.Dirs.postsim}/equilibrate/equilibrate.gro',
+        'input_grx': f'{pfs.Dirs.systems_final}/final.grx',
+        'gromacs' : {
+            'gmx': 'gmx',
+            'mdrun': 'gmx mdrun',
+            'options': '-quiet -nobackup',
+            'mdrun_single_molecule': 'gmx mdrun mdrun'
+        },
+        'output_deffnm':'shear-xy',
+        'traces': ['Box-YX','Pres-XY'],
+        'scatter': ('Box-YX',['Pres-XY'],'shearstress_v_yxbox.png'),
+        'direction':'xy',
+        'T':300.0,
+        'P':1.0,
+        'ps':1000,
+        'edot': 0.001 # shear rate in ps^-1
+    }
+
+    def build_mdp(self,mdpname,**kwargs):
+        """Builds the Gromacs mdp file required for a constant-rate simple shear.
+
+        Args:
+            mdpname (str): name of mdp file
+        """
+        params=self.params
+        timestep=float(mdp_get(mdpname,'dt'))
+        nsteps=int(params['ps']/timestep)
+        box=kwargs.get('box',np.array([[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]]))
+        direction=params.get('direction','xy')
+        plane=self._planes.get(direction)
+        if plane is None:
+            logger.error(f'Bad plane for simple shear {direction}; expected one of '
+                         + ', '.join(sorted(self._planes)))
+            return
+        # the box element is driven at L*edot, so edot is a true strain rate in ps^-1
+        rate=box[plane['ref']][plane['ref']]*params.get('edot',0.0)
+        deform=['0']*6
+        deform[plane['slot']]=f'{rate:.3e}'
+        mod_dict={
+            'ref_t':params['T'],
+            'gen-temp':params['T'],
+            'gen-vel':'yes',
+            'tcoupl':'v-rescale',
+            'nsteps': nsteps,
+            'rlist': 1.2,
+            'rcoulomb': 1.2,
+            'rvdw': 1.2,
+            'tau_t':0.5,
+            'tau_p':1.0,
+            'refcoord_scaling': 'com',
+            'pcoupltype': 'anisotropic',
+            # normal directions held at P; off-diagonals given zero compressibility so
+            # the barostat does not oppose the element `deform` is driving
+            'ref_p':f'{params["P"]} {params["P"]} {params["P"]} 0 0 0',
+            'compressibility':'4.5e-5 4.5e-5 4.5e-5 0 0 0',
+            'deform':' '.join(deform),
+            }
+        params['output_deffnm']=f'shear-{direction}'
+        params['traces']=[plane['box'],plane['pres']]
+        params['scatter']=(plane['box'],[plane['pres']],
+                           f'shearstress_v_{direction}.png')
+        mdp_modify(mdpname,mod_dict)
+
 class PostsimConfiguration:
     """ handles reading and parsing a postcure simulation input config file.
         Config file format
@@ -340,10 +433,11 @@ class PostsimConfiguration:
         - 'equilibrate': simple NPT equilibration;
         - 'anneal': simple simulated annealing;
         - 'ladder': temperature ladder;
-        - 'deform: constant strain-rate uniaxial deformation;
+        - 'deform': constant strain-rate uniaxial deformation;
+        - 'shear': constant-rate simple shear, for the shear modulus;
         
         """
-    default_classes={'equilibrate':PostSimMD,'anneal':PostSimAnneal,'ladder':PostSimLadder,'deform':PostSimDeform}
+    default_classes={'equilibrate':PostSimMD,'anneal':PostSimAnneal,'ladder':PostSimLadder,'deform':PostSimDeform,'shear':PostSimShear}
     def __init__(self):
         self.cfgFile=''
         self.baselist=[]

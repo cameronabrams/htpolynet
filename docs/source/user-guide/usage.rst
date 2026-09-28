@@ -398,7 +398,20 @@ The purpose of the ``postsim`` subcommand is to control the execution of several
     --no-banner           suppress the startup banner
     --loglevel LOGLEVEL   log level for the diagnostic file (debug|info)
 
-The simulations are controlled by the YAML-format config file, which is _distinct_ from the cfg file used to generate the project(s).  The types of post-build MD simulations available are annealing, equilibration, temperature-ladder, and uniaxial deformation.  Demonstrations of how the ladder and deformation simulations are used to compute the glass-transition temperature and Young's modulus are detailed in the tutorials.
+The simulations are controlled by the YAML-format config file, which is _distinct_ from the cfg file used to generate the project(s).  The types of post-build MD simulations available are annealing, equilibration, temperature-ladder, uniaxial deformation, and simple shear.  Demonstrations of how the ladder and deformation simulations are used to compute the glass-transition temperature and Young's modulus are detailed in the tutorials.
+
+A ``shear`` stage is the shear counterpart of ``deform``: Gromacs' ``deform`` drives one off-diagonal element of the box matrix at a constant rate, and the shear modulus *G* is the slope of shear stress against engineering shear strain, just as *E* is the slope of tensile stress against tensile strain.  ``direction`` names the plane --- ``xy``, ``xz`` or ``yz`` --- and ``edot`` is the shear rate in ps\ :sup:`-1`.  The normal directions stay pressure-coupled at ``P`` while the off-diagonal is driven, because the anisotropic barostat is given zero compressibility off the diagonal and so does not oppose the deformation.
+
+.. code-block:: yaml
+
+  - shear:
+      direction: xy
+      T: 300.0
+      P: 1.0
+      edot: 0.001
+      ps: 1000
+
+The stage writes ``shear-xy.csv`` with the driven box element and the matching off-diagonal of the pressure tensor, plus the derived ``-strain`` and ``-stress`` columns.  ``htpolynet.analysis.utils.compute_G`` fits those to a modulus, as ``compute_E`` does for tension.  Note that the engineering shear strain is the box element over the length of the sheared face and starts at zero, so unlike the tensile strain it carries no ``-1``.
 
 ``htpolynet analyze``
 !!!!!!!!!!!!!!!!!!!!!

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A `shear` postsim stage, for the shear modulus.**  The counterpart of `deform`:
+  Gromacs' `deform` drives one off-diagonal element of the box matrix at a constant
+  rate, and *G* is the slope of shear stress against engineering shear strain, exactly
+  as *E* is the slope of tensile stress against tensile strain.  `direction` names the
+  plane --- `xy`, `xz` or `yz` --- and `edot` is the shear rate in ps^-1.
+
+  The normal directions stay pressure-coupled at `P` while the off-diagonal is driven,
+  because the anisotropic barostat is given zero compressibility off the diagonal and so
+  does not oppose the deformation.  The stage writes the driven box element and the
+  matching off-diagonal of the pressure tensor, with derived `-strain` and `-stress`
+  columns; `analysis.utils.compute_G` fits those, as `compute_E` does for tension.
+
+  One thing that differs from the tensile case and is easy to get wrong: the engineering
+  shear strain is the driven box element over the length of the sheared face and starts
+  at **zero**, so it carries no `-1`.
+
+  **Not yet validated against a real run.**  The mdp construction is unit-tested ---
+  which box element each plane drives, that the rate scales with the box length and
+  `edot`, that the off-diagonal compressibilities are zero while the normal ones are
+  not --- and the Gromacs energy terms it traces (`Box-YX`, `Box-ZX`, `Box-ZY`,
+  `Pres-XY`, `Pres-XZ`, `Pres-ZY`) were confirmed to exist in Gromacs 2025.4.  But no
+  shear run has been executed, so no measured *G* has come back from it yet.
+
+
 ## [2.12.0] - 2026-09-28
 
 ### Added
