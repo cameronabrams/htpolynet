@@ -100,7 +100,7 @@ Coverage as of the last measurement: **38.8%** overall.
 - **Remaining zero-coverage modules**: `cli.py` (165),
   `analysis/analyze.py` (137), `utils/vmd_viz.py` (75),
   `utils/checkpoint.py` (54).  `analysis/postsim.py` came off this list in
-  2.12.1: the mdp construction for `deform` and `shear` is covered, as are
+  2.13.0: the mdp construction for `deform` and `shear` is covered, as are
   `compute_E` and `compute_tg`, which produce the two numbers postsim exists
   to produce.  What is still untested there is the parts that run Gromacs.
 - **`compute_tg` trusts its fit windows and does not check them.**  It fits the
