@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`htpolynet piercings` reports any bond threaded through a ring in a finished
+  network.**  Since 2.11.4 a ring cure can *refuse* to create a threading, and there was
+  no way to ask whether one is there.  That asymmetry is the reason this exists: a
+  preventive check whose effect cannot be measured with the same tool is hard to trust,
+  and every number that justified those filters came from scripts outside the package.
+  Nothing about it is chemistry-specific --- any network built by dragging monomers
+  together can thread a bond through a ring.
+
+  It takes a top and gro pair like `make-viz`, reports each piercing with the ring's
+  composition, whether the piercing bond belongs to a residue of the ring, the offset of
+  the crossing from the ring centre in nm and as a fraction of the ring radius, the
+  angle to the ring normal, and the bond length; it correlates those against bonds too
+  long to be bonds, which in measured data are the same set.  `-json` writes the
+  findings out.  It exits 1 when it finds any, so it can gate a pipeline.
+
+  The geometry moved to `htpolynet.geometry.piercing`, shared with the ring cure's own
+  filters so that a measurement and the thing it measures cannot drift apart.
+
+  **Image before you average.**  Every ring atom is brought into one periodic image
+  before the centroid is taken.  Without that, a ring straddling a boundary gets a
+  centroid in the middle of the box and a triangle fan spanning the cell: measured here
+  on a 2 nm box, a 0.14 nm ring reads as 0.938 nm about a centre a full box-half away,
+  which reports a piercing for nearly everything nearby.  A detector written without it
+  found 212 piercings in an uncured melt, where the answer is zero by construction, and
+  about 15% of rings straddle a boundary in a real system.  The test suite covers that
+  case, its converse, over-long piercing bonds of 2.4 to 3.2 A, composition classified
+  on the whole ring rather than on a residue count or a truncated printout, and two
+  interlocked rings.
+
+
 ## [2.11.6] - 2026-09-27
 
 ### Added

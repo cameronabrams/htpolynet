@@ -17,6 +17,8 @@ import pandas as pd
 
 from scipy.spatial import cKDTree
 
+from ..geometry.piercing import segment_pierces_triangle
+
 logger = logging.getLogger(__name__)
 
 
@@ -155,26 +157,6 @@ def candidate_triples(sites, positions, radius, box, same_molecule=False, same_r
     return out
 
 
-def _segment_pierces_triangle(p0, p1, a, b, c, eps=1e-12):
-    """Moller-Trumbore, restricted to a segment rather than an infinite ray."""
-    e1, e2, d = b - a, c - a, p1 - p0
-    h = np.cross(d, e2)
-    det = float(np.dot(e1, h))
-    if abs(det) < eps:
-        return False
-    inv = 1.0 / det
-    s = p0 - a
-    u = inv * float(np.dot(s, h))
-    if u < 0.0 or u > 1.0:
-        return False
-    q = np.cross(s, e1)
-    v = inv * float(np.dot(d, q))
-    if v < 0.0 or u + v > 1.0:
-        return False
-    t = inv * float(np.dot(e2, q))
-    return 0.0 < t < 1.0
-
-
 def ring_threading_bonds(ring, positions, bonds_of, box, margin=0.3):
     """Existing bonds that pass through the loop a candidate ring would close.
 
@@ -232,7 +214,7 @@ def ring_threading_bonds(ring, positions, bonds_of, box, margin=0.3):
         p1 = p0 + _mic(np.asarray(positions[aj], dtype=float)
                        - np.asarray(positions[ai], dtype=float), box)
         for k in range(len(P)):
-            if _segment_pierces_triangle(p0, p1, O, P[k], P[(k + 1) % len(P)]):
+            if segment_pierces_triangle(p0, p1, O, P[k], P[(k + 1) % len(P)]) is not None:
                 out.append((ai, aj))
                 break
     return out
@@ -283,7 +265,7 @@ def rings_threaded_by(bond_pairs, ring_atom_lists, positions, box, margin=0.3):
             p1 = p0 + _mic(np.asarray(positions[aj], dtype=float)
                            - np.asarray(positions[ai], dtype=float), box)
             for k in range(len(P)):
-                if _segment_pierces_triangle(p0, p1, O, P[k], P[(k + 1) % len(P)]):
+                if segment_pierces_triangle(p0, p1, O, P[k], P[(k + 1) % len(P)]) is not None:
                     out.add((key, (min(ai, aj), max(ai, aj))))
                     break
     return out

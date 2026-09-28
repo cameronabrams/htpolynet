@@ -25,6 +25,7 @@ from .utils.banner import banner_message
 from .utils.inputcheck import input_check
 from .utils.logsetup import setup_logging
 from .utils.stringthings import my_logger
+from .analysis.piercings import piercings
 from .utils.vmd_viz import make_viz
 
 logger = logging.getLogger(__name__)
@@ -292,6 +293,7 @@ def cli():
         ('analyze',          analyze,          "perform 'gmx <command>' style analyses specified in the config file"),
         ('gen-slurm-script', gen_slurm_script, 'generate a SLURM submission script for running htpolynet on a cluster'),
         ('make-viz',         make_viz,         'regenerate VMD viz files (.viz.psf + .viz.tcl) from an existing gromacs top + gro pair'),
+        ('piercings',        piercings,        'report any bond threaded through a ring in a gromacs top + gro pair; exits 1 if any are found'),
         ('setup-claude',     setup_claude,     "install htpolynet's Claude Code skill so an agent can drive htpolynet"),
     ]
 
@@ -326,6 +328,11 @@ def cli():
     cp['make-viz'].add_argument('-gro', type=str, default='final.gro', help='input gromacs coordinate file (default: final.gro)')
     cp['make-viz'].add_argument('-grx', type=str, default=None, help='input htpolynet .grx (default: auto-detect <gro-stem>.grx; needed for the constituent-selection macros)')
     cp['make-viz'].add_argument('-prefix', type=str, default=None, help='output basename; the .viz.psf, .viz.tcl, and .viz.macros.tcl are written next to the input gro (default: stem of -gro)')
+
+    cp['piercings'].add_argument('-top', type=str, default='final.top', help='input gromacs topology file (default: final.top)')
+    cp['piercings'].add_argument('-gro', type=str, default='final.gro', help='input gromacs coordinate file (default: final.gro)')
+    cp['piercings'].add_argument('-max-ring', dest='max_ring', type=int, default=8, help='largest ring to consider when the topology carries no ring list (default: 8)')
+    cp['piercings'].add_argument('-json', type=str, default=None, help='also write the findings to this JSON file')
 
     cp['setup-claude'].add_argument('--skills-dir', type=str, default='~/.claude/skills',
                                     help='skills directory to install into (default: %(default)s); use ./.claude/skills to scope the skill to one project')

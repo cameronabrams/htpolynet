@@ -22,6 +22,11 @@ htpolynet.analysis
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: htpolynet.analysis.piercings
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: htpolynet.analysis.postsim
    :members:
    :undoc-members:
@@ -203,6 +208,11 @@ htpolynet.geometry
    :show-inheritance:
 
 .. automodule:: htpolynet.geometry.templategeom
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: htpolynet.geometry.piercing
    :members:
    :undoc-members:
    :show-inheritance:
