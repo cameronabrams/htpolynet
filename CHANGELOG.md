@@ -32,6 +32,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Pres-XY`, `Pres-XZ`, `Pres-ZY`) were confirmed to exist in Gromacs 2025.4.  But no
   shear run has been executed, so no measured *G* has come back from it yet.
 
+- **Real simulation traces as test fixtures, for Tg and Young's modulus.**  Until now
+  every test of those fits used synthetic data, where a clean straight line recovers its
+  slope to eight digits.  `tests/unit/fixtures/` now carries a real 61-point temperature
+  ladder and a real 1001-frame uniaxial deformation, the latter written by
+  `PostSimDeform` itself.
+
+  They show what synthetic data cannot.  On the real ladder, Tg spans **377 to 406 K**
+  across fit windows a reasonable person would choose; on the real deformation, E spans
+  **2420 to 4398 MPa**, nearly a factor of two.  The R-squared of a perfectly sensible
+  modulus fit is under 0.5, because single-frame pressure in MD scatters hugely --- so
+  anyone tempted to add an R-squared quality gate should look at that first.  All of
+  this is now pinned by tests, and `ROADMAP.md` carries what to do about it.
+
+  There is deliberately **no shear fixture**, and a test asserts its absence so that
+  adding one forces the accompanying tests to be written.  No shear simulation has been
+  run.
+
 - **Tests for the two numbers postsim exists to produce.**  `analysis/postsim.py` was a
   zero-coverage module, and `compute_E` and `compute_tg` --- the fits behind Young's
   modulus and the glass transition --- had no tests at all, while the `shear` stage added

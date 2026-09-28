@@ -103,6 +103,24 @@ Coverage as of the last measurement: **38.8%** overall.
   2.13.0: the mdp construction for `deform` and `shear` is covered, as are
   `compute_E` and `compute_tg`, which produce the two numbers postsim exists
   to produce.  What is still untested there is the parts that run Gromacs.
+- **Neither `compute_tg` nor `compute_E` records the fit window that produced a
+  number, and on real data the window moves the answer a lot.**  Measured on the two
+  traces now in `tests/unit/fixtures/`:
+
+        compute_tg on a real ladder     377.1 to 406.3 K across cold/hot windows of
+                                        8-20 and 10-30 points -- a 29 K spread
+        compute_E on a real deformation 2420 to 4398 MPa across four ordinary fit
+                                        windows -- nearly a factor of two
+
+  Both are numbers that go into papers, and nothing in the output says which window
+  produced one.  On synthetic data the same functions recover their input to eight
+  digits, which is why this was invisible until real traces were used as fixtures.
+
+  Worth doing: have both functions return the window alongside the value, and have
+  `postsim` record it next to the trace.  A stronger version would report the spread
+  across a range of windows as an uncertainty, which is closer to what the number
+  actually is.
+
 - **`compute_tg` trusts its fit windows and does not check them.**  It fits the
   first `n_points[0]` and last `n_points[1]` points of a temperature ladder and
   takes it on faith that each window lies wholly on one side of the transition.
