@@ -247,6 +247,31 @@ class PostSimLadder(PostSimMD):
             }
         mdp_modify(mdpname,mod_dict)
 
+def _strain_advice(edot,ps,logger=logger,what='strain'):
+    """Says what strain a deformation will reach, and whether a modulus can come of it.
+
+    Measured on a 12,600-atom cured network: at ``edot = 1e-3`` the run is past the
+    elastic region before it has sampled it, and a modulus fitted from such a run is
+    about three times too low.  Halving the noise does not help --- the same run at ten
+    times the energy output gave the same answer --- because the problem is where the
+    strain is, not how well it is measured.  At ``edot = 1e-4`` the low-strain fit
+    resolves and finds 3.5 to 4.5 GPa where the faster ramp's chord gave 1.2.
+
+    One rate cannot serve both purposes.  A yield stress wants to reach strains of
+    order 0.3; a modulus wants many frames below about 0.02, which is the same wall
+    time at a tenth the rate.
+    """
+    total=edot*ps
+    logger.info(f'This run reaches {what} {total:.3f} at {edot:g} ps^-1 over {ps} ps')
+    if edot>=1e-3:
+        logger.warning(
+            f'{what} passes 0.02 after only {0.02/edot:.0f} ps at edot={edot:g}, so very '
+            f'little of this run samples the elastic region.  A modulus fitted from it is '
+            f'a secant over a large strain window and is measurably too low -- about '
+            f'threefold on a cured thermoset.  For a modulus use edot=1e-4, which reaches '
+            f'0.03 in the same wall time; keep this rate for yield behaviour.')
+
+
 class PostSimDeform(PostSimMD):
     """ a class to handle a uniaxial deformation MD simulation
     """
@@ -335,6 +360,8 @@ class PostSimDeform(PostSimMD):
             params['scatter']=('Box-Z',['Pres-ZZ'],'tension_v_zlength.png')
         else:
             logger.error(f'Bad direction for uniaxial strain {direction}')
+            return
+        _strain_advice(edot,duration)
 
         mdp_modify(mdpname,mod_dict)
 
@@ -437,6 +464,7 @@ class PostSimShear(PostSimMD):
         params['traces']=[plane['box'],plane['pres']]
         params['scatter']=(plane['box'],[plane['pres']],
                            f'shearstress_v_{direction}.png')
+        _strain_advice(params.get('edot',0.0),params['ps'],what='shear strain')
         mdp_modify(mdpname,mod_dict)
 
 class PostsimConfiguration:

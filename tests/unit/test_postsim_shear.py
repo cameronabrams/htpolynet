@@ -144,3 +144,36 @@ class TestComputeG(unittest.TestCase):
         strain = np.linspace(0.0, 0.1, 200)
         stress = 900.0 * strain
         self.assertAlmostEqual(compute_G(strain, stress)[0], compute_E(strain, stress)[0])
+
+
+class TestItSaysWhenTheRateCannotResolveAModulus(unittest.TestCase):
+    """One rate cannot serve both purposes.  Measured on a cured 12,600-atom network:
+    at edot 1e-3 the run is past the elastic region before it has sampled it and the
+    fitted modulus is about threefold low, while edot 1e-4 reaches strain 0.03 in the
+    same wall time and resolves 3.5-4.5 GPa where the faster ramp's chord gave 1.2."""
+
+    def test_the_default_rate_draws_a_warning(self):
+        with self.assertLogs('htpolynet.analysis.postsim', level='WARNING') as cm:
+            built('xy', edot=0.001)
+        msg = '\n'.join(cm.output)
+        self.assertIn('20 ps', msg)
+        self.assertIn('edot=1e-4', msg)
+
+    def test_a_rate_that_can_resolve_it_does_not(self):
+        with self.assertLogs('htpolynet.analysis.postsim', level='INFO') as cm:
+            built('xy', edot=0.0001)
+        self.assertNotIn('WARNING', '\n'.join(cm.output))
+
+    def test_the_strain_reached_is_always_reported(self):
+        with self.assertLogs('htpolynet.analysis.postsim', level='INFO') as cm:
+            built('xy', edot=0.0001, ps=1000)
+        self.assertIn('0.100', '\n'.join(cm.output))
+
+    def test_uniaxial_says_it_too(self):
+        from htpolynet.analysis.postsim import PostSimDeform
+        d = PostSimDeform({'direction': 'x', 'edot': 0.001, 'ps': 1000})
+        with tempfile.TemporaryDirectory() as t:
+            f = os.path.join(t, 'deform.mdp')
+            open(f, 'w').write(MDP)
+            with self.assertLogs('htpolynet.analysis.postsim', level='WARNING'):
+                d.build_mdp(f, box=BOX)

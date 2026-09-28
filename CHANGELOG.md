@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Deformation and shear stages now report the strain they will reach, and warn when
+  the rate is too fast to measure a modulus.**  Measured on a cured 12,600-atom network:
+  at the default `edot = 1e-3` a run passes strain 0.02 after 20 ps and spends the rest
+  of its time past the elastic region, and a modulus fitted from it comes out about
+  **threefold low** --- 1.2 GPa against the 3.5 to 4.5 that the same system gives at
+  `edot = 1e-4`, which reaches strain 0.03 in the same wall time.  It is not a sampling
+  problem: the identical run at ten times the energy output gave the identical answer.
+
+  The default is deliberately unchanged.  The slow ramp has not found a plateau either,
+  so choosing a new number now would swap a known-wrong default for a guess; the warning
+  names `1e-4` as what to use for a modulus and says to keep the faster rate for yield
+  behaviour.  One rate cannot serve both.
+
 - **Deformation and shear stages now sample stress ten times more often.**  Both
   inherited `nstenergy = 500` from the packaged `npt.mdp`, one frame per ps --- and
   stress is the quantity these stages exist to measure.  Tested on a real shear run:

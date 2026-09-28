@@ -136,6 +136,28 @@ Coverage as of the last measurement: **38.8%** overall.
   **physical, not statistical**.  An apparent plateau in the sparser data was the error
   bars, not the material.
 
+  **And the rate matters more than either.**  Repeating the shear at `edot = 1e-4` ---
+  reaching gamma 0.03 in the same 300 ps the default spends reaching 0.30:
+
+        window     edot 1e-3        edot 1e-4
+        0.0075    -5.03 +/- 2.58    4.52 +/- 1.44
+        0.0100     0.80 +/- 1.89    3.51 +/- 0.80
+        0.0200     1.88 +/- 0.68    1.45 +/- 0.29
+        0.0300     1.48 +/- 0.36    1.51 +/- 0.15
+
+  The two agree at gamma >= 0.02.  Below that the default resolves nothing at all, while
+  the slow ramp finds 3.5 to 4.5 GPa against the 1.22 chord the default gives at
+  gamma <= 0.10.  **So a modulus quoted from the shipped `edot` is low by roughly
+  threefold**, and it is not a sampling problem: the same run at ten times the output
+  gave the same answer.  The autocorrelation time was measured at 0.06-0.10 ps, under
+  one frame, so the frames really are independent.
+
+  htpolynet now says so rather than changing the default: both stages report the strain
+  the run will reach and warn when `edot` is high enough that little of the run samples
+  the elastic region.  The default is left alone because the slow ramp has not found a
+  plateau either --- picking a new number now would be trading a known-wrong default for
+  a guess.  A 3 ns arm is running.
+
   What that leaves is a choice rather than a bug.  At the strain rates MD can reach there
   may be no linear regime to find, in which case the honest output is a secant modulus
   with its strain window quoted alongside, not a single number called *E* or *G*.  The
