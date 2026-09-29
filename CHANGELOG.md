@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.13.0] - 2026-09-29
+
 ### Changed
 
 - **Deformation and shear stages now say what a modulus from them is worth.**  Every run
