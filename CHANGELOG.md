@@ -10,12 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Deformation and shear stages now say what a modulus from them is worth.**  Every run
-  reports the strain it will reach and is told that **one ramp is not quotable**: two
-  runs of the same protocol on the same structure, differing only in the velocity seed,
-  gave binned mean stresses 5.7 and 6.1 standard errors apart at 100,000 frames per unit
-  strain.  Between-trajectory scatter beats within-trajectory standard error sixfold, so
-  the error bar a single fit reports badly understates the real uncertainty.  Replicates
-  come before rate and before sampling.
+  reports the strain it will reach and is told that **one ramp gives a modulus but not
+  its uncertainty**: eight independent ramps of one protocol on one network gave shear
+  moduli from 1.29 to 1.74 GPa --- 10% scatter --- while each run's own fit reported an
+  error an order of magnitude smaller.  Take the scatter between seeds as the error bar,
+  not the fit's.
 
   A run fast enough that little of it sits at low strain also draws a warning, since what
   gets fitted is then a secant over a large window.  It does not claim a bias, because

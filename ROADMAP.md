@@ -136,6 +136,27 @@ Coverage as of the last measurement: **38.8%** overall.
   **physical, not statistical**.  An apparent plateau in the sparser data was the error
   bars, not the material.
 
+  **RESOLVED for shear, 2026-09-28: G = 1.51 +/- 0.05 GPa** over gamma <= 0.03, from
+  eight independent ramps at `edot = 1e-4` on one BADCy network.  Averaged over
+  replicates the modulus *does* flatten, which no single trajectory could show:
+
+        window    G (GPa)   sd across 8 ramps
+        0.0075     2.71          1.88
+        0.0100     2.21          0.94
+        0.0150     1.68          0.27
+        0.0200     1.60          0.20
+        0.0300     1.51          0.15
+
+  1.68 to 1.51 is 0.17 +/- 0.11, about 1.5 sigma --- a plateau, not a slide.  Below
+  gamma 0.01 it stays unresolved even at n=8, with 70% scatter; that needs a larger cell
+  rather than more trajectories.
+
+  **The relentless slide both of us chased was largely a single-draw artifact.**  Checked
+  against the uniaxial fixture the same way: every step from gamma 0.0075 to 0.04 is
+  1.2 sigma or less, so at n=1 that curve cannot distinguish a plateau from a decline
+  either.  What is real there is the fall past 0.04 --- 3.8 sigma to 0.06 and 9.8 sigma
+  to 0.10 --- which is the approach to yield, not the modulus.
+
   **What actually dominates is trajectory-to-trajectory scatter, and it is large.**  Two
   runs of the same protocol on the same starting structure, differing only in the
   velocity seed, at 100,000 frames per unit strain:
@@ -144,10 +165,12 @@ Coverage as of the last measurement: **38.8%** overall.
         0.005-0.010   287 +/- 21   122 +/- 20     5.7 sigma
         0.025-0.030   547 +/- 20   369 +/- 22     6.1 sigma
 
-  Between-trajectory scatter beats within-trajectory standard error sixfold.  So **a
-  modulus from a single ramp is not a measurement at any rate or sampling density**, and
-  the error bar such a fit reports badly understates the real uncertainty.  Replicates
-  are the first requirement for a modulus fixture, ahead of rate and ahead of sampling.
+  Between-trajectory scatter beats within-trajectory standard error sixfold.  Across the
+  eight-replicate set the per-trajectory moduli were 1.51, 1.29, 1.51, 1.74, 1.63, 1.60,
+  1.32 and 1.48 GPa --- 10% scatter, against fit errors an order smaller.  So **one ramp
+  gives a modulus to about 10% but gives no usable uncertainty**, and a fit's own error
+  bar is not that uncertainty.  An earlier version of this entry said no modulus was
+  quotable from one ramp, which was too strong.
 
   A single slow ramp appeared to show the default rate understating *G* threefold ---
   3.5-4.5 GPa against 1.22.  A replicate of that same protocol refuted it, giving

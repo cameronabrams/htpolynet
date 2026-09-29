@@ -147,10 +147,11 @@ class TestComputeG(unittest.TestCase):
 
 
 class TestItSaysWhenTheRateCannotResolveAModulus(unittest.TestCase):
-    """One rate cannot serve both purposes.  Measured on a cured 12,600-atom network:
-    at edot 1e-3 the run is past the elastic region before it has sampled it and the
-    fitted modulus is about threefold low, while edot 1e-4 reaches strain 0.03 in the
-    same wall time and resolves 3.5-4.5 GPa where the faster ramp's chord gave 1.2."""
+    """What a deformation run can and cannot tell you.
+
+    Eight independent ramps on one network gave shear moduli spanning 1.29 to 1.74 GPa
+    while each fit reported a far smaller error, so one ramp gives a modulus to about
+    10% and gives no useful uncertainty at all."""
 
     def test_the_default_rate_draws_a_warning(self):
         with self.assertLogs('htpolynet.analysis.postsim', level='WARNING') as cm:
@@ -175,7 +176,11 @@ class TestItSaysWhenTheRateCannotResolveAModulus(unittest.TestCase):
             with self.subTest(rate):
                 with self.assertLogs('htpolynet.analysis.postsim', level='INFO') as cm:
                     built('xy', edot=rate)
-                self.assertIn('replicates', '\n'.join(cm.output))
+                msg = '\n'.join(cm.output)
+                self.assertIn('replicates', msg)
+                # and not the stronger claim that one ramp is worthless: it gives the
+                # value to ~10%, it just cannot give the error bar
+                self.assertNotIn('not quotable', msg)
 
     def test_a_slow_rate_draws_no_warning(self):
         with self.assertLogs('htpolynet.analysis.postsim', level='INFO') as cm:

@@ -250,12 +250,13 @@ class PostSimLadder(PostSimMD):
 def _strain_advice(edot,ps,logger=logger,what='strain'):
     """Says what strain a deformation will reach, and what a modulus from it is worth.
 
-    The measured warning is not about the rate.  Two runs of the *same* protocol on the
-    *same* starting structure, differing only in the velocity seed, gave binned mean
-    stresses 5.7 and 6.1 standard errors apart, at 100,000 frames per unit strain.
-    Trajectory-to-trajectory scatter exceeded within-trajectory standard error sixfold,
-    so a modulus from a single ramp is not a measurement at any rate or sampling density,
-    and its error bar understates the real uncertainty badly.
+    The measured warning is not about the rate, it is about replicates.  Eight
+    independent ramps of one protocol on one network gave shear moduli from 1.29 to
+    1.74 GPa --- 10% scatter --- while each run's own fit reported a standard error far
+    smaller than that.  So a single ramp gives a modulus to roughly 10%, which is often
+    good enough, but it cannot give the uncertainty on it, and a fit's own error bar is
+    not that uncertainty.  Averaging replicates also does something a single run cannot:
+    it separates a real trend in the modulus with strain from one draw wandering.
 
     Rate does matter past yield --- 1.22 +/- 0.06 GPa at ``edot = 1e-3`` against
     0.96 +/- 0.02 at ``1e-4`` over the same window --- and a fast ramp spends little of
@@ -265,9 +266,10 @@ def _strain_advice(edot,ps,logger=logger,what='strain'):
     """
     total=edot*ps
     logger.info(f'This run reaches {what} {total:.3f} at {edot:g} ps^-1 over {ps} ps')
-    logger.info('A modulus from one ramp is not quotable: replicates of an identical '
-                'protocol have been measured 6 standard errors apart, so run several '
-                'seeds and take the scatter between them as the uncertainty.')
+    logger.info('One ramp gives a modulus to about 10% but not its uncertainty: eight '
+                'replicates of one protocol spanned 1.29 to 1.74 GPa while each fit '
+                'reported a much smaller error. Run several seeds and take the scatter '
+                'between them as the error bar.')
     if edot>=1e-3:
         logger.warning(
             f'{what} passes 0.02 after only {0.02/edot:.0f} ps at edot={edot:g}, so '
