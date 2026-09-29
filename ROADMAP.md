@@ -162,6 +162,22 @@ Coverage as of the last measurement: **38.8%** overall.
   quotable, and warns when the rate is fast enough that little of the run sits at low
   strain --- without claiming a bias it cannot support.  The default is unchanged.
 
+  **How uninterpretable a single ramp is, put a third way.**  Fitting *E* and *G* on the
+  same network at the same rate over the same windows, and taking the implied Poisson
+  ratio from `E/G = 2(1 + nu)`:
+
+        window    E (GPa)        G (GPa)       E/G     implied nu
+        0.03    3.07 +/- 0.16  1.29 +/- 0.10   2.37       +0.19
+        0.05    3.00 +/- 0.07  1.39 +/- 0.05   2.16       +0.08
+        0.10    1.24 +/- 0.15  0.96 +/- 0.02   1.29       -0.35
+        0.15    0.90 +/- 0.05  0.92 +/- 0.01   0.98       -0.51
+
+  A real material needs `E/G` between 2 and 3.  Six of eight windows imply a negative
+  Poisson ratio.  A setup fault was ruled out first --- the uniaxial run drives x with y
+  and z left coupled at 1 bar, so Poisson contraction is allowed, and the box went
+  5.21468 to 6.77918 nm, exactly the 0.30000 strain requested.  The stage is right; one
+  trajectory is simply not a measurement.
+
   What that leaves is a choice rather than a bug.  At the strain rates MD can reach there
   may be no linear regime to find, in which case the honest output is a secant modulus
   with its strain window quoted alongside, not a single number called *E* or *G*.  The
@@ -1726,6 +1742,31 @@ Coverage as of the last measurement: **38.8%** overall.
   that is wanted.
 
 ## Simulation defaults
+
+- **Every constant-pressure stage uses the Berendsen barostat, which does not sample the
+  NPT ensemble and is deprecated upstream.**  `npt.mdp`, `drag-npt.mdp` and
+  `relax-npt.mdp` all set `pcoupl = Berendsen`, and nothing in the Python overrides it,
+  so this covers densification, precure and postcure equilibration, the CURE relax
+  ladder, the ring cure's relax and equilibrate, and both deformation stages.  Gromacs
+  2025 says so at every `grompp`: *"The Berendsen barostat does not generate any strictly
+  correct ensemble, and should not be used for new production simulations... We recommend
+  using the C-rescale barostat instead."*
+
+  Raised by htpolynet-study 2026-09-28 in the context of moduli, where it matters most:
+  a barostat that does not sample the right volume fluctuations is a poor foundation for
+  a mechanical measurement.
+
+  **The reason this has not simply been changed is reproducibility, not doubt.**
+  Switching to C-rescale changes the sampled ensemble, so every density, Tg and modulus
+  htpolynet has produced becomes not strictly comparable with anything produced after.
+  There is precedent for taking that cost deliberately --- 2.7.0 changed the constraint
+  scheme for the same kind of reason and said so in the notes --- and the same treatment
+  fits here: change all three together, say plainly in the changelog that prior results
+  are not comparable, and ideally re-measure one known system across the change so the
+  size of the shift is on record rather than assumed.
+
+  Whoever takes it should also check whether `tau_p` wants revisiting: a value tuned for
+  Berendsen's weak coupling is not necessarily right for C-rescale.
 
 - **The density-convergence tolerance may be tight for example 6.**  In the
   v2.10.0 sweep, example 6 failed the gate for the first time in four sweeps:
