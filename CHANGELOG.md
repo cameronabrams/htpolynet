@@ -33,6 +33,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Gromacs warnings were discarded, so nobody ever saw one.**  htpolynet runs every
+  `grompp` with `-maxwarn 4`, so up to four warnings do not stop a run, and the command
+  wrapper only echoes captured output when a command *fails*.  Between them, a warning on
+  a successful run reached neither the user nor the diagnostic log.
+
+  That is how the Berendsen barostat deprecation --- emitted by every constant-pressure
+  stage htpolynet runs, on every Gromacs since 2025 --- went unnoticed for as long as it
+  has been emitted, and it is why the shear stage's off-diagonal conflict had to be found
+  by running `grompp` by hand.  Warnings are how Gromacs says a setup is questionable,
+  and they are worth seeing even when the run proceeds.  They are now logged at WARNING
+  level, with the mdp that produced them.
+
+
 - **Uniaxial deformation was rejected by Gromacs 2025 before it started, so Young's
   modulus could not be measured at all.**  From Gromacs 2025, combining `deform` with
   generated velocities is a hard grompp *error* unless `deform-init-flow = yes` is set,
@@ -46,6 +59,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   putting a real mdp through `gmx grompp` while trying to build a shear fixture.
 
 ### Added
+
+- **The shear stage's box coupling is now a choice, because it changes the answer by
+  29%.**  `ring_cure`-style shear has to be run somehow, and there are three defensible
+  ways to hold the box while shearing it; measured on one network with replicates they
+  give *G* of 1.17, 1.35 and 1.51 GPa.  That spread is wider than the trajectory scatter
+  of any of them, so it does not average away.  `coupling: clamped` (the default, and
+  what every measurement so far used) keeps the two unsheared directions at pressure;
+  `coupling: isochoric` uses no barostat at all, needs no uncoupling, and is the only one
+  of the three that passes `grompp` with no warnings whatsoever.
+
+  The default is unchanged, and not because it is the best: the Poisson ratio read off
+  the box dimensions ranks it last of the three.  It is unchanged because that is one
+  cross-check at one strain, and switching would silently move every *G* anyone has
+  measured.  The stage now logs which coupling it used, so a *G* is never quoted without
+  it.
 
 - **A `shear` postsim stage, for the shear modulus.**  The counterpart of `deform`:
   Gromacs' `deform` drives one off-diagonal element of the box matrix at a constant

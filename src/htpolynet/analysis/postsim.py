@@ -421,6 +421,7 @@ class PostSimShear(PostSimMD):
         'traces': ['Box-YX','Pres-XY'],
         'scatter': ('Box-YX',['Pres-XY'],'shearstress_v_yxbox.png'),
         'direction':'xy',
+        'coupling':'clamped',
         'T':300.0,
         'P':1.0,
         'ps':1000,
@@ -449,6 +450,10 @@ class PostSimShear(PostSimMD):
         deform[plane['slot']]=f'{rate:.3e}'
         compress=['4.5e-5','4.5e-5','4.5e-5','0','0','0']
         compress[plane['zero']]='0'
+        coupling=params.get('coupling','clamped')
+        if coupling not in ('clamped','isochoric'):
+            logger.error(f'Bad coupling for simple shear {coupling}; expected clamped or isochoric')
+            return
         mod_dict={
             'ref_t':params['T'],
             'gen-temp':params['T'],
@@ -476,10 +481,20 @@ class PostSimShear(PostSimMD):
             # grompp refuses the run outright
             'deform-init-flow':'yes',
             }
+        if coupling=='isochoric':
+            # no barostat, so nothing conflicts with the driven box element and nothing
+            # needs uncoupling; Gromacs ignores the leftover coupling keys
+            mod_dict['pcoupl']='no'
+            for _k in ('pcoupltype','ref_p','compressibility'):
+                mod_dict.pop(_k,None)
         params['output_deffnm']=f'shear-{direction}'
         params['traces']=[plane['box'],plane['pres']]
         params['scatter']=(plane['box'],[plane['pres']],
                            f'shearstress_v_{direction}.png')
+        logger.info(f'Shearing {direction} with {coupling} box coupling.  G spans about '
+                    f'29% across three defensible couplings on one measured network, '
+                    f'wider than the scatter between trajectories, so quote the coupling '
+                    f'alongside the modulus.')
         _strain_advice(params.get('edot',0.0),params['ps'],what='shear strain')
         mdp_modify(mdpname,mod_dict)
 

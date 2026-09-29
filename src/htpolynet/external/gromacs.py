@@ -154,6 +154,44 @@ def ensure_thread_mpi_ranks(mdrun_options, mdrun_cmd=''):
     return adjusted
 
 
+def report_grompp_warnings(out, err, mdp=''):
+    """Logs the warnings grompp emitted, which are otherwise thrown away.
+
+    htpolynet runs grompp with ``-maxwarn 4``, so up to four warnings do not stop a run,
+    and :func:`~htpolynet.external.command.run` only echoes captured output when a
+    command *fails*.  Between them, a Gromacs warning on a successful run reached
+    neither the user nor the diagnostic log.
+
+    That is how the Berendsen barostat deprecation --- emitted on every constant-pressure
+    stage htpolynet runs, on every Gromacs since 2025 --- went unnoticed, and how an
+    off-diagonal box element being deformed against a coupled compressibility would have
+    gone unnoticed too.  Warnings are how Gromacs says the setup is questionable; they
+    are worth seeing even when the run proceeds.
+
+    Args:
+        out (str): grompp stdout
+        err (str): grompp stderr
+        mdp (str): mdp basename, for the message
+
+    Returns:
+        list: the warning headings found
+    """
+    text = (out or '') + '\n' + (err or '')
+    found, lines = [], text.split('\n')
+    for i, line in enumerate(lines):
+        if not line.startswith('WARNING'):
+            continue
+        body = []
+        for nxt in lines[i + 1:]:
+            if not nxt.strip() or nxt.startswith(('WARNING', 'NOTE', 'ERROR')):
+                break
+            body.append(nxt.strip())
+        found.append(' '.join(body) or line)
+    for w in found:
+        logger.warning(f'grompp on {mdp}.mdp: {w}')
+    return found
+
+
 def grompp_and_mdrun(gro='',top='',out='',mdp='',boxSize=[],single_molecule=False,**kwargs):
     """Launcher for grompp and mdrun.
 
@@ -184,7 +222,8 @@ def grompp_and_mdrun(gro='',top='',out='',mdp='',boxSize=[],single_molecule=Fals
         box_str = ' '.join(f'{x:.8f}' for x in boxSize)
         run(f'{sw.gmx} {sw.gmx_options} editconf -f {gro}.gro -o {gro} -box {box_str}', quiet=quiet)
     # nsteps=kwargs.get('nsteps',-2)
-    run(f'{sw.gmx} {sw.gmx_options} grompp -f {mdp}.mdp -c {gro}.gro -p {top}.top -o {out}.tpr -maxwarn {maxwarn}', quiet=quiet)
+    _gout, _gerr = run(f'{sw.gmx} {sw.gmx_options} grompp -f {mdp}.mdp -c {gro}.gro -p {top}.top -o {out}.tpr -maxwarn {maxwarn}', quiet=quiet)
+    report_grompp_warnings(_gout, _gerr, mdp)
     mdrun_options = mdrun_options_for(mdrun_options, mdp_integrator(f'{mdp}.mdp'))
     mdrun_options = ensure_thread_mpi_ranks(
         mdrun_options, sw.mdrun_single_molecule if single_molecule else sw.mdrun)

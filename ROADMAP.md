@@ -180,9 +180,24 @@ Coverage as of the last measurement: **38.8%** overall.
   so it is a defensible protocol rather than a workaround --- but it is a different
   ensemble from the one the stage now uses, and nobody has measured *G* that way here.
 
-  That experiment is running: NVT against free-x against the clamped default, to n=12.
-  Until it reports, treat *G* from this stage as disagreeing with *E* by roughly a
-  quarter, and do not assume the clamp is the cause.
+  **Settled at n=12, and the answer is that there is no single answer.**
+
+        clamped   1.51 +/- 0.05  (n=8)    E/G 2.01   implied nu +0.00
+        NVT       1.35 +/- 0.07  (n=12)   E/G 2.25   implied nu +0.12
+        free-x    1.17 +/- 0.02  (n=3)    E/G 2.59   implied nu +0.29
+        nu straight off the box dimensions                     +0.35
+
+  Three defensible protocols spanning 29%, wider than the trajectory scatter of any of
+  them, so **replication cannot fix it**.  NVT lands between the other two, confirming
+  neither story: it constrains all three box dimensions yet sits below the singly
+  clamped run, so constraint does not simply raise *G*.
+
+  The Poisson ratio is the only independent arbiter available and it ranks free-x best,
+  NVT second, the shipped default last --- but that is one cross-check on a chord at 3%
+  strain, which is not enough to change a default on.  So the coupling became a
+  documented option (`clamped`, `isochoric`) with the default unchanged and the choice
+  logged, rather than a silent switch.  What would settle it: an independent measurement
+  of the same network's moduli that does not come from a `deform` ramp at all.
 
   Note also, for the barostat entry above: **C-rescale cannot replace Berendsen in the
   anisotropic stages** --- it does not support that coupling type --- so moving off
