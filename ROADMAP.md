@@ -136,7 +136,8 @@ Coverage as of the last measurement: **38.8%** overall.
   **physical, not statistical**.  An apparent plateau in the sparser data was the error
   bars, not the material.
 
-- **The shear stage clamps a box dimension, and that biases *G* high by 29%.**
+- **The shear stage's *G* is 29% above a less constrained variant, and nobody knows
+  why.**
   `reject`-free shear by `deform` needs the barostat switched off for the Cartesian
   component the shear moves, or Gromacs refuses the run: *"an off-diagonal box element
   has deform set while compressibility > 0 for the same component of another box
@@ -149,9 +150,22 @@ Coverage as of the last measurement: **38.8%** overall.
 
   The difference is 0.34 +/- 0.05 GPa, 6.3 sigma, and only the unclamped number is
   consistent with the network's own Poisson ratio or with *E* = 3.03 +/- 0.21 measured on
-  the same system.  The clamped runs also scatter four times more widely, which itself
-  suggests constraint stress.  So htpolynet currently ships a shear stage whose *G* is
-  biased high, for a reason Gromacs forces.
+  the same system.  So htpolynet ships a shear stage whose *G* disagrees with its own
+  *E*, by a quarter.
+
+  **"The clamp inflates it" is the obvious explanation and it does not survive.**
+  Constant-volume shear fixes *all three* box dimensions, so it is more constrained than
+  the clamped stage, which fixes only one --- yet its mean sits *below* clamped:
+
+        clamped  (n=8)   1.51 +/- 0.05   sd 0.15
+        free-x   (n=3)   1.17 +/- 0.02   sd 0.04
+        NVT      (n=3)   1.41 +/- 0.25   sd 0.43
+
+  If constraint simply raised *G*, NVT would be highest.  At n=3 it is also consistent
+  with both of the others, so it decides nothing yet; separating 1.17 from 1.51 at two
+  sigma needs about thirteen replicates.  What the NVT arm does show is that its
+  trajectory scatter is ten times free-x's and three times clamped's, which is worth
+  understanding in itself.
 
   **There is a third option neither of us had tried, and it is clean.**  Measured here
   with `gmx grompp`:
@@ -166,9 +180,9 @@ Coverage as of the last measurement: **38.8%** overall.
   so it is a defensible protocol rather than a workaround --- but it is a different
   ensemble from the one the stage now uses, and nobody has measured *G* that way here.
 
-  That is the experiment worth running next: NVT shear against the free-x diagnostic
-  against the current clamped default, on one network with replicates.  Until then treat
-  *G* from this stage as biased high by roughly a quarter.
+  That experiment is running: NVT against free-x against the clamped default, to n=12.
+  Until it reports, treat *G* from this stage as disagreeing with *E* by roughly a
+  quarter, and do not assume the clamp is the cause.
 
   Note also, for the barostat entry above: **C-rescale cannot replace Berendsen in the
   anisotropic stages** --- it does not support that coupling type --- so moving off

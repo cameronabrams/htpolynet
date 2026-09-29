@@ -264,11 +264,13 @@ def _strain_advice(edot,ps,logger=logger,what='strain'):
     the modulus is not established: the one experiment that appeared to show it was a
     single trajectory and a replicate refuted it.
 
-    A known bias that is *not* about rate: :class:`PostSimShear` has to switch the
-    barostat off for the Cartesian component it shears, because Gromacs refuses the run
-    otherwise, and that clamp raises *G* by about 29% --- 1.51 GPa clamped against 1.17
-    unclamped on one network, where only the unclamped value agrees with the same
-    network's *E* and Poisson ratio.  See ROADMAP.md.
+    A known disagreement that is *not* about rate: :class:`PostSimShear` has to switch
+    the barostat off for the Cartesian component it shears, because Gromacs refuses the
+    run otherwise, and *G* from that configuration comes out about 29% above a less
+    constrained variant --- 1.51 against 1.17 GPa on one network, where only the latter
+    agrees with that network's own *E* and Poisson ratio.  Why is open; the obvious
+    answer, that constraint inflates it, fails because a fully constant-volume variant is
+    more constrained still and sits lower.  See ROADMAP.md.
     """
     total=edot*ps
     logger.info(f'This run reaches {what} {total:.3f} at {edot:g} ps^-1 over {ps} ps')

@@ -63,14 +63,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shear strain is the driven box element over the length of the sheared face and starts
   at **zero**, so it carries no `-1`.
 
-  **A known bias, stated because it is not going to be fixed in this release.**  Shearing
+  **A known disagreement, stated because it is not resolved in this release.**  Shearing
   by `deform` requires the barostat to be switched off for the Cartesian component the
-  shear moves --- Gromacs refuses the run otherwise --- and that clamp raises *G* by
-  about 29%: 1.51 +/- 0.05 GPa clamped against 1.17 +/- 0.02 unclamped on one network,
-  where only the unclamped value is consistent with that network's own *E* and Poisson
-  ratio.  A constant-volume variant passes `grompp` with no clamp and no warnings at all
-  and is the obvious thing to try next, but no *G* has been measured that way.  Treat *G*
-  from this stage as biased high by roughly a quarter until that is settled.
+  shear moves, since Gromacs refuses the run otherwise.  *G* from that configuration
+  comes out 1.51 +/- 0.05 GPa where a less constrained variant gives 1.17 +/- 0.02 on the
+  same network --- and only the latter is consistent with that network's own *E* and
+  Poisson ratio.  So *G* here disagrees with *E* by about a quarter.
+
+  The tempting explanation, that the constraint inflates *G*, does not survive its own
+  test: a constant-volume variant fixes all three box dimensions rather than one, so it
+  is more constrained still, and its mean sits below the clamped value.  The cause is
+  open.  Treat *G* from this stage as disagreeing with *E* by roughly a quarter, and do
+  not assume you know why.
 
   **The mdp is accepted by Gromacs; no *G* has been measured.**  Putting it through
   `gmx grompp` found two defects the unit tests could not: the barostat must be
