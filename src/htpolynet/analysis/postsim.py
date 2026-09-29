@@ -263,6 +263,12 @@ def _strain_advice(edot,ps,logger=logger,what='strain'):
     its time at the low strains a tangent modulus would come from.  Whether that biases
     the modulus is not established: the one experiment that appeared to show it was a
     single trajectory and a replicate refuted it.
+
+    A known bias that is *not* about rate: :class:`PostSimShear` has to switch the
+    barostat off for the Cartesian component it shears, because Gromacs refuses the run
+    otherwise, and that clamp raises *G* by about 29% --- 1.51 GPa clamped against 1.17
+    unclamped on one network, where only the unclamped value agrees with the same
+    network's *E* and Poisson ratio.  See ROADMAP.md.
     """
     total=edot*ps
     logger.info(f'This run reaches {what} {total:.3f} at {edot:g} ps^-1 over {ps} ps')

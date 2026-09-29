@@ -136,7 +136,45 @@ Coverage as of the last measurement: **38.8%** overall.
   **physical, not statistical**.  An apparent plateau in the sparser data was the error
   bars, not the material.
 
-  **RESOLVED for shear, 2026-09-28: G = 1.51 +/- 0.05 GPa** over gamma <= 0.03, from
+- **The shear stage clamps a box dimension, and that biases *G* high by 29%.**
+  `reject`-free shear by `deform` needs the barostat switched off for the Cartesian
+  component the shear moves, or Gromacs refuses the run: *"an off-diagonal box element
+  has deform set while compressibility > 0 for the same component of another box
+  vector"*.  Confirmed here and independently by htpolynet-study.  But the clamp is not
+  free:
+
+        clamped  (n=8)   G = 1.51 +/- 0.05   E/G 2.01   implied nu +0.00
+        free-x   (n=3)   G = 1.17 +/- 0.02   E/G 2.59   implied nu +0.29
+        nu straight off the box dimensions               nu +0.35 +/- 0.01
+
+  The difference is 0.34 +/- 0.05 GPa, 6.3 sigma, and only the unclamped number is
+  consistent with the network's own Poisson ratio or with *E* = 3.03 +/- 0.21 measured on
+  the same system.  The clamped runs also scatter four times more widely, which itself
+  suggests constraint stress.  So htpolynet currently ships a shear stage whose *G* is
+  biased high, for a reason Gromacs forces.
+
+  **There is a third option neither of us had tried, and it is clean.**  Measured here
+  with `gmx grompp`:
+
+        pcoupl = no                    ACCEPTED, zero warnings, no clamp needed
+        C-rescale + clamped            ERROR: "C-rescale does not support pressure
+                                       coupling type Anisotropic yet"
+        Berendsen anisotropic, free    WARNING: off-diagonal/compressibility conflict
+
+  Constant-volume shear sidesteps the conflict entirely, because with no barostat there
+  is no compressibility to conflict with.  Simple shear preserves volume to first order,
+  so it is a defensible protocol rather than a workaround --- but it is a different
+  ensemble from the one the stage now uses, and nobody has measured *G* that way here.
+
+  That is the experiment worth running next: NVT shear against the free-x diagnostic
+  against the current clamped default, on one network with replicates.  Until then treat
+  *G* from this stage as biased high by roughly a quarter.
+
+  Note also, for the barostat entry above: **C-rescale cannot replace Berendsen in the
+  anisotropic stages** --- it does not support that coupling type --- so moving off
+  Berendsen is not a one-line substitution wherever `pcoupltype = anisotropic` is used.
+
+- **RESOLVED for shear, 2026-09-28: G = 1.51 +/- 0.05 GPa** over gamma <= 0.03, from
   eight independent ramps at `edot = 1e-4` on one BADCy network.  Averaged over
   replicates the modulus *does* flatten, which no single trajectory could show:
 
