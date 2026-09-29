@@ -196,8 +196,38 @@ Coverage as of the last measurement: **38.8%** overall.
   NVT second, the shipped default last --- but that is one cross-check on a chord at 3%
   strain, which is not enough to change a default on.  So the coupling became a
   documented option (`clamped`, `isochoric`) with the default unchanged and the choice
-  logged, rather than a silent switch.  What would settle it: an independent measurement
-  of the same network's moduli that does not come from a `deform` ramp at all.
+  logged, rather than a silent switch.
+
+  **What would settle it: a modulus that does not come from a ramp at all.**  Every
+  number in the table above is a non-equilibrium measurement --- impose a strain rate,
+  read the stress --- so they share the assumptions being argued about.  Two standard
+  routes avoid that, and both are available in the Gromacs here; the enabling mdp for
+  each was checked with `grompp`.
+
+  *Strain fluctuations, at equilibrium.*  Let the box fluctuate freely in shape and read
+  the elastic compliance off the fluctuations: `S = V <de de> / kT`, inverted for the
+  stiffness tensor and hence *E*, *G* and nu together.  No strain rate and no clamping
+  decision exists to make.  Needs `pcoupl = Parrinello-Rahman` with
+  `pcoupltype = anisotropic` and all six compressibility components non-zero, which is
+  **ACCEPTED with zero warnings** --- note that `pcoupltype = triclinic` is no longer a
+  valid enum, and that C-rescale cannot do anisotropic at all, so this is another reason
+  the barostat migration points at Parrinello-Rahman.  The data required is only the box
+  trajectory, which is already in the `edr` as `Box-X/Y/Z` and `Box-YX/ZX/ZY`.  The cost
+  is convergence: strain fluctuations are slow, and this wants nanoseconds rather than
+  the hundreds of picoseconds a ramp needs.
+
+  *Athermal elastic constants, statically.*  Minimize, apply a small affine strain to the
+  box and coordinates (0.1 to 0.5%), re-minimize at fixed box, read the stress; repeat
+  for each independent strain component.  That gives the full 0 K stiffness tensor, so
+  *E*, *G* and nu come from one calculation and are guaranteed mutually consistent.  It
+  involves no thermostat, no barostat and no rate, so it is independent of everything
+  currently in dispute, and it is cheap --- a dozen short minimizations.  The limitation
+  is that 0 K moduli are systematically stiffer than 300 K ones, so it arbitrates the
+  *ratio* `E/G` and nu cleanly while saying less about the absolute values.
+
+  Since what is actually in dispute is which coupling gives a *G* consistent with the
+  network's *E* and nu, the athermal route answers the question asked at a fraction of
+  the cost, and the fluctuation route answers the more general one later.
 
   Note also, for the barostat entry above: **C-rescale cannot replace Berendsen in the
   anisotropic stages** --- it does not support that coupling type --- so moving off
