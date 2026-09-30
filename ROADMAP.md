@@ -601,7 +601,9 @@ Coverage as of the last measurement: **38.8%** overall.
   question is whether a short one converges at all or whether the barostat needs
   something like CURE's 100 ps --- which is the other thing the A/B will show.
 
-- **Properties measured before the threading filter may carry threaded rings.**  The
+- **DECLINED 2026-09-30 by Cameron: "no, I am not interested in answering that
+  question."**  Left here so it is not raised again as though it were open.  What was
+  asked: properties measured before the threading filter may carry threaded rings.  The
   filter shipped in 2.11.4; every build made before it could contain a triazine closed
   around a monomer, which happened in 2 of 4 unfiltered builds --- 4, 2, 0 and 0
   piercings, a mean of 1.5 each.
@@ -1862,31 +1864,6 @@ Coverage as of the last measurement: **38.8%** overall.
   that is wanted.
 
 ## Simulation defaults
-
-- **Every constant-pressure stage uses the Berendsen barostat, which does not sample the
-  NPT ensemble and is deprecated upstream.**  `npt.mdp`, `drag-npt.mdp` and
-  `relax-npt.mdp` all set `pcoupl = Berendsen`, and nothing in the Python overrides it,
-  so this covers densification, precure and postcure equilibration, the CURE relax
-  ladder, the ring cure's relax and equilibrate, and both deformation stages.  Gromacs
-  2025 says so at every `grompp`: *"The Berendsen barostat does not generate any strictly
-  correct ensemble, and should not be used for new production simulations... We recommend
-  using the C-rescale barostat instead."*
-
-  Raised by htpolynet-study 2026-09-28 in the context of moduli, where it matters most:
-  a barostat that does not sample the right volume fluctuations is a poor foundation for
-  a mechanical measurement.
-
-  **The reason this has not simply been changed is reproducibility, not doubt.**
-  Switching to C-rescale changes the sampled ensemble, so every density, Tg and modulus
-  htpolynet has produced becomes not strictly comparable with anything produced after.
-  There is precedent for taking that cost deliberately --- 2.7.0 changed the constraint
-  scheme for the same kind of reason and said so in the notes --- and the same treatment
-  fits here: change all three together, say plainly in the changelog that prior results
-  are not comparable, and ideally re-measure one known system across the change so the
-  size of the shift is on record rather than assumed.
-
-  Whoever takes it should also check whether `tau_p` wants revisiting: a value tuned for
-  Berendsen's weak coupling is not necessarily right for C-rescale.
 
 - **The density-convergence tolerance may be tight for example 6.**  In the
   v2.10.0 sweep, example 6 failed the gate for the first time in four sweeps:

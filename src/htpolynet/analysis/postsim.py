@@ -339,6 +339,9 @@ class PostSimDeform(PostSimMD):
             'tau_p':1.0,
             'refcoord_scaling': 'com',
             'pcoupltype': 'anisotropic',
+            # the packaged mdp uses C-rescale, which does not support anisotropic
+            # coupling; Parrinello-Rahman does and samples the right ensemble too
+            'pcoupl': 'Parrinello-Rahman',
             # stress is what this stage exists to measure, so sample it far more often
             # than the packaged npt.mdp does.  At 1 ps the frames are already
             # near-independent, so ten times as many cut the standard error on a fitted
@@ -467,6 +470,8 @@ class PostSimShear(PostSimMD):
             'tau_p':1.0,
             'refcoord_scaling': 'com',
             'pcoupltype': 'anisotropic',
+            # as in PostSimDeform: C-rescale cannot do anisotropic, Parrinello-Rahman can
+            'pcoupl': 'Parrinello-Rahman',
             # the Cartesian component the shear moves is uncoupled; the other two
             # normal directions stay at P.  Gromacs rejects the run otherwise.
             'ref_p':f'{params["P"]} {params["P"]} {params["P"]} 0 0 0',

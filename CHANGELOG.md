@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Constant-pressure stages no longer use the Berendsen barostat.**  `npt.mdp`,
+  `drag-npt.mdp` and `relax-npt.mdp` now use **C-rescale**, which samples a correct NPT
+  ensemble and is robust far from equilibrium; Berendsen is neither, and Gromacs has said
+  so at every `grompp` since 2025 --- unheard, because those warnings were being
+  discarded (fixed in 2.13.0).  This covers densification, precure and postcure
+  equilibration, the CURE relax and drag ladders, and the ring cure's relax and
+  equilibrate.
+
+  The deformation stages are the exception: they force `pcoupltype = anisotropic`, which
+  C-rescale does not support at all --- `grompp` errors outright --- so `deform` and
+  clamped `shear` now set **Parrinello-Rahman**, which does support it and also samples
+  the right ensemble.  Isochoric shear has no barostat and is unaffected.
+
+  **This changes the sampled ensemble.**  Densities, glass-transition temperatures and
+  moduli from earlier versions are not strictly comparable with ones produced now.  That
+  cost is deliberate and was taken on Cameron's decision, in the same spirit as the 2.7.0
+  constraint change.  `tau_p` is unchanged at 0.5 ps, so that if anything proves unstable
+  there is only one variable to look at; it is the first knob to try.
+
+  A test now fails if any packaged mdp reintroduces a deprecated barostat, or pairs
+  C-rescale with the anisotropic coupling it cannot do.
+
+
 ## [2.13.0] - 2026-09-29
 
 ### Changed
