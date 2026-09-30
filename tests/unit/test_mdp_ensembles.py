@@ -13,6 +13,10 @@ DEPRECATED_BAROSTATS = {'berendsen'}
 """Gromacs 2025+: "The Berendsen barostat does not generate any strictly correct
 ensemble, and should not be used for new production simulations." """
 
+DEPRECATED_THERMOSTATS = {'berendsen'}
+"""Gromacs 2025+: "The Berendsen thermostat does not generate the correct kinetic
+energy distribution... We would recommend the V-rescale thermostat." """
+
 
 def mdps():
     d = ir.files('htpolynet').joinpath('resources/mdp')
@@ -52,6 +56,24 @@ class TestNoPackagedMdpUsesADeprecatedBarostat(unittest.TestCase):
                 if (setting(text, 'pcoupl') or '').lower() == 'c-rescale':
                     self.assertNotEqual((setting(text, 'pcoupltype') or '').lower(),
                                         'anisotropic')
+
+
+class TestNoPackagedMdpUsesADeprecatedThermostat(unittest.TestCase):
+    """Every mdp htpolynet ships used the Berendsen thermostat, on every stage including
+    the ones that produce published numbers.  Same cause as the barostat: grompp said so
+    at every run, into output that was thrown away."""
+
+    def test_no_mdp_uses_one(self):
+        bad = {n: setting(t, 'tcoupl') for n, t in mdps().items()
+               if (setting(t, 'tcoupl') or 'no').lower() in DEPRECATED_THERMOSTATS}
+        self.assertEqual(bad, {})
+
+    def test_the_temperature_coupled_mdps_are_actually_coupled(self):
+        # guard against "fixing" it by switching temperature coupling off
+        for name, text in mdps().items():
+            with self.subTest(name):
+                if setting(text, 'tcoupl') is not None:
+                    self.assertEqual(setting(text, 'tcoupl').lower(), 'v-rescale')
 
 
 class TestTheDeformationStagesCarryTheirOwnBarostat(unittest.TestCase):

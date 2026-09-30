@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **No packaged mdp uses a Berendsen thermostat or barostat any more, and every one of
+  them now passes `grompp` with zero warnings** --- which none of them did before.
+
+- **Every temperature-coupled stage now uses the V-rescale thermostat.**  All seven
+  packaged mdps used Berendsen, which Gromacs deprecates in the same breath as the
+  barostat: *"does not generate the correct kinetic energy distribution."*  That is every
+  stage htpolynet runs, including the ones that produce published densities and
+  transition temperatures.  Same cause as the barostat, and the same remedy; `tau_t` is
+  unchanged at 0.1 ps.
+
 - **Constant-pressure stages no longer use the Berendsen barostat.**  `npt.mdp`,
   `drag-npt.mdp` and `relax-npt.mdp` now use **C-rescale**, which samples a correct NPT
   ensemble and is robust far from equilibrium; Berendsen is neither, and Gromacs has said
