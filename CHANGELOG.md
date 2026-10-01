@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **htpolynet now requires ycleptic 2.4.4 or later** (was 2.4.1).  From 2.4.3 on,
+  ycleptic checks a base config's *shape* when it loads, not only its vocabulary: an
+  attribute indented one level too deep, a `default:` that contradicts its own `type:`,
+  or a non-attribute in an `attributes:` list used to be ignored silently, so whatever it
+  declared simply did not exist.  2.4.4 extends that check to the top-level list.
+  htpolynet's own schema passes it clean.
+
 ## [2.14.0] - 2026-09-30
 
 ### Changed

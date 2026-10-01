@@ -32,7 +32,7 @@ dependencies = [
     "graphviz>=0.20",   # reaction-network DAG rendering; needs system `dot` binary too
     "rdkit>=2024.3",    # SMILES atom-mapping path; every depot example uses it
     "setuptools",  # gputil imports distutils, removed from stdlib in Py3.12+; setuptools shims it
-    "ycleptic>=2.4.1"  # config schema validation; 2.4.1 is the floor because 2.4.0 does not enforce `required` on a list
+    "ycleptic>=2.4.4"  # config schema validation; 2.4.4 is the floor because 2.4.3-2.4.4 check a base config's shape at load, not only its vocabulary
 ]
 
 [project.optional-dependencies]
