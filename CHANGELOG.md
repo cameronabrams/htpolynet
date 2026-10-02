@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declared simply did not exist.  2.4.4 extends that check to the top-level list.
   htpolynet's own schema passes it clean.
 
+### Fixed
+
+- Two documentation passages still described Berendsen coupling as current after 2.14.0
+  moved off it: the densification gate's warning now says the packaged `npt.mdp` uses
+  C-rescale (and what that means for densities from older builds), and the container
+  guide's list of GPU-update-compatible features names V-rescale and C-rescale.
+
 ## [2.14.0] - 2026-09-30
 
 ### Changed

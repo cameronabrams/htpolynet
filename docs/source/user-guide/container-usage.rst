@@ -267,8 +267,8 @@ Many of those runs are energy minimizations, and Gromacs refuses
 ``-pme gpu`` and ``-update gpu`` for a minimizer.  htpolynet therefore passes
 ``auto`` for ``pme``, ``update`` and ``bonded`` whenever the stage's
 integrator is not a dynamical one, so asking for them explicitly is safe.  Everything the cure uses
-otherwise (Berendsen coupling, h-bond constraints with LINCS, simulated
-annealing) is supported with the update on the GPU.
+otherwise (V-rescale and C-rescale coupling, h-bond constraints with LINCS,
+simulated annealing) is supported with the update on the GPU.
 
 .. note::
 

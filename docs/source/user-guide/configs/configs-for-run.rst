@@ -209,7 +209,7 @@ In this section we show all subdirectives for each of the five main directives i
 
     .. warning::
 
-       The gate reports convergence of the **Berendsen** barostat that ``npt.mdp`` currently uses, which does not sample a correct NPT ensemble.  A converged number here means the box has stopped changing under that barostat, not that it is the correct equilibrium density for the force field.  Treat the tolerance as a reproducibility criterion rather than a physical one until the barostat is changed.
+       The gate reports convergence under whatever barostat ``npt.mdp`` uses.  The packaged ``npt.mdp`` has used **C-rescale** since 2.14.0, which samples a correct NPT ensemble, so a converged number is an equilibrium density for the force field.  Before 2.14.0 it used Berendsen, which does not: a density from an older build, or from a project whose own ``npt.mdp`` still sets ``pcoupl = Berendsen``, means only that the box stopped changing under that barostat, and is a reproducibility criterion rather than a physical one.
 
 * ``precure``
     
