@@ -31,6 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`htpolynet plots diag` failed on every ring-cure run** with a bare `IndexError`.  It
+  recognized only `CURE`'s two progress lines, and a ring cure logs its own, so it parsed
+  nothing.  It now reads both, and a log with neither raises an error that says so.  Its
+  iteration axes were also off by one for every cure: the cure's start was plotted as
+  iteration 1.
+
+- **`htpolynet plots post` crashed before computing Young's modulus** on pandas 3
+  ("Columns with duplicate values are not supported in stack"), losing `e.png` and
+  `E.csv` after Tg had been plotted.  The deform curves are now averaged without stacking
+  same-named columns.  It also now warns when the fit's R^2 is below 0.5, which means the
+  curve is mostly pressure noise and the number printed is not a modulus -- the example 6
+  reference build, at 1% strain, gave R^2 -0.04.
+
 - **A bond stored with its atoms in descending order could silently keep stale
   parameters.**  `Topology.reset_override_from_type` put the requested pair in canonical
   order but compared it against the stored row as written, so it missed a bond stored as

@@ -3,6 +3,7 @@
 Author: Cameron F. Abrams <cfa22@drexel.edu>
 """
 import logging
+import re
 
 from datetime import datetime
 
@@ -462,6 +463,12 @@ _template_2='2026-05-29 04:29:10,323 htpolynet.cure.curecontroller.do_iter INFO>
 _template_2_token_idx=[3,6,7]
 _template_2_data_idx={'iter':(int,5),'conv':(float,8),'nbonds':(int,10)}
 
+# The ring cure logs its own pair, and its lines vary in token count (the group
+# tuple), so they are matched by pattern.  A ring forms three bonds and consumes
+# three groups, so groups consumed is the bond count.
+_ring_begin_re=re.compile(r' INFO>\s+Ring cure begins: ')
+_ring_iter_re=re.compile(r' INFO> Iteration (\d+): \d+ ring\(s\), (\d+) of \d+ groups consumed \(conversion ([0-9.]+)\)')
+
 def _token_match(l,template,pat_idx):
     """Returns True if tokens indexed by pat_idx in the space-split l and template match.
 
@@ -524,7 +531,21 @@ def diagnostics_graphs(logfiles, filename, **kwargs):
                 data['time'].append(datetime.strptime(' '.join(l.split()[0:2]),'%Y-%m-%d %H:%M:%S,%f'))
                 # print('data tok',f'{l.split()}')
                 _parse_data(data,l,_template_2_data_idx)
-        # print('data',f'{data}')
+            elif _ring_begin_re.search(l):
+                counter+=1
+                assert not counter>1
+                data['time'].append(datetime.strptime(' '.join(l.split()[0:2]),'%Y-%m-%d %H:%M:%S,%f'))
+                data['iter'].append(0)
+                data['conv'].append(0.0)
+                data['nbonds'].append(0)
+            elif (m:=_ring_iter_re.search(l)):
+                data['time'].append(datetime.strptime(' '.join(l.split()[0:2]),'%Y-%m-%d %H:%M:%S,%f'))
+                data['iter'].append(int(m.group(1)))
+                data['nbonds'].append(int(m.group(2)))
+                data['conv'].append(float(m.group(3)))
+        if not data['time']:
+            raise ValueError(f'{logfile}: no CURE or ring-cure progress lines found; '
+                             f'is it a diagnostics log from htpolynet run -diag?')
         df[logfile]=pd.DataFrame(data)
         time_idx=list(df[logfile].columns).index('time')
         # Use dt.total_seconds() instead of .astype(int) — the latter
@@ -541,23 +562,26 @@ def diagnostics_graphs(logfiles, filename, **kwargs):
     ax[0].set_xlabel('runtime (h)')
     ax[0].set_ylabel('conversion')
     ax[1].set_ylabel('runtime (h)')
-    ax[1].set_xlabel('CURE iteration')
-    ax[1].set_xlim([1, df[logfile].shape[0]])
-    ax[1].set_xticks(range(1, df[logfile].shape[0] + 1))
-    ax[2].set_xlabel('CURE iteration')
+    ax[1].set_xlabel('cure iteration')
+    # plot against the logged iteration, not the row: row 0 is the cure's start
+    # (iteration 0), so row+1 put every iteration one place to the right
+    niter = int(max(df[lf]['iter'].max() for lf in logfiles))
+    ax[1].set_xlim([0, niter])
+    ax[1].set_xticks(range(0, niter + 1))
+    ax[2].set_xlabel('cure iteration')
     ax[2].set_ylabel('conversion')
     ax[2].set_ylim([0,1])
     ax[2].set_yticks(np.arange(0, 1.1, 0.1))
-    ax[2].set_xticks(range(1, df[logfile].shape[0] + 1))
-    ax[2].set_xlim([1, df[logfile].shape[0]])
+    ax[2].set_xticks(range(0, niter + 1))
+    ax[2].set_xlim([0, niter])
     if xmax == -1: # use autodetected xmax
         xmax = np.max([df[logfile]['elapsed'].max() for logfile in logfiles])
     ax[0].set_xlim([0,xmax])
     ax[1].set_ylim([0,xmax])
     for logfile in logfiles:
         ax[0].scatter(df[logfile]['elapsed'], df[logfile]['conv'], label=logfile)
-        ax[1].scatter(df[logfile].index+1, df[logfile]['elapsed'], label=logfile)
-        ax[2].scatter(df[logfile].index+1, df[logfile]['conv'], label=logfile)
+        ax[1].scatter(df[logfile]['iter'], df[logfile]['elapsed'], label=logfile)
+        ax[2].scatter(df[logfile]['iter'], df[logfile]['conv'], label=logfile)
     # plt.legend()
     plt.savefig(filename)
     plt.close(fig)
@@ -731,9 +755,13 @@ def do_E_plots(phases,projdirs,outfile='e.png',fit_domain=[10,200],save_data='E.
         for d in projdirs:
             df=pd.read_csv(os.path.join(d,params['subdir'],f'deform-{dir}.csv'),index_col=None,header=0)
             all_stress_strains.append(pd.DataFrame({'strain':df[strain_name],'stress':(df[stress_name]*MPa_per_bar)}))
-    df_concat=pd.concat(all_stress_strains,axis=1)
-    mean_stress_strains=df_concat.stack().groupby(level=[0,1]).mean().unstack()
-    stds_stress_strains=df_concat.stack().groupby(level=[0,1]).std().unstack()
+    # mean and spread over the curves at each row (strain point).  This used to
+    # concat side by side and stack(), which pandas >= 3 refuses: every frame has
+    # the same two column names.  Keying the curves on a new outer level does the
+    # same averaging without duplicate columns.
+    df_concat=pd.concat(all_stress_strains,keys=range(len(all_stress_strains)))
+    mean_stress_strains=df_concat.groupby(level=1).mean()
+    stds_stress_strains=df_concat.groupby(level=1).std()
     mean_stress_strains['stress-std']=stds_stress_strains['stress']
     mean_stress_strains.to_csv(save_data,header=True,index=False,sep=' ')
     fig,ax=plt.subplots(1,1,figsize=(8,6))
@@ -752,6 +780,12 @@ def do_E_plots(phases,projdirs,outfile='e.png',fit_domain=[10,200],save_data='E.
     plt.savefig(outfile,bbox_inches='tight')
     plt.close(fig)
     logger.info(f'{outfile} and {save_data} created. E = {E/1000.0:.3f} GPa (R^2 {R2:.3f})')
+    if R2 < 0.5:
+        # the fit is through the origin, so R^2 is against the mean and goes
+        # negative when a line explains less than a constant would
+        logger.warning(f'R^2 {R2:.3f}: the stress-strain curve is mostly pressure noise, and '
+                       f'{E/1000.0:.3f} GPa is not a modulus.  Pull further (a longer deform '
+                       f'stage) or average more replicas before reporting E.')
 
 def post_plots(args):
     n_points=args.n_points
