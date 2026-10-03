@@ -17,10 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   used a stand-in model -- bisphenol A plus a pre-formed triazine, joined by aryl
   ethers, with a repair stage dismantling incomplete rings afterward -- whose triazines
   existed before cure began, so the way its network formed, and its gel point, were not
-  those of the chemistry.  The tutorial is rewritten to match, and the `postcure_repair`
-  page now describes the repair stage as the tool for reproducing builds made the old
-  way.  Results and post-build pages still show the old model's numbers until a
-  reference build of the new configuration replaces them.
+  those of the chemistry.  The tutorial is rewritten to match, with every number from a
+  reference build (234 rings, cyanate conversion 0.975, Tg 529 K heating and 520 K
+  cooling, fractional free volume 0.213), and the `postcure_repair` page now describes
+  the repair stage as the tool for reproducing builds made the old way.  The tutorial
+  no longer quotes a Young's modulus: its deform stages reach 1% strain, which the
+  reference build showed is too little to resolve one.
 
 - **htpolynet now requires ycleptic 2.4.4 or later** (was 2.4.1).  From 2.4.3 on,
   ycleptic checks a base config's *shape* when it loads, not only its vocabulary: an

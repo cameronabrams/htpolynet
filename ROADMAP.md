@@ -811,27 +811,29 @@ Coverage as of the last measurement: **38.8%** overall.
   per-reason histogram at each iteration.  A filter that silently removes half the
   candidates is worse than no filter.
 
-- **Example 6's reference build, and the pages it fills in.**  Example 6 switched to
-  real cyclotrimerization in [Unreleased], replacing the stand-in rather than shipping
-  beside it.  Cameron, 2026-10-03, on keeping both: "what if the conclusion of comparing
-  6 and 7 is that 6 is certainly the wrong way to build ce systems?  won't that just be
-  confusing?"  -- and then "yes" to replacing it.
-  The config and the setup-level tutorial pages are done; what waits on a build is every
-  number: the iteration table and profile on `run.rst`, the placeholder on
-  `introduction.rst`, and all of `results.rst` and `postsim.rst`, which still show the
-  stand-in's figures under a caution box.  Do not release until they are replaced.
+- **Example 6's tutorial: two images, and a modulus it cannot yet quote.**  The
+  2.15.0 reference build (htpolynet-sweep, 2026-10-03, commit 6ca6406, results in
+  `~/devtests/htpolynet/ex6-ref-20261003/`) filled every number on the tutorial.  The
+  GPU arm's postcure anneal did not explode -- the study's CUDA #700 failures predate
+  the settle stage -- so the GPU default stands.  Still open:
+  - VMD renders (a triazine junction, the liquid, the cured network) on `results.rst`,
+    and a 2D structure of BDC on `monomers.rst`.  Both are placeholders.
+  - **No Young's modulus.**  The tutorial's `deform` stages (edot 0.001, 10 ps, so 1%
+    strain) cannot resolve E against several hundred bar of pressure noise on 13662
+    atoms: R^2 -0.04 on the reference build, and per-direction standard errors larger
+    than the slopes.  `postsim.rst` says so instead of quoting a number.  Choosing a
+    protocol that does measure E -- a longer pull, replicas, or one of the ramp-free
+    routes recorded under the shear-modulus entry -- is the same open question as G's
+    protocol dependence, and the other tutorials' deform settings should be checked
+    against it, since they may share the problem.
 
-  The build belongs to htpolynet-sweep, and should run **twice, CPU and GPU**.  The
-  config descends from htpolynet-study's validated BADCy arm
-  (`bridge-series/configs-ring/bdc-ring-c097-*.yaml`, 12 builds in `filt12/`, 0/12
-  threaded), but every one of those builds ran with all mdrun offload off, and that arm's
-  own comments record five postcure-anneal explosions on GPU (CUDA error #700) before
-  the 2.11.x settle stage existed.  The settle is the likely fix -- the CHANGELOG traces
-  those anneals to strain left by the last batch -- but the ring cure has not run on a
-  GPU since, and the example defaults to `gpu_id: 0`.  Two deliberate differences from
-  the study arm: `gas` charges (as every depot example uses) instead of `bcc`, and the
-  densification `converge` block example 6 already had.
-
+- **`htpolynet plots build` does not see the ring cure.**  Its temperature, density and
+  energy traces skip from precure to postcure on a ring-cure run, and its bond-count
+  overlay stays at zero (example 6 reference build, 2026-10-03).  It reads CURE's
+  per-iteration MD and bond bookkeeping; the ring cure writes its MD under different
+  names (`ringequil-*`, closure stages) and counts rings, not bonds.  `plots diag` was
+  taught the ring cure's log lines in [Unreleased]; this is the same job for the build
+  traces.  Example 6's `results.rst` omits the figure and says why.
 - **Single-step crosslinking (the Khare method), as an alternative to CURE, not a
   replacement.**  Agreed with Cameron 2026-09-21.  All bonds are chosen at once by
   combinatorial optimization on one static snapshot, before any bond exists, so

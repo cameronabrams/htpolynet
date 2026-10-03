@@ -3,13 +3,6 @@
 Post-build simulations and analyses
 -----------------------------------
 
-.. admonition:: Placeholder
-   :class: caution
-
-   **TODO:** everything below this box comes from a build of the pre-2.15.0 stand-in
-   model (bisphenol A + pre-formed triazine + postcure repair) and will be replaced
-   with results from the reference build of the cyclotrimerization configuration.
-
 The canonical worked example for the postsim + analyze subsystems is
 :ref:`tutorial 3 <tutorials_postsim_analyses>`; the workflow for
 BADCy is identical save for the input filenames and a few
@@ -91,55 +84,63 @@ Run it:
 
     $ htpolynet postsim -cfg postsim.yaml -ocfg 6-cyanate-ester.yaml -proj proj-0
 
-Density during annealing and equilibration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The numbers below come from the GPU reference build described on the
+:ref:`results page <badcy_results>`.  Each ladder is 60 rungs of 100 ps, 6 ns in all,
+and the whole post-build sequence took 30 minutes on one V100.
+
+Density
+^^^^^^^
 
 .. warning::
 
-   The density this stage settles at is **not** an equilibrated density.
-   This example's postcure anneal peaks at 500 K, and the measured
-   *T*:sub:`g` for this system is about 488 K -- so the anneal spends its
-   80 ps of peak time only ~12 K above the glass transition, where a
-   crosslinked network barely moves.  On four independent builds the
-   postcure plateau came out 2.31% below the same systems' density after a
-   melt and slow re-cool, and 2.6-2.8% below experiment, where the
-   re-cooled value agrees with experiment to under 1%.
+   The density the postcure stage ends at -- 1149.5 kg/m³ here -- is **not** an
+   equilibrated density.  This example's postcure anneal peaks at 500 K, and the glass
+   transition measured below is 520-530 K, so the anneal never takes the network above
+   *T*:sub:`g`, where it could rearrange.  The cooling ladder, which starts at 600 K,
+   ends at 1157.0 kg/m³ at 300 K, 0.7 % denser.  Take densities from the cooling ladder,
+   not from the end of the build.
 
-   The 500 K peak is fine for this tutorial's purpose, which is to show the
-   workflow.  It is not a basis for quoting a density.  Take densities from
-   the cooling ladder below instead.
+``proj-0/postsim/anneal/rho_v_ns.png`` and ``proj-0/postsim/equilibrate/rho_v_ns.png``
+show the density through the post-build anneal and equilibration.
 
+Glass-transition temperature
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. admonition:: Placeholder
-   :class: caution
-
-   **TODO:** insert the ``rho_v_ns.png`` plots from
-   ``proj-0/postsim/anneal/`` and ``proj-0/postsim/equilibrate/``
-   here, and note where the density of the repaired system settles.
-   Expectation: ~1.0-1.1 g/cm³, somewhat below fully cyclotrimerized
-   BADCy (~1.2 g/cm³) because the repaired ``-C#N`` end groups break
-   the network into smaller clusters.
-
-Glass-transition temperature and Young's modulus
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-After ``postsim`` finishes, fit Tg and E with:
+After ``postsim`` finishes, fit *T*:sub:`g` with:
 
 .. code-block:: console
 
     $ htpolynet plots post --cfg postsim.yaml --proj proj-0
 
-This emits ``tg.png``, ``e.png``, ``E.csv``, and per-ladder CSVs in
-``proj-0/plots/``.
+This writes ``tg.png`` and one CSV per ladder in ``proj-0/plots/``.
 
-.. admonition:: Placeholder
-   :class: caution
+.. figure:: pics/tg.png
 
-   **TODO:** insert ``proj-0/plots/tg.png`` and ``proj-0/plots/e.png``
-   here, report the heating and cooling Tg estimates and the three
-   per-direction *E* values, and discuss them in light of the
-   network's actual crosslink density (which the repair stage
-   reduces relative to a "complete cure" model).
+   Density vs. temperature on the heating ladder (left) and the cooling ladder (right),
+   each with its glassy and rubbery fits.  *T*:sub:`g` is where the two lines cross:
+   529.2 K (256.1 °C) heating and 519.7 K (246.6 °C) cooling, both at 0.05 K/ps.
+
+Two things to keep in mind when comparing these with a DSC or DMA measurement.  The
+ladder heats and cools at 0.05 K/ps, many orders of magnitude faster than any
+experiment, and a faster rate raises the apparent *T*:sub:`g`.  And this is one build
+of 360 monomers: the 10 K gap between heating and cooling is a fair indication of how
+far apart two estimates from the same structure can fall.
+
+Young's modulus
+^^^^^^^^^^^^^^^
+
+``plots post`` also fits Young's modulus to the three ``deform`` stages and writes
+``e.png`` and ``E.csv``.  **This tutorial does not quote a modulus**, because the
+``deform`` stages above cannot measure one.  At ``edot: 0.001`` for ``ps: 10`` each
+pull reaches 1 % strain, and on a box of 13662 atoms the pressure fluctuates by several
+hundred bar -- more than the stress a 1 % strain produces.  On the reference build the
+fitted line explained less of the stress than its mean did (R\ :sup:`2` = -0.04), and a
+least-squares fit to each direction separately gave slopes whose standard errors
+exceeded the slopes themselves, one of them negative.  ``plots post`` now warns when
+this happens rather than printing the number as a result.
+
+To measure *E*, pull further -- a longer ``deform`` stage -- or average several
+replicas.
 
 Free volume
 ^^^^^^^^^^^
@@ -157,30 +158,17 @@ Then:
 
     $ htpolynet analyze -cfg fv.yaml -proj proj-0
 
-.. admonition:: Placeholder
-   :class: caution
-
-   **TODO:** report the fractional free volume from
-   ``proj-0/analyze/freevolume/ffv.dat``.  Expectation: somewhat
-   higher than fully cured BADCy because the ``-C#N`` end groups are
-   non-percolating chain stubs that introduce extra void.
+``proj-0/analyze/freevolume/ffv.dat`` reports a fractional free volume of
+0.213 ± 0.001 for this build, with a molecular volume of 146.5 nm³ against a van der
+Waals volume of 88.7 nm³.
 
 A note on interpretation
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The thermomechanical observables on this system reflect a network at
-90 % topological conversion *plus* postcure repair of the residual
-artefacts.  Comparing to a real BADCy thermoset experiment, you'd
-generally expect:
-
-* a Tg shifted *down* relative to fully cyclotrimerized BADCy because
-  the repaired ``-C#N`` end groups are not crosslinks;
-* a Young's modulus correspondingly lower for the same reason;
-* a free volume slightly higher.
-
-These are the same kinds of shifts you'd expect from an experimental
-undercured sample, which is encouraging — the topological model plus
-repair stage reproduces the *direction* of incomplete-cure effects on
-bulk properties, even if the absolute numbers depend on the cure
-depth you targeted.  The :ref:`postcure-repair user-guide page
-<postcure_repair>` discusses this further.
+This network is at 97.5 % cyanate conversion, built by the reaction that cures the
+real material.  Its 18 unreacted groups are intact -O-C#N end groups, which is what an
+incompletely cured BADCy contains, so nothing about its composition is an artifact of
+the model.  What remains model-dependent is the usual list for any simulated thermoset:
+the GAFF force field with ``gas`` charges, a box of 360 monomers, a cure protocol whose
+MD between iterations is far shorter than a real cure schedule, and properties measured
+at simulation rates.
