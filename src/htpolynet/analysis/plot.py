@@ -742,24 +742,59 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
     logger.info(f'heating Tg = {hTg:.2f} K ({(hTg-273.15):.2f} C) at {rate[0]:.5f} K/ps ({rate[0]*1.e12:.3e} K/s)')
     logger.info(f'cooling Tg = {cTg:.2f} K ({(cTg-273.15):.2f} C) at {rate[1]:.5f} K/ps ({rate[1]*1.e12:.3e} K/s)')
 
-def do_E_plots(phases,projdirs,outfile='e.png',fit_domain=[10,200],save_data='E.csv'):
+def do_E_plots(phases,projdirs,outfile='e.png',save_data='E.csv',fit_strain=None):
+    """Fits Young's modulus to the deform stages and plots the mean stress-strain curve.
+
+    Every pull -- each direction, each replica, each project -- is fitted on its own over
+    the same strain window, and E is reported as the mean of those fits with the standard
+    error between them, which is the uncertainty a single fit's own statistics cannot
+    give.  The mean curve is plotted, and fitted too for comparison.
+
+    Args:
+        phases (list): the ``deform`` stanzas from the postsim config
+        projdirs (list): project directories
+        outfile (str): plot file, defaults to 'e.png'
+        save_data (str): mean-curve data file, defaults to 'E.csv'; the per-pull fits go
+            to the same name with ``-fits`` appended
+        fit_strain (list): [lo, hi] strain window; defaults to the stanzas' ``fit_strain``
+    """
+    from ..analysis.postsim import PostSimDeform, replica_subdirs
     MPa_per_bar=1.e-1
-    # average over replicas and directions (here, phases)
-    all_stress_strains=[]
+    if fit_strain is None:
+        windows={tuple(p['deform'].get('fit_strain',PostSimDeform.default_params['fit_strain'])) for p in phases}
+        if len(windows)>1:
+            logger.warning(f'deform stages give different fit_strain windows {sorted(windows)}; using the first')
+        fit_strain=list(sorted(windows)[0])
+    lo,hi=fit_strain
+    curves=[]
     for p in phases:
-        params=p['deform']
+        params={**PostSimDeform.default_params,**p['deform']}
         dir=params['direction']
         # Box-X-strain,Pres-XX-stress
         strain_name=f'Box-{dir.upper()}-strain'
         stress_name=f'Pres-{dir.upper()}{dir.upper()}-stress'
         for d in projdirs:
-            df=pd.read_csv(os.path.join(d,params['subdir'],f'deform-{dir}.csv'),index_col=None,header=0)
-            all_stress_strains.append(pd.DataFrame({'strain':df[strain_name],'stress':(df[stress_name]*MPa_per_bar)}))
+            for sub in replica_subdirs(params):
+                df=pd.read_csv(os.path.join(d,sub,f'deform-{dir}.csv'),index_col=None,header=0)
+                curves.append((os.path.join(d,sub),pd.DataFrame({'strain':df[strain_name],'stress':(df[stress_name]*MPa_per_bar)})))
+    reached=min(c['strain'].max() for _,c in curves)
+    if reached<hi:
+        logger.warning(f'the shortest pull reaches strain {reached:.4f}, short of the fit window\'s '
+                       f'upper end {hi}; the fit covers [{lo}, {reached:.4f}] only.  Lengthen the '
+                       f'deform stage (ps) to reach it.')
+    fits=[]
+    for name,c in curves:
+        E_i,R2_i=compute_E(c['strain'],c['stress'],fit_strain=fit_strain)
+        fits.append({'pull':name,'E_MPa':E_i,'R2':R2_i})
+    fits=pd.DataFrame(fits)
+    base,ext=os.path.splitext(save_data)
+    fits.to_csv(f'{base}-fits{ext}',header=True,index=False,sep=' ')
+
     # mean and spread over the curves at each row (strain point).  This used to
     # concat side by side and stack(), which pandas >= 3 refuses: every frame has
     # the same two column names.  Keying the curves on a new outer level does the
     # same averaging without duplicate columns.
-    df_concat=pd.concat(all_stress_strains,keys=range(len(all_stress_strains)))
+    df_concat=pd.concat([c for _,c in curves],keys=range(len(curves)))
     mean_stress_strains=df_concat.groupby(level=1).mean()
     stds_stress_strains=df_concat.groupby(level=1).std()
     mean_stress_strains['stress-std']=stds_stress_strains['stress']
@@ -770,22 +805,31 @@ def do_E_plots(phases,projdirs,outfile='e.png',fit_domain=[10,200],save_data='E.
     ax.set_xlabel('Strain [*]')
     ax.errorbar(mean_stress_strains['strain'],mean_stress_strains['stress'],stds_stress_strains['stress'],alpha=0.2)
     ax.plot(mean_stress_strains['strain'],mean_stress_strains['stress'])
-    E,R2=compute_E(mean_stress_strains['strain'],mean_stress_strains['stress'],fit_domain=fit_domain)
-    fitline=E*mean_stress_strains['strain']
-    half_domain=int(mean_stress_strains['strain'].shape[0]/2)
-    line_domain=[0,fit_domain[1] if fit_domain[1]>half_domain else half_domain]
-    X=np.array(mean_stress_strains['strain'])[line_domain[0]:line_domain[1]]
-    Y=np.array(fitline)[line_domain[0]:line_domain[1]]
-    ax.plot(X,Y,'k--',alpha=0.7)
+    E,R2=compute_E(mean_stress_strains['strain'],mean_stress_strains['stress'],fit_strain=fit_strain)
+    X=np.array([0.0,min(hi,reached)])
+    ax.plot(X,E*X,'k--',alpha=0.7)
+    ax.axvspan(lo,min(hi,reached),color='grey',alpha=0.1)
     plt.savefig(outfile,bbox_inches='tight')
     plt.close(fig)
-    logger.info(f'{outfile} and {save_data} created. E = {E/1000.0:.3f} GPa (R^2 {R2:.3f})')
+    n=len(fits)
+    E_mean=fits['E_MPa'].mean()
+    E_sem=fits['E_MPa'].std(ddof=1)/np.sqrt(n) if n>1 else float('nan')
+    logger.info(f'{outfile}, {save_data} and {base}-fits{ext} created.')
+    logger.info(f'E = {E_mean/1000.0:.3f} +/- {E_sem/1000.0:.3f} GPa: mean and standard error of '
+                f'{n} pull(s) fitted over strain [{lo}, {min(hi,reached):.4f}]; the mean curve '
+                f'fits to {E/1000.0:.3f} GPa (R^2 {R2:.3f})')
+    if n<2:
+        logger.warning('one pull gives no error bar; add directions or set `replicas`')
+    elif E_sem>0.2*abs(E_mean):
+        logger.warning(f'the standard error is {abs(E_sem/E_mean):.0%} of E; pull further '
+                       f'(a longer deform stage) or add replicas before reporting it')
     if R2 < 0.5:
         # the fit is through the origin, so R^2 is against the mean and goes
         # negative when a line explains less than a constant would
         logger.warning(f'R^2 {R2:.3f}: the stress-strain curve is mostly pressure noise, and '
                        f'{E/1000.0:.3f} GPa is not a modulus.  Pull further (a longer deform '
                        f'stage) or average more replicas before reporting E.')
+    return {'E':E_mean,'E_sem':E_sem,'n':n,'E_mean_curve':E,'R2_mean_curve':R2,'fit_strain':[lo,min(hi,reached)]}
 
 def post_plots(args):
     n_points=args.n_points

@@ -400,6 +400,26 @@ The purpose of the ``postsim`` subcommand is to control the execution of several
 
 The simulations are controlled by the YAML-format config file, which is _distinct_ from the cfg file used to generate the project(s).  The types of post-build MD simulations available are annealing, equilibration, temperature-ladder, uniaxial deformation, and simple shear.  Demonstrations of how the ladder and deformation simulations are used to compute the glass-transition temperature and Young's modulus are detailed in the tutorials.
 
+A ``deform`` stage stretches the box along ``direction`` (``x``, ``y`` or ``z``) at the strain rate ``edot`` (ps\ :sup:`-1`) for ``ps`` picoseconds, holding the other two directions at ``P``, so the pull reaches a strain of ``edot`` × ``ps``.  ``htpolynet plots post`` fits Young's modulus *E* to every ``deform`` stage in the config.  Three settings control how well that number is known:
+
+* ``fit_strain`` (default ``[0.001, 0.02]``) is the strain window the fit covers.  The pull must reach its upper end; if it does not, ``plots post`` says so and fits what there is.
+* ``replicas`` (default 1) runs the stage that many times, in ``<subdir>-r1`` ... ``<subdir>-rN``, each with its own initial velocities.  ``seed``, if given, makes them reproducible: replica *k* uses ``seed`` + *k* − 1.
+* Every pull -- each direction and each replica -- is fitted on its own, and *E* is reported as the mean of those fits with the standard error between them, because a single fit's own statistics do not measure how far a second pull would land.  ``plots post`` warns when that error exceeds 20 % of *E*, or when the averaged curve is mostly noise (R\ :sup:`2` below 0.5).
+
+The pressure in a box of ten thousand atoms fluctuates by several hundred bar, while a 1 % strain of a glassy network produces a stress of the same order, so a short pull cannot resolve *E*: pull further or add replicas until the reported error is small enough for your purpose.
+
+.. code-block:: yaml
+
+  - deform:
+      direction: x
+      subdir: postsim/deform-x
+      T: 300.0
+      P: 1.0
+      edot: 0.001
+      ps: 20
+      fit_strain: [0.001, 0.02]
+      replicas: 3
+
 A ``shear`` stage is the shear counterpart of ``deform``: Gromacs' ``deform`` drives one off-diagonal element of the box matrix at a constant rate, and the shear modulus *G* is the slope of shear stress against engineering shear strain, just as *E* is the slope of tensile stress against tensile strain.  ``direction`` names the plane --- ``xy``, ``xz`` or ``yz`` --- and ``edot`` is the shear rate in ps\ :sup:`-1`.  The normal directions stay pressure-coupled at ``P`` while the off-diagonal is driven, because the anisotropic barostat is given zero compressibility off the diagonal and so does not oppose the deformation.
 
 .. code-block:: yaml

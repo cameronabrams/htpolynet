@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Young's modulus now comes with an error bar, and `deform` stages can be
+  replicated.**  `plots post` fits every pull -- each direction, each replica -- on its
+  own and reports E as the mean of those fits with the standard error between them,
+  writing the individual fits to `E-fits.csv`.  A single fit's own statistics do not
+  say how far a second pull would land; the scatter between pulls does.  It warns when
+  that error exceeds 20% of E.  A `deform` stage takes `replicas: N` to run N pulls with
+  their own velocities, in `<subdir>-r1` ... `<subdir>-rN`, and `seed` to make them
+  reproducible.
+
+- **`fit_strain` sets the strain window E is fitted over** (default `[0.001, 0.02]`).
+  The window used to be a range of rows, `[10, 200]`, which covers 0.1-2% strain only at
+  the default rate and energy-output interval, and silently covered something else
+  whenever either changed or the pull was shorter.  The default reproduces the old
+  window at the default settings.  `plots post` says when a pull stops short of it.
+
 ### Changed
 
 - **Example 6 now cures bisphenol-A dicyanate by real cyclotrimerization.**  Its one

@@ -375,7 +375,7 @@ def compute_tg(T,v,n_points=[10,20]):
         Tg=-(hot_par[1]-cold_par[1])/(hot_par[0]-cold_par[0])
     return Tg,cold_par,hot_par
 
-def compute_G(shear_strain,shear_stress,fit_domain=[10,100]):
+def compute_G(shear_strain,shear_stress,fit_domain=[10,100],fit_strain=None):
     """Computes the shear modulus by a linear fit to the elastic regime of a simple shear.
 
     The same fit as :func:`compute_E`, named separately because the inputs are not the
@@ -387,26 +387,40 @@ def compute_G(shear_strain,shear_stress,fit_domain=[10,100]):
     Args:
         shear_strain (numpy.array): engineering shear strain, dimensionless
         shear_stress (numpy.array): shear stress, in the units of the pressure trace
-        fit_domain (list): domain over which the fit is made, defaults to [10,100]
+        fit_domain (list): domain over which the fit is made, in rows, defaults to [10,100]
+        fit_strain (list): [lo, hi] strain window to fit instead; overrides fit_domain
 
     Returns:
         tuple(float,float): G and R2 from the fit
     """
-    return compute_E(shear_strain,shear_stress,fit_domain=fit_domain)
+    return compute_E(shear_strain,shear_stress,fit_domain=fit_domain,fit_strain=fit_strain)
 
-def compute_E(strain,stress,fit_domain=[10,100]):
+def compute_E(strain,stress,fit_domain=[10,100],fit_strain=None):
     """Computes the Young's modulus by performing a linear fit to an elastic regime in stress-vs-strain data.
 
     Args:
         strain (numpy.array): strain values
         stress (numpy.array): stress values
-        fit_domain (list): domain over which fit is made, defaults to [10,100]
+        fit_domain (list): domain over which fit is made, in rows, defaults to [10,100]
+        fit_strain (list): [lo, hi] strain window to fit instead; overrides fit_domain.
+            A window in rows covers a different strain whenever the rate, the run
+            length or the energy output interval changes; a strain window does not.
 
     Returns:
         tuple(float,float): E and R2 from fit
     """
-    x=np.array(strain[fit_domain[0]:fit_domain[1]])
-    y=np.array(stress[fit_domain[0]:fit_domain[1]])
+    if fit_strain is not None:
+        lo,hi=fit_strain
+        s=np.asarray(strain,dtype=float)
+        mask=(s>=lo)&(s<=hi)
+        if mask.sum()<2:
+            raise ValueError(f'fewer than two points with strain in [{lo}, {hi}]; '
+                             f'the data reach {s.max():.4g}')
+        x=s[mask]
+        y=np.asarray(stress,dtype=float)[mask]
+    else:
+        x=np.array(strain[fit_domain[0]:fit_domain[1]])
+        y=np.array(stress[fit_domain[0]:fit_domain[1]])
     # logger.info(f'x: {x[0]} -> {x[-1]}')
     # logger.info(f'y: {y[0]} -> {y[-1]}')
     def func(x,a):

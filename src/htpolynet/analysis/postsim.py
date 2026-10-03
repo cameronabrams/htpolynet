@@ -276,8 +276,8 @@ def _strain_advice(edot,ps,logger=logger,what='strain'):
     logger.info(f'This run reaches {what} {total:.3f} at {edot:g} ps^-1 over {ps} ps')
     logger.info('One ramp gives a modulus to about 10% but not its uncertainty: eight '
                 'replicates of one protocol spanned 1.29 to 1.74 GPa while each fit '
-                'reported a much smaller error. Run several seeds and take the scatter '
-                'between them as the error bar.')
+                'reported a much smaller error. Set `replicas` and take the scatter '
+                'between them as the error bar; `plots post` reports it.')
     if edot>=1e-3:
         logger.warning(
             f'{what} passes 0.02 after only {0.02/edot:.0f} ps at edot={edot:g}, so '
@@ -309,7 +309,14 @@ class PostSimDeform(PostSimMD):
         'T':300.0,
         'P':1.0,
         'ps':1000,
-        'edot': 0.001 # strain rate in ps^-1
+        'edot': 0.001, # strain rate in ps^-1
+        # independent pulls of this stage, each in <subdir>-r<k> with its own velocities;
+        # `plots post` fits each and reports the scatter between them as the error bar
+        'replicas': 1,
+        # velocity seed; replica k uses seed+k-1.  None leaves Gromacs to pick one
+        'seed': None,
+        # strain window `plots post` fits E over
+        'fit_strain': [0.001, 0.02],
     }
 
     def build_mdp(self,mdpname,**kwargs):
@@ -353,6 +360,8 @@ class PostSimDeform(PostSimMD):
             # deformation implies, and grompp refuses the run outright without it
             'deform-init-flow': 'yes'
             }
+        if params.get('seed') is not None:
+            mod_dict['gen-seed']=int(params['seed'])
         if direction=='x':
             strain_vel=box[0][0]*edot
             mod_dict['ref_p']='0.0 1.0 1.0 0 0 0'
@@ -503,6 +512,24 @@ class PostSimShear(PostSimMD):
         _strain_advice(params.get('edot',0.0),params['ps'],what='shear strain')
         mdp_modify(mdpname,mod_dict)
 
+def replica_subdirs(params):
+    """The directories a stage's replicas run in: its ``subdir``, or ``<subdir>-r<k>``.
+
+    Args:
+        params (dict): the stage's parameters, defaults included
+
+    Returns:
+        list: one subdirectory per replica
+    """
+    n=params.get('replicas',1)
+    n=1 if n is None else int(n)
+    if n<1:
+        raise ValueError(f'replicas must be at least 1, not {n}')
+    if n==1:
+        return [params['subdir']]
+    return [f"{params['subdir']}-r{k}" for k in range(1,n+1)]
+
+
 class PostsimConfiguration:
     """ handles reading and parsing a postcure simulation input config file.
         Config file format
@@ -592,13 +619,27 @@ class PostsimConfiguration:
         return inst
 
     def parse(self,**kwargs):
-        """Parses a PostsimConfiguration file to build the list of stages to run."""
+        """Parses a PostsimConfiguration file to build the list of stages to run.
+
+        A ``deform`` stanza with ``replicas: N`` becomes N stages, in ``<subdir>-r1`` to
+        ``<subdir>-rN``, each generating its own velocities.
+        """
         for p in self.baselist:
             assert len(p)==1,f'Poorly formatted {self.cfgFile}; each stanza may have only one keyword'
             simtype=list(p.keys())[0]
             assert simtype in self.default_classes,f'Simulation type "{simtype}" in {self.cfgFile} not understood.'
             logger.info(f'passing in {p[simtype]}')
-            self.stagelist.append(self.default_classes[simtype](p[simtype]))
+            cls=self.default_classes[simtype]
+            if 'replicas' not in cls.default_params:
+                self.stagelist.append(cls(p[simtype]))
+                continue
+            stanza=dict(p[simtype])
+            subdirs=replica_subdirs({**cls.default_params,**stanza})
+            for k,subdir in enumerate(subdirs):
+                rep=dict(stanza,subdir=subdir)
+                if stanza.get('seed') is not None:
+                    rep['seed']=int(stanza['seed'])+k
+                self.stagelist.append(cls(rep))
 
 def postsim(args):
     """Handles the postsim subcommand for managing post-cure production MD simulations.
