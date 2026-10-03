@@ -74,23 +74,14 @@ Rough ordering within each section is by value, not by effort.
 
 Coverage as of the last measurement: **38.8%** overall.
 
-- **`repair/`'s driver has no test.** `test_cap_placement.py` and
-  `test_repair_conversion.py` now cover the placement search and the
-  reported statistics, but `triazine_to_cyanate_cap` itself and all of
-  `topology_surgery.py` (125 statements) are still untouched. This is the
-  highest-value gap: the postcure repair stage makes the strongest
-  correctness claim in the project ("atom conservation is exact"), and
-  right now the only thing checking it in-tree is reading a residue census
-  at the end of a multi-hour build. (An external audit of 54 builds at
-  v2.6.2 found the accounting exact everywhere -- `3*TAZ_final + CYN ==
-  720` in all 54, every surviving triazine with exactly 3 aryl-ether bonds
-  across 7,501 examined, zero bare -OH -- and a six-defect negative control
-  was caught by 2-10 checks each. That is real evidence, but it is not a
-  test and it does not run on a PR.) It is pure topology manipulation, so
-  it can be tested deterministically in milliseconds against a synthetic
-  `TopoCoord` carrying triazines at k=0,1,2,3 — assert atom counts, the
-  residue census, cap placement, and that no unreacted bridge -OH
-  survives.
+- **The repair driver's one untested step is the template splice.**
+  `test_triazine_to_cyanate_cap.py` now runs `triazine_to_cyanate_cap` end to end on a
+  real `TopoCoord` with triazines at k=0,1,2,3 and checks atom conservation, the
+  residue census, H removal, cap geometry, statistics, reindexing and per-molecule
+  neutrality.  It stubs `topology_surgery.add_bonds_with_template`, because the real
+  splice needs a parameterized `BPA~O1-C1~CYN` template and so AmberTools.  A test that
+  ships a small pre-parameterized cap template as a fixture would close that, and would
+  belong with the other tool-chain tests that skip without antechamber.
 - **An end-to-end example in CI.** A deliberately tiny build (a
   20-molecule, few-ps variant of example 0) run inside the container
   would cover `core/runtime.py` and `cure/curecontroller.py` — 1,056

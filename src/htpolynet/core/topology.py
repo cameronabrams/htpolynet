@@ -1069,7 +1069,9 @@ class Topology:
         iidx = idxorder(tuple(inst_idx))
         idx = -1
         for i, r in sidf.iterrows():
-            jdx = tuple([r[a] for a in ins_hashables])
+            # compare in canonical order on both sides: a row stored as (aj, ai)
+            # is the same bond, and missing it left its parameters silently stale
+            jdx = idxorder(tuple([r[a] for a in ins_hashables]))
             if iidx == jdx:
                 idx = i
                 break

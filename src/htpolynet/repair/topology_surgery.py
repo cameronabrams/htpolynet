@@ -164,7 +164,9 @@ def refresh_bond_params(TC, pairs):
             TC.Topology.reset_override_from_type('bonds', 'bondtypes',
                                                  inst_idx=(int(ai), int(aj)))
         except Exception as e:
-            logger.debug(f'refresh_bond_params({ai},{aj}) failed: {e}')
+            # a failure here leaves the bond on its old parameters, which nothing
+            # downstream would notice, so it must not be quiet
+            logger.warning(f'refresh_bond_params({ai},{aj}) failed, bond keeps its old parameters: {e!r}')
 
 
 def neutralize_touched_fragments(TC, touched, tol=1e-6):

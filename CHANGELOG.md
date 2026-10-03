@@ -31,6 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A bond stored with its atoms in descending order could silently keep stale
+  parameters.**  `Topology.reset_override_from_type` put the requested pair in canonical
+  order but compared it against the stored row as written, so it missed a bond stored as
+  (aj, ai); the postcure repair's `refresh_bond_params` then swallowed the failure at
+  debug level and the cap's C-N bond kept its aromatic parameters.  The lookup now
+  compares canonical order on both sides, and a refresh failure is a warning.  Found by
+  the first end-to-end test of the repair driver, which also lands here.
+
 - **A ring cure's setup log no longer quotes a meaningless bond count.**  "100% conversion
   is N bonds" came from `CURE`'s pairwise count, which treated a three-reactant ring
   closure as three independent pairwise reactions: 360 BADCy monomers reported 1080
