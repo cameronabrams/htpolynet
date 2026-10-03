@@ -50,3 +50,29 @@ class TestReplicas(unittest.TestCase):
     def test_zero_replicas_is_an_error(self):
         with self.assertRaisesRegex(ValueError, 'at least 1'):
             replica_subdirs({'subdir': 's', 'replicas': 0})
+
+
+class TestSubdirsAreCheckedUpFront(unittest.TestCase):
+    """A subdir go_to cannot reach is refused before any stage runs, not on its turn."""
+
+    def setUp(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        import htpolynet.core.projectfilesystem as pfs
+        patcher = mock.patch.object(pfs, '_PFS_', SimpleNamespace(projSubPaths={'postsim': '/p/postsim', 'systems': '/p/systems'}))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_replica_subdirs_are_reachable(self):
+        cfg = read([{'deform': {'direction': 'x', 'subdir': 'postsim/deform-x', 'replicas': 3}}])
+        cfg.check_subdirs()
+
+    def test_a_nested_subdir_is_refused_with_every_bad_one_named(self):
+        # htpolynet-sweep, 2026-10-03: postsim/grid-A/deform-x-r1 died on its first pull
+        cfg = read([{'equilibrate': {'ps': 10}},
+                    {'deform': {'direction': 'x', 'subdir': 'postsim/grid-A/deform-x'}},
+                    {'deform': {'direction': 'y', 'subdir': 'postsim/grid-A/deform-y'}}])
+        with self.assertRaises(ValueError) as cm:
+            cfg.check_subdirs()
+        self.assertIn('postsim/grid-A/deform-x', str(cm.exception))
+        self.assertIn('postsim/grid-A/deform-y', str(cm.exception))

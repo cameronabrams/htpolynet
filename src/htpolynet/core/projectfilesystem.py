@@ -588,6 +588,20 @@ def go_root():
     _PFS_.cdroot()
 
 
+def can_go_to(pathstr):
+    """Whether :func:`go_to` can reach pathstr: a registered project directory, or one
+    name inside one.  Nothing deeper -- ``postsim/a/b`` is refused.
+
+    Args:
+        pathstr (str): directory path relative to project root
+
+    Returns:
+        bool: True if go_to would accept it
+    """
+    dirname = os.path.dirname(pathstr) or pathstr
+    return dirname in _PFS_.projSubPaths
+
+
 def go_to(pathstr):
     """Changes the current working directory to pathstr relative to the project root.
 
@@ -601,7 +615,8 @@ def go_to(pathstr):
     dirname = os.path.dirname(pathstr)
     if dirname == '':
         dirname = pathstr
-    assert dirname in _PFS_.projSubPaths, f'Error: cannot navigate using pathstring {pathstr}'
+    assert can_go_to(pathstr), (f'Error: cannot navigate using pathstring {pathstr}: a path must be '
+                                f'a project directory or one name inside one ({sorted(_PFS_.projSubPaths)})')
     reentry = os.path.exists(pathstr)
     if not os.path.exists(dirname):
         os.mkdir(dirname)

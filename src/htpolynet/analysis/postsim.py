@@ -512,6 +512,11 @@ class PostSimShear(PostSimMD):
         _strain_advice(params.get('edot',0.0),params['ps'],what='shear strain')
         mdp_modify(mdpname,mod_dict)
 
+def bad_subdirs(stagelist):
+    """The stage directories :func:`pfs.go_to` would refuse, in config order."""
+    return [s.params['subdir'] for s in stagelist if not pfs.can_go_to(s.params['subdir'])]
+
+
 def replica_subdirs(params):
     """The directories a stage's replicas run in: its ``subdir``, or ``<subdir>-r<k>``.
 
@@ -618,6 +623,18 @@ class PostsimConfiguration:
         if parse: inst.parse(**kwargs)
         return inst
 
+    def check_subdirs(self):
+        """Raises before anything runs if any stage's ``subdir`` cannot be reached.
+
+        Raises:
+            ValueError: naming every unreachable subdir
+        """
+        bad=bad_subdirs(self.stagelist)
+        if bad:
+            raise ValueError(f'{self.cfgFile}: {len(bad)} stage subdir(s) cannot be used: {bad}.  '
+                             f'A subdir must be one name inside a project directory, such as '
+                             f'postsim/deform-x; nothing deeper.')
+
     def parse(self,**kwargs):
         """Parses a PostsimConfiguration file to build the list of stages to run.
 
@@ -660,6 +677,10 @@ def postsim(args):
     logger.debug(f'ogromacs {ogromacs}')
     for d in args.proj:
         pfs.pfs_setup(root=os.getcwd(),topdirs=pfs.Dirs.postsim_topdirs,verbose=True,projdir=d,reProject=False,userlibrary=pfs.resolve_user_library(args.lib))
+        # every stage's directory is checked before any of them runs: a bad one used
+        # to surface only when its turn came, after the stages before it had spent
+        # their allocation
+        cfg.check_subdirs()
         pfs.go_to(pfs.Dirs.postsim)
         for stage in cfg.stagelist:
             stage.do(mdp_pfx='local',**ogromacs)

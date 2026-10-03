@@ -50,6 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A postsim stage with an unusable `subdir` failed only when its turn came**, after
+  every stage before it had run -- a 21-stage grid would spend its allocation on the
+  first stages and then die with a bare assertion.  `postsim` now checks every stage's
+  directory before running any and names all the bad ones.  A subdir must be one name
+  inside a project directory (`postsim/deform-x`); deeper paths such as
+  `postsim/grid-A/deform-x` are not supported.
+
 - **`htpolynet plots diag` failed on every ring-cure run** with a bare `IndexError`.  It
   recognized only `CURE`'s two progress lines, and a ring cure logs its own, so it parsed
   nothing.  It now reads both, and a log with neither raises an error that says so.  Its
