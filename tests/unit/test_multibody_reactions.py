@@ -251,3 +251,24 @@ class TestSpanningAndClosingBonds(unittest.TestCase):
         R = reaction({1: 'DGE'}, {'a': (1, 1, 'C1'), 'b': (1, 1, 'O1')}, [('a', 'b')],
                      stage=reaction_stage.cap)
         self.assertEqual(spanning_and_closing_bonds(R), ([], []))
+
+
+class TestMaximumConversionIgnoresRingClosing(unittest.TestCase):
+    """The pairwise "100% conversion is N bonds" count does not apply to a ring cure."""
+
+    def runtime(self, reactions, composition):
+        from htpolynet.core.runtime import Runtime
+        rt = SimpleNamespace(
+            cfg=SimpleNamespace(initial_composition=[{'molecule': m, 'count': n}
+                                                     for m, n in composition.items()]),
+            molecules={m: SimpleNamespace(sequence=[m]) for m in composition},
+            reactions=reactions)
+        Runtime._calculate_maximum_conversion(rt)
+        return rt.maxconv
+
+    def test_a_ring_cure_alone_has_no_pairwise_bonds_to_count(self):
+        # 360 BADCy once counted as 1080 "bonds"; the ring cure forms 720
+        self.assertEqual(self.runtime([cyclotrimerize()], {'BCY': 360}), 0)
+
+    def test_a_pairwise_cure_is_still_counted(self):
+        self.assertEqual(self.runtime([etherify()], {'BPA': 360, 'TAZ': 240}), 240)

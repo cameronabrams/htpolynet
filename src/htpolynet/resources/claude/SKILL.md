@@ -119,8 +119,8 @@ htpolynet analyze analyze.yaml --proj proj-0
 ```
 
 **The postcure NPT plateau is not an equilibrated density.** It is an
-under-relaxed structure, and on the bundled cyanate-ester example it sits
-about 2.3% below what the same system gives after a melt and slow re-cool.
+under-relaxed structure, and on the cyanate-ester example as it shipped before
+2.15.0 (the pre-formed-triazine stand-in) it sat about 2.3% below what the same system gives after a melt and slow re-cool.
 Do not report a plateau density as a force-field result.
 
 ## Subcommand routing

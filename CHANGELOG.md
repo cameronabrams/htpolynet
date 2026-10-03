@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Example 6 now cures bisphenol-A dicyanate by real cyclotrimerization.**  Its one
+  monomer, BDC, carries two cyanate groups, and a `ring_cure` block closes three of them
+  at a time into a 1,3,5-triazine, the reaction that actually cures a cyanate ester.
+  Conversion is the cyanate-group conversion, counted directly, and an unreacted group
+  simply stays -O-C#N, so the example needs no postcure repair.  Until now the example
+  used a stand-in model -- bisphenol A plus a pre-formed triazine, joined by aryl
+  ethers, with a repair stage dismantling incomplete rings afterward -- whose triazines
+  existed before cure began, so the way its network formed, and its gel point, were not
+  those of the chemistry.  The tutorial is rewritten to match, and the `postcure_repair`
+  page now describes the repair stage as the tool for reproducing builds made the old
+  way.  Results and post-build pages still show the old model's numbers until a
+  reference build of the new configuration replaces them.
+
 - **htpolynet now requires ycleptic 2.4.4 or later** (was 2.4.1).  From 2.4.3 on,
   ycleptic checks a base config's *shape* when it loads, not only its vocabulary: an
   attribute indented one level too deep, a `default:` that contradicts its own `type:`,
@@ -17,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   htpolynet's own schema passes it clean.
 
 ### Fixed
+
+- **A ring cure's setup log no longer quotes a meaningless bond count.**  "100% conversion
+  is N bonds" came from `CURE`'s pairwise count, which treated a three-reactant ring
+  closure as three independent pairwise reactions: 360 BADCy monomers reported 1080
+  bonds, where full conversion is 240 rings and 720 bonds.  A ring cure now says its
+  conversion is counted in reactive groups and points at the "Ring cure begins" line.
+  In a configuration with both pairwise and ring-closing reactions, the count `CURE`
+  uses for its own target now leaves the ring-closing reaction out.
 
 - Two documentation passages still described Berendsen coupling as current after 2.14.0
   moved off it: the densification gate's warning now says the packaged `npt.mdp` uses

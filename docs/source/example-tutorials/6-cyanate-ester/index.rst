@@ -3,40 +3,36 @@
 Bisphenol-A Dicyanate (BADCy) Thermoset
 =======================================
 
-This tutorial covers a **cyanate-ester thermoset** modelled topologically
-as a step-growth aryl-ether network plus a postcure topology-repair
-stage.  Two chemistry choices are unique to this example:
+This tutorial builds a **cyanate-ester thermoset** by the chemistry that actually
+cures one: **cyclotrimerization**.  Three cyanate groups (-O-C#N) on three different
+bisphenol-A dicyanate monomers close into one 1,3,5-triazine ring, and those rings
+are the network's trifunctional crosslink junctions.  It is the only depot example
+whose cure reaction has three reactants and closes a ring, so it is driven by a
+``ring_cure`` block rather than ``CURE``.
 
-* **The triazine crosslink ring is pre-formed in the monomer**, not
-  constructed during cure.  Real cured BADCy contains 1,3,5-triazine
-  rings that arise from cyclotrimerization of three R-O-C#N cyanate
-  end-groups during cure; modelling that mechanism literally requires
-  closing a three-way C-N ring during the iterative CURE loop, which
-  is awkward to drive deterministically.  Instead we use bare
-  1,3,5-triazine as a trifunctional crosslinker monomer and pair it
-  with bisphenol-A (BPA) as a difunctional bridge in a simple A2+B3
-  step-growth ether substitution.  The cured-network *topology* is
-  identical to that of a real cyclotrimerized BADCy thermoset, but the
-  cure event is a pre-existing-ring aryl substitution rather than
-  ring-forming cyclotrimerization.
+Two things set it apart from the earlier examples:
 
-* **A postcure topology-repair stage** converts the topological
-  artifacts of incomplete cure into chemically realistic residuals.
-  At any finite conversion the A2+B3 model leaves free BPA-OH groups
-  and bare triazine C-H positions — species that don't exist in real
-  undercured BADCy, where any cyanate that didn't cyclotrimerize stays
-  as an intact -O-C#N end-group.  The new ``postcure_repair`` stage
-  dismantles every incomplete triazine (fewer than 3 bonded BPAs) into
-  three -C#N fragments and reattaches them to the BPAs they were
-  already bonded to (in place) or transfers them to the nearest
-  unreacted BPA-OH (free caps).  Atom conservation across the system
-  is exact; the post-repair network has the BPA-O-C#N residual
-  end-groups a real undercured BADCy thermoset carries.
+* **A three-body cure reaction.**  ``CURE`` forms one bond at a time between two
+  reactive atoms.  A triazine needs three bonds among three molecules at once, and a
+  ring that is two-thirds closed is not a chemical species.  The ring cure therefore
+  finds *triples* of cyanate groups, pulls each triple together under a ladder of
+  restraints, and closes all three bonds of a ring in one step.
 
-The repair architecture itself is documented in detail on the
-:ref:`postcure-repair user-guide page <postcure_repair>`; this
-tutorial focuses on the BADCy-specific instance and what shows up in
-the run log when you actually drive it.
+* **Conversion is the cyanate conversion.**  Each ring consumes three cyanate groups,
+  and ``desired_conversion`` is the fraction of groups consumed -- the quantity FTIR
+  measures and the literature reports.  A group that never finds two partners stays an
+  intact -O-C#N end group, which is exactly what real under-cured BADCy contains.
+
+.. note::
+
+   Releases before 2.15.0 built this example with a stand-in model: bisphenol A plus
+   a pre-formed 1,3,5-triazine, joined by aryl-ether bonds, with a
+   :ref:`postcure repair stage <postcure_repair>` that dismantled the incomplete rings
+   into -O-C#N caps afterward.  Its triazine rings existed before cure began, so the
+   way the network formed -- and its gel point -- were not those of the chemistry.
+   That model's conversion was also a bond conversion, which maps to the cyanate
+   conversion only roughly as its cube.  The repair stage remains available for
+   reproducing builds made that way.
 
 .. toctree::
    :maxdepth: 2

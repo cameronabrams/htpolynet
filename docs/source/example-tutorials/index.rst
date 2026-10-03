@@ -3,7 +3,7 @@
 Example Tutorials
 =================
 
-We present here a series of tutorials to help illustrate usage of ``htpolynet``.  Each tutorial walks through one polymerization recipe end-to-end: setting up monomer structures and reactions, running the build with ``htpolynet run``, and then performing post-build MD simulations and analyses with ``htpolynet postsim``, ``plots``, and ``analyze``.  Example ``0`` (liquid styrene) does no polymerization and is the simplest possible build; the remaining examples add cure and cap reactions of increasing complexity, with tutorial ``6`` (BADCy cyanate-ester thermoset) also exercising the new postcure topology-repair stage introduced in htpolynet 2.1.  Each tutorial number matches the example number returned by ``htpolynet fetch-example``.
+We present here a series of tutorials to help illustrate usage of ``htpolynet``.  Each tutorial walks through one polymerization recipe end-to-end: setting up monomer structures and reactions, running the build with ``htpolynet run``, and then performing post-build MD simulations and analyses with ``htpolynet postsim``, ``plots``, and ``analyze``.  Example ``0`` (liquid styrene) does no polymerization and is the simplest possible build; the remaining examples add cure and cap reactions of increasing complexity, with tutorial ``6`` (BADCy cyanate-ester thermoset) curing by cyclotrimerization, a three-body reaction that closes a ring.  Each tutorial number matches the example number returned by ``htpolynet fetch-example``.
 
 .. note::
 

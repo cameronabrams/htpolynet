@@ -13,14 +13,23 @@ For some chemistries that's a problem.  A topological model of a
 network thermoset — where you describe the *cured-network connectivity*
 rather than the *bond-forming mechanism* — will in general leave
 artefacts at finite cure conversion that don't exist in the real
-material.  The motivating case is the BADCy cyanate-ester example
-(see :ref:`tutorial 6 <badcy_tutorial>`): the topological A2+B3 cure
-model produces a pleasant simple workflow (no 3-way ring closure
-during cure), but at less than full conversion it leaves free
+material.  The motivating case was the BADCy cyanate-ester example
+as it shipped before 2.15.0: a topological A2+B3 cure model (bisphenol A
+plus a pre-formed triazine) that avoided a 3-way ring closure during
+cure, but at less than full conversion left free
 phenolic ``BPA-OH`` groups and bare triazine C-H positions — species
 that real undercured BADCy doesn't carry.  Real undercured BADCy has
 ``-O-C#N`` end-groups instead, because the cyanate that didn't
 cyclotrimerize just *stays* as an intact cyanate.
+
+.. note::
+
+   Since 2.15.0 :ref:`tutorial 6 <badcy_tutorial>` builds BADCy by real
+   cyclotrimerization with a ``ring_cure`` block, which leaves unreacted
+   cyanate groups intact by construction and needs no repair.  The repair
+   stage remains for builds made with the stand-in model, and the
+   ``triazine_to_cyanate_cap`` configuration shown below is the one that
+   example used.
 
 The postcure repair stage gives ``htpolynet`` an escape valve for
 exactly this kind of problem.  After cure (and capping, if any)

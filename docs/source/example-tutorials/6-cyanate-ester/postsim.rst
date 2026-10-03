@@ -3,6 +3,13 @@
 Post-build simulations and analyses
 -----------------------------------
 
+.. admonition:: Placeholder
+   :class: caution
+
+   **TODO:** everything below this box comes from a build of the pre-2.15.0 stand-in
+   model (bisphenol A + pre-formed triazine + postcure repair) and will be replaced
+   with results from the reference build of the cyclotrimerization configuration.
+
 The canonical worked example for the postsim + analyze subsystems is
 :ref:`tutorial 3 <tutorials_postsim_analyses>`; the workflow for
 BADCy is identical save for the input filenames and a few

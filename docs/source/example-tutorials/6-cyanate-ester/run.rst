@@ -3,201 +3,73 @@
 Running the Build
 -----------------
 
-From inside the working directory containing
-``6-cyanate-ester.yaml``:
+From inside the working directory containing ``6-cyanate-ester.yaml``:
 
 .. code-block:: console
 
    $ htpolynet run -diag diagnostics.log 6-cyanate-ester.yaml &> console.log &
 
-The stage layout under ``proj-N/systems/`` matches earlier examples
-(``init/``, ``densification/``, ``precure/``, ``iter-K/``,
-``capping/``, ``postcure/``, ``final-results/``, plus ``plots/`` and
-``profile.json`` at the project root) **and adds a new** ``repair/``
-**directory** between ``capping/`` and ``postcure/``.  The repair
-stage writes its ``repaired.gro``/``repaired.top``/``repaired.tpx``
-plus a steepest-descent + short NVT relaxation pair there so the
-modified topology has a chance to settle before the postcure MD
-ensemble takes over.
+The stage layout under ``proj-N/systems/`` matches the earlier examples: ``init/``,
+``densification/``, ``precure/``, one ``iter-K/`` per ring-cure iteration,
+``postcure/`` and ``final-results/``, plus ``plots/`` and ``profile.json`` at the
+project root.  The ring cure also keeps its progress in ``systems/ring_state.yaml``,
+which is what lets ``-restart`` resume it.
 
 Setup
 ^^^^^
 
-``htpolynet`` parameterizes the 11 templates discussed in the
-:ref:`configuration page <badcy_configuration>`:
+``htpolynet`` parameterizes the two templates, BDC and BDC3, discussed on the
+:ref:`reactions page <badcy_reactions>`.  The trimer is the expensive one -- three
+monomers, 105 atoms -- but it is built once and cached in the library, so later runs
+skip it.  Because the only cure reaction closes a ring, the log says that conversion
+is counted by the ring cure rather than quoting a bond count::
 
-.. code-block:: text
-
-   INFO> 11 molecules detected in 6-cyanate-ester.yaml
-   INFO>                       explicit: 5
-   INFO>     implied by stereochemistry: 0
-   INFO>            implied by symmetry: 6
-   INFO> AmberTools> generating GAFF parameters from BPA.mol2
-   INFO> BPA: 228.28 g/mol
-   INFO> AmberTools> generating GAFF parameters from TAZ.mol2
-   INFO> TAZ: 81.08 g/mol
-   INFO> AmberTools> generating GAFF parameters from CYN.mol2
-   INFO> CYN: 27.03 g/mol
-   INFO> AmberTools> generating GAFF parameters from BPA~O1-C1~TAZ.mol2
-   INFO> BPA~O1-C1~TAZ: 307.35 g/mol
-   INFO> AmberTools> generating GAFF parameters from BPA~O1-C1~CYN.mol2
-   INFO> BPA~O1-C1~CYN: 253.29 g/mol
-   ...
-   INFO> Generated 11 molecule templates
-   INFO> Initial composition is BPA 360, TAZ 240
-   INFO> 100% conversion is 720 bonds
-
-The molecular weights are a useful quick sanity check: 228.28 (BPA) +
-81.08 (TAZ) – 2 × 1.008 (lost H atoms) = 307.35 (``BPA~O1-C1~TAZ``);
-228.28 (BPA) + 27.03 (HCN) – 2 × 1.008 = 253.29
-(``BPA~O1-C1~CYN``).
+   INFO> Generated 2 molecule templates
+   INFO> Initial composition is BDC 360
+   INFO> Conversion is counted in reactive groups by the ring cure; see "Ring cure begins" for the total
 
 Densification + precure
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-200 kg/m³ initial density and a 100 ps NPT segment (× 4 repeats) bring
-the box to roughly 1.0 g/cm³ before precure.  Precure runs the
-preequilibration (200 ps NPT at 300 K, 1 bar) and a short anneal cycle
-between 300 and 500 K to relax any high-energy contacts from the
-random initial placement.
+200 kg/m³ initial density and NPT segments at 300 K and 10 bar, extended until the
+mean density is known to within 1 kg/m³, bring the box to liquid density.  Precure
+runs a 200 ps NPT preequilibration at 300 K and 1 bar and two anneal cycles between
+300 and 500 K to relax high-energy contacts from the random initial placement.
 
-Cure
-^^^^
+Ring cure
+^^^^^^^^^
 
-CURE runs until either ``desired_conversion: 0.90`` or
-``max_iterations: 150`` is reached.  On a representative run the cure
-converges in nine iterations:
+The log brackets the ring cure, reports each iteration's rings and the running group
+count, and reports the settle::
 
-.. list-table::
-   :header-rows: 1
-   :widths: 20 30 30 20
+   INFO>  Ring cure begins: 720 reactive BDC group(s), (('N1', 'C1'), ('N2', 'C2')), template BDC3
+   INFO> Iteration 1: ... ring(s), ... of 720 groups consumed (conversion ...)
+   ...
+   INFO> Ring cure reached conversion ...
+   INFO> Ring cure settled after ... ring(s); the network is relaxed before postcure rather than at 500 K
+   INFO> ********** Ring cure ends: ... ring(s), conversion ... **********
 
-   * - Iteration
-     - Bonds formed
-     - Cumulative conversion
-     - Wall time
-   * - 1
-     - 152
-     - 0.211
-     - 2:18
-   * - 2
-     - 144
-     - 0.411
-     - 2:26
-   * - 3
-     - 133
-     - 0.596
-     - 2:20
-   * - 4
-     - 93
-     - 0.725
-     - 2:10
-   * - 5
-     - 49
-     - 0.793
-     - 1:56
-   * - 6
-     - 31
-     - 0.836
-     - 1:51
-   * - 7
-     - 15
-     - 0.857
-     - 1:44
-   * - 8
-     - 20
-     - 0.885
-     - 1:46
-   * - 9
-     - 12
-     - 0.901
-     - 2:36
+.. admonition:: Placeholder
+   :class: caution
 
-The classic long tail: 80 % cure in 4 iterations, the remaining 10 %
-takes another 5.  No capping work because ``etherify`` is the only
-cure reaction and the cap stage has nothing to do (no cap directives
-in the YAML).
+   **TODO:** the per-iteration table (rings, cumulative conversion, wall time) and the
+   declined-ring counts from the reference build of the 2.15.0 configuration.
 
-Repair
-^^^^^^
-
-After cure converges, the postcure topology-repair stage fires:
-
-.. code-block:: text
-
-   INFO> ************ Postcure repair in proj-0/systems/repair *************
-   INFO> triazine_to_cyanate_cap: 57 incomplete TAZ residues identified (171 caps total, 71 free fragments to donate)
-   INFO> triazine_to_cyanate_cap: redistributing residual charge -23.0470 across 142 repaired-residue neighbours
-   INFO> ******** Postcure repair performed 57 dismantle operations ********
-   INFO> Relaxing repaired geometry
-   INFO> Running Gromacs: minimization
-   INFO> Running Gromacs: nvt ensemble;   5.00 ps,  300.00 K
-
-Decoding the numbers:
-
-* **57 incomplete TAZ residues** out of 240 total — i.e. 183 of the
-  240 triazines (~76 %) reached the full 3-bonded state during cure.
-  Each incomplete one carries between 0 and 2 bonded BPAs.
-* **171 caps total** = 57 × 3.  Each dismantled ring is split into
-  three independent -C#N fragments.
-* **71 free fragments to donate** = the number of dangling triazine
-  C atoms across all incomplete rings.  This is also the number of
-  unreacted BPA-OH groups (by atom conservation), so the matching is
-  exact and every free fragment finds a home.
-* **171 - 71 = 100 in-place caps**: fragments whose ring C atom was
-  already bonded to a BPA during cure, so the BPA-O-C bond is
-  preserved and only the atom types, bond orders, and angle/dihedral
-  parameters update from the templated BPA-O-C#N values.
-* **Residual charge ≈ -23 e** distributed across **142 atoms** =
-  71 × 2 (the BPA-O atoms newly bonded to free caps, plus the
-  CYN-C atoms whose H was deleted).  This is the charge from the
-  deleted sacrificial H atoms, redistributed across the heavy-atom
-  neighbours so the system stays net-neutral for Ewald.
-
-The repair stage finishes by running a steepest-descent minimization
-and a short (5 ps) NVT settle on the modified topology, so any LJ
-clashes introduced by physically relocating the free-cap atoms get
-relaxed before postcure MD starts.
+Expect the familiar long tail.  Early iterations close dozens of rings at once while
+groups are plentiful and close together; late ones close a handful, because each
+remaining group must find two partners within reach that are not already used up,
+and the ring cure must pull three separate molecules into place inside a network that
+is already crosslinked.
 
 Postcure
 ^^^^^^^^
 
-Postcure runs the standard anneal (between 300 K and 500 K, two
-cycles) followed by a 100 ps NPT postequilibration at 300 K and 1 bar.
-The final density typically lands around 1.1 g/cm³ — a touch lower
-than fully cured BADCy (≈ 1.2 g/cm³) because of the residual ``-C#N``
-end-groups breaking the network into smaller clusters.
+Postcure runs the standard anneal -- two cycles between 300 and 500 K -- followed by a
+100 ps NPT postequilibration at 300 K and 1 bar.
 
-Profile
-^^^^^^^
+.. admonition:: Placeholder
+   :class: caution
 
-End-of-run stage profile (representative run, 4-core CPU + 1 GPU):
-
-.. code-block:: text
-
-   Stage                                                   wall      subprocess
-   ------------------------------------------------------------------------------
-   setup                                                 798 ms            0 ms
-   initialization                                        6.81 s          2.71 s
-   densification                                        5m34.6s         5m34.2s
-   precure                                              3m18.7s         3m18.3s
-   cure                                                16m51.8s            0 ms
-     iter-1                                             2m18s          1m20s
-     iter-2                                             2m26s          1m28s
-     iter-3                                             2m20s          1m27s
-     ...
-   repair                                               1m11.1s           11 s
-   postcure                                             1m39.3s         1m38.9s
-   final                                                 5.07 s            0 s
-
-Total: **28m48s** on 24 cores.  Densification is longer than its
-``ps: 200`` suggests because the stage is extended until the density
-settles -- two extra segments here, ending at 1113.5 +/- 0.33 kg/m^3.
-
-The cure dominates the run as expected.  The ``repair`` stage's wall
-time (~1 min) is split between the surgery itself (~5 s — the
-remaining time the minimization and 5-ps NVT settle).  The
-``proj-0/profile.json`` file carries the same data in
-machine-readable form.
+   **TODO:** final density and the end-of-run stage profile from the reference build.
 
 Next is the :ref:`results page <badcy_results>`.

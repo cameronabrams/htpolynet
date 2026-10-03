@@ -820,26 +820,26 @@ Coverage as of the last measurement: **38.8%** overall.
   per-reason histogram at each iteration.  A filter that silently removes half the
   candidates is worse than no filter.
 
-- **Ship an example that cures cyanate ester by real cyclotrimerization.**  The
-  three-body cure itself shipped in 2.11.0 (`ring_cure`; see the CHANGELOG from 2.11.0
-  through 2.14.0 for closure, settling, threading prevention and `piercings`).  What
-  never shipped is step 6 of the original plan: example 6 and its tutorial still use
-  the A2+B3 surrogate (pre-formed TAZ triazine + aryl ethers + `postcure_repair`).
+- **Example 6's reference build, and the pages it fills in.**  Example 6 switched to
+  real cyclotrimerization in [Unreleased], replacing the stand-in rather than shipping
+  beside it.  Cameron, 2026-10-03, on keeping both: "what if the conclusion of comparing
+  6 and 7 is that 6 is certainly the wrong way to build ce systems?  won't that just be
+  confusing?"  -- and then "yes" to replacing it.
+  The config and the setup-level tutorial pages are done; what waits on a build is every
+  number: the iteration table and profile on `run.rst`, the placeholder on
+  `introduction.rst`, and all of `results.rst` and `postsim.rst`, which still show the
+  stand-in's figures under a caution box.  Do not release until they are replaced.
 
-  A validated starting point exists: htpolynet-study's BADCy ring-cure arm,
-  `bridge-series/configs-ring/bdc-ring-c097-*.yaml` (360 BDC, chi_OCN 0.97, both
-  threading filters, 12 builds in `filt12/` with 0/12 threaded against 8/12 unfiltered).
-  Differences to settle before it becomes a depot config: it uses `bcc` charges where
-  the depot examples use `gas`; its comments record five postcure-anneal explosions on
-  GPU (CUDA error #700) that did not occur on CPU, which should be understood before a
-  GPU-default example ships; and conversion is counted in cyanate groups, so the
-  tutorial's conversion numbers change meaning.
-
-  Open question for Cameron: replace example 6, or add the ring cure as a new example
-  and keep 6 as the surrogate?  Example 6 is the only shipped exercise of
-  `postcure_repair: triazine_to_cyanate_cap`, and the surrogate-versus-trimerization
-  comparison at matched chi_OCN is itself worth a tutorial page.  Builds belong to
-  htpolynet-sweep.
+  The build belongs to htpolynet-sweep, and should run **twice, CPU and GPU**.  The
+  config descends from htpolynet-study's validated BADCy arm
+  (`bridge-series/configs-ring/bdc-ring-c097-*.yaml`, 12 builds in `filt12/`, 0/12
+  threaded), but every one of those builds ran with all mdrun offload off, and that arm's
+  own comments record five postcure-anneal explosions on GPU (CUDA error #700) before
+  the 2.11.x settle stage existed.  The settle is the likely fix -- the CHANGELOG traces
+  those anneals to strain left by the last batch -- but the ring cure has not run on a
+  GPU since, and the example defaults to `gpu_id: 0`.  Two deliberate differences from
+  the study arm: `gas` charges (as every depot example uses) instead of `bcc`, and the
+  densification `converge` block example 6 already had.
 
 - **Single-step crosslinking (the Khare method), as an alternative to CURE, not a
   replacement.**  Agreed with Cameron 2026-09-21.  All bonds are chosen at once by

@@ -1,45 +1,26 @@
-# htpolynet -- Example 6 -- Cyanate-ester-equivalent thermoset (BPA + 1,3,5-triazine)
+# htpolynet -- Example 6 -- Bisphenol-A dicyanate (BADCy) cured by cyclotrimerization
 #
-# Topological model of a fully cured bisphenol-A dicyanate (BADCy) thermoset.
-# Rather than modelling the real cyclotrimerization (three R-O-C#N groups
-# closing into a triazine ring during cure -- which would require 3-way
-# in-cure ring closure and careful bondcycle handling), this example uses the
-# *product topology* of a cured BADCy network directly:
+# Cyanate esters cure by cyclotrimerization: three -O-C#N groups close into one
+# 1,3,5-triazine ring, an addition in which no atom is lost.  The triazine rings are the
+# trifunctional crosslink junctions and the bisphenol-A cores are the bridges between
+# them.  This example builds that network by the real chemistry, using the `ring_cure`
+# block below in place of CURE's pairwise crosslinking.
 #
-#   - BPA   (A2):  bisphenol-A with two reactive phenolic -OH groups.
-#   - TAZ   (B3):  bare 1,3,5-triazine, three reactive aromatic ring C-H sites.
-#                  Same triazine ring that forms the crosslink node in real
-#                  BADCy after cyclotrimerization -- but pre-formed here, so
-#                  every monomer enters the box already carrying its ring.
+# One monomer, BDC (N#C-O-C6H4-C(CH3)2-C6H4-O-C#N), carries two cyanate groups.  The
+# single reaction `cyclotrimerize` takes three of them and forms three new bonds,
+# N1-C2, N2-C3 and N3-C1, which close the ring.  htpolynet builds and parameterizes the
+# trimer template once, at setup, and splices it into the system for every ring.
 #
-# The single cure reaction forms one BPA-O-C(triazine) aryl ether per event
-# (losing one H from BPA's phenol oxygen and one H from a triazine ring C).
-# Symmetry-equivalent atoms (BPA's two O's, TAZ's three C's) are declared so
-# htpolynet auto-expands the one user-written reaction into all 2*3 = 6
-# permutations.  The resulting network has triazine rings as trifunctional
-# nodes, BPA bridges as difunctional spacers, and aryl-ether linkages between
-# them -- structurally identical to a fully cured BADCy thermoset.
+# Conversion is counted in cyanate groups consumed -- three per ring -- which is the
+# quantity FTIR measures and the literature reports.  A group that never finds two
+# partners simply stays -O-C#N, which is what real under-cured BADCy contains, so no
+# post-cure repair is needed.
 #
-# Stoichiometry: 3 BPA x 2 phenolic O = 6 reactive sites per 3 BPA;
-#                2 TAZ x 3 ring C    = 6 reactive sites per 2 TAZ.
-# So the 3:2 BPA:TAZ ratio below is balanced for full conversion.
-#
-# Tradeoff vs. example 6's earlier cyclotrimerization model:
-#   + No in-cure ring closure; no bondcycle bypass; simple A2+B3 step-growth.
-#   + No assembled-monomer param stage (BPA and TAZ are inserted directly).
-#   - The cure mechanism here is aryl substitution, not cyclotrimerization,
-#     so cure-kinetics and intermediate-species questions can't be addressed
-#     with this model.  The final cured-network *structure* is faithful.
-#
-# Incomplete-cure realism: because cure is deterministic-conversion driven
-# (not chemically rate-limited), at finite desired_conversion < 1 the system
-# can carry leftover BPA-OH and bare triazine C-H sites -- both unphysical
-# in a real BADCy thermoset.  The ``postcure_repair`` block below converts
-# those artifacts into chemically-realistic residuals: every incomplete
-# triazine (k<3 bonded BPAs) is dismantled into three -C#N fragments which
-# are reattached either in place (to the BPAs they were already bonded to)
-# or to the nearest free BPA-OH, yielding the BPA-O-C#N end-groups that
-# real undercured BADCy actually contains.  Atom conservation is exact.
+# Releases before 2.15.0 built this example with a stand-in model: bisphenol A plus a
+# pre-formed 1,3,5-triazine, joined by aryl-ether bonds, with a postcure repair stage
+# that dismantled incomplete rings into -O-C#N caps.  Its final connectivity can match
+# a cured BADCy network, but its triazine rings exist before cure begins, so the way
+# the network forms -- and its gel point -- are not those of the chemistry.
 #
 # Run with:
 #
@@ -47,7 +28,7 @@
 #
 # Cameron F. Abrams -- cfa22@drexel.edu
 
-Title: Cyanate-ester-equivalent thermoset (BPA + 1,3,5-triazine)
+Title: Bisphenol-A dicyanate cured by cyclotrimerization
 gromacs:
   gmx: gmx
   gmx_options: -quiet -nobackup
@@ -57,34 +38,14 @@ gromacs:
 ambertools:
   charge_method: gas
 constituents:
-  BPA:
-    # Bisphenol-A, two phenolic -OH groups reactive (z=1 each).  Identical
-    # to the BPA building block in examples 2 and 6 (prior form).
-    smiles: "CC(c1ccc([OH:1])cc1)(c1ccc([OH:2])cc1)C"
-    reactive_atoms: {1: O1, 2: O2}
+  BDC:
+    # Bisphenol-A dicyanate.  Each cyanate's C and N are reactive (z=1 each): the C of
+    # one group bonds to the N of the next around the ring.  The two groups are
+    # symmetry-equivalent, so the one reaction below expands to every combination.
+    smiles: "[N:1]#[C:2]Oc1ccc(cc1)C(C)(C)c1ccc(O[C:3]#[N:4])cc1"
+    reactive_atoms: {1: N1, 2: C1, 3: C2, 4: N2}
+    symmetry_equivalent_atoms: [[C1, C2], [N1, N2]]
     count: 360
-    symmetry_equivalent_atoms: [[O1, O2]]
-  TAZ:
-    # 1,3,5-triazine (s-triazine): aromatic ring of alternating C and N,
-    # three reactive ring C-H sites (z=1 each).  Each C loses its one
-    # aromatic H to form an aryl-ether bond with a BPA phenolic O.  The
-    # N atoms are mapped to give them distinct names (N1/N2/N3) so the
-    # postcure_repair driver can refer to them by name when dismantling
-    # incomplete rings.
-    smiles: "[cH:1]1[n:4][cH:2][n:5][cH:3][n:6]1"
-    reactive_atoms: {1: C1, 2: C2, 3: C3, 4: N1, 5: N2, 6: N3}
-    count: 240
-    symmetry_equivalent_atoms: [[C1, C2, C3], [N1, N2, N3]]
-  CYN:
-    # Hydrogen cyanide as the cap-template building block.  Not inserted
-    # into the simulation box -- exists only so that the linked-product
-    # template ``BPA~O1-C1~CYN`` can be auto-parameterized at setup time
-    # for use by the postcure_repair stage (see below).  The C carries
-    # z=1 (loses one H to bond with BPA-O); the N is terminal but mapped
-    # so it lands in the mol2 as N1 (not the default element-only name);
-    # the repair driver looks up cap atoms by name, so both must be unique.
-    smiles: "[CH:1]#[N:2]"
-    reactive_atoms: {1: C1, 2: N1}
 densification:
   initial_density: 200.0  # kg/m3
   equilibration:
@@ -125,53 +86,24 @@ precure:
     temperature: 300        # K
     pressure: 1             # bar
     ps: 100
-CURE:
-  controls:
-    search_radius: 0.5          # nm
-    radial_increment: 0.25      # nm
-    min_bonds_per_iteration: 10
-    max_iterations: 150
-    desired_conversion: 0.90    # BOND conversion; the cyanate (FTIR) conversion
-                                # this yields is lower -- roughly its cube, since
-                                # a triazine survives repair only if all three of
-                                # its sites filled.  Both numbers are reported at
-                                # the end of the repair stage.
-    late_threshold: 0.80
-    # completion_bias: true     # finish partly-reacted triazines before starting
-                                # untouched ones, so desired_conversion means the
-                                # cyanate conversion.  Off here so this example
-                                # keeps its published behavior.
-  drag:
-    trigger_distance: 0.6   # nm
-    increment: 0.08         # nm
-    limit: 0.3              # nm
-    equilibration:
-      - ensemble: min
-      - ensemble: nvt
-        temperature: 600
-        nsteps: 1000
-      - ensemble: npt
-        temperature: 600
-        pressure: 1
-        nsteps: 2000
-  relax:
-    increment: 0.08         # nm
-    equilibration:
-      - ensemble: min
-      - ensemble: nvt
-        temperature: 600
-        nsteps: 1000
-      - ensemble: npt
-        temperature: 600
-        pressure: 1
-        nsteps: 2000
-  equilibrate:
-    ensemble: npt
-    temperature: 300       # K
-    pressure: 1            # bar
-    ps: 100
-  gromacs:
-    rdefault: 0.9          # nm
+ring_cure:
+  search_radius: 0.5        # nm; longest new bond a candidate ring may need
+  radial_increment: 0.05    # nm; widen the search by this when an iteration is short of rings
+  desired_conversion: 0.97  # fraction of cyanate GROUPS consumed, three per ring
+  max_iterations: 150
+  closure:
+    nstages: 6              # restraint stages that pull each candidate ring shut
+  # Every other ring_cure setting is left at its default.  Two are worth knowing:
+  #   reject_threaded_rings, reject_new_threading (both true) decline a ring that would
+  #   close around an existing bond, or that leaves a dragged monomer's bond threading an
+  #   existing ring.  A threaded ring is permanent -- no later relaxation can undo it --
+  #   so it is refused rather than repaired.  `htpolynet piercings` counts any that remain.
+  # Each iteration then relaxes at 600 K and re-equilibrates at 300 K and 1 bar, as CURE
+  # does, and the cure settles the network once on exit.
+  #
+  # Fang & Shimp's end-group arithmetic caps acyclic growth at 75% cyanate conversion,
+  # so a network that reaches 0.97 necessarily contains macrocycles.  That is the real
+  # chemistry, and it is why no cycle-length filter is applied here.
 postcure:
   anneal:
     ncycles: 2
@@ -195,58 +127,26 @@ postcure:
     pressure: 1            # bar
     ps: 100
 reactions:
-  # A2+B3 step-growth: BPA's phenolic O forms an aryl ether with one of the
-  # triazine ring carbons, each side losing one H.  The single reaction
-  # below is auto-expanded by htpolynet (via symmetry_equivalent_atoms on
-  # both monomers) into all 2 x 3 = 6 (O, C) permutations.  htpolynet also
-  # builds 18 templates for bonds to rings that already carry one or two
-  # BPAs, so later bonds on a ring do not reset the charges of its
-  # already-reacted carbons.
-  - name: etherify
+  - name: cyclotrimerize
     stage: cure
-    reactants: {1: BPA, 2: TAZ}
-    product: BPA~O1-C1~TAZ
+    reactants: {1: BDC, 2: BDC, 3: BDC}
+    product: BDC3
     probability: 1.0
     atoms:
-      A: {reactant: 1, resid: 1, atom: O1, z: 1}
-      B: {reactant: 2, resid: 1, atom: C1, z: 1}
+      N1: {reactant: 1, resid: 1, atom: N1, z: 1}
+      C1: {reactant: 1, resid: 1, atom: C1, z: 1}
+      N2: {reactant: 2, resid: 1, atom: N1, z: 1}
+      C2: {reactant: 2, resid: 1, atom: C1, z: 1}
+      N3: {reactant: 3, resid: 1, atom: N1, z: 1}
+      C3: {reactant: 3, resid: 1, atom: C1, z: 1}
     bonds:
-      - atoms: [A, B]
+      # An addition: no hydrogen is lost, so no sacrificial H.
+      - atoms: [N1, C2]
         order: 1
-  # Repair-stage template: defines the linked product BPA~O1-C1~CYN used
-  # by the postcure_repair driver below.  Never executed as a reaction
-  # at runtime -- htpolynet builds + parameterizes the template at setup
-  # time, and the repair driver splices its parameters into the system
-  # for every BPA-O-C#N cap it forms (in place or transferred).
-  - name: cap_with_cyanate
-    stage: repair
-    reactants: {1: BPA, 2: CYN}
-    product: BPA~O1-C1~CYN
-    probability: 1.0
-    atoms:
-      A: {reactant: 1, resid: 1, atom: O1, z: 1}
-      B: {reactant: 2, resid: 1, atom: C1, z: 1}
-    bonds:
-      - atoms: [A, B]
+        sacrificial_h: false
+      - atoms: [N2, C3]
         order: 1
-postcure_repair:
-  # Convert every incomplete triazine into chemically-realistic BADCy
-  # residual species.  Each TAZ ring with fewer than 3 bonded BPAs is
-  # dismantled into 3 separate -C#N fragments: those already attached to
-  # a BPA become BPA-O-C#N caps in place; the rest are transferred to
-  # the nearest unreacted BPA-OH within `cap_search_radius`.  Atom
-  # conservation is exact across the system.  Linked-product template
-  # `BPA~O1-C1~CYN` (auto-generated from the repair-stage reaction above)
-  # supplies the post-repair parameters.
-  - type: triazine_to_cyanate_cap
-    crosslinker:
-      residue: TAZ
-      ring_carbon_atoms: [C1, C2, C3]
-      ring_nitrogen_atoms: [N1, N2, N3]
-      full_bond_count: 3
-    bridge:
-      residue: BPA
-      reactive_oxygen_atoms: [O1, O2]
-    cap_residue: CYN
-    cap_template: BPA~O1-C1~CYN
-    cap_search_radius: 0.6   # nm; expanded up to 10x on miss, falls back to global nearest
+        sacrificial_h: false
+      - atoms: [N3, C1]
+        order: 1
+        sacrificial_h: false

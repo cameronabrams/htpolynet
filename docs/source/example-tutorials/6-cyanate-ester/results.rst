@@ -3,6 +3,13 @@
 Results
 -------
 
+.. admonition:: Placeholder
+   :class: caution
+
+   **TODO:** everything below this box comes from a build of the pre-2.15.0 stand-in
+   model (bisphenol A + pre-formed triazine + postcure repair) and will be replaced
+   with results from the reference build of the cyclotrimerization configuration.
+
 The standard final-results bundle is in
 ``proj-0/systems/final-results/``:
 

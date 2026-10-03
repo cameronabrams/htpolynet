@@ -341,7 +341,9 @@ class Runtime:
                     N[res]+=molecule_count
         Bonds=[]
         Atoms=[]
-        for R in [x for x in self.reactions if x.stage==reaction_stage.cure]:
+        # a ring-closing reaction's conversion is counted in groups by the ring cure;
+        # this pairwise count would only misstate it (BADCy: 1080 "bonds" for 720 bonds)
+        for R in [x for x in self.reactions if x.stage==reaction_stage.cure and not is_ring_closing(x)]:
             for b in R.bonds:
                 A,B=b['atoms']
                 a,b=R.atoms[A],R.atoms[B]
@@ -430,7 +432,11 @@ class Runtime:
             cmp_msg=", ".join([(x["molecule"]+" "+str(x["count"])) for x in self.cfg.initial_composition if x["count"]>0])
             logger.info(f'Initial composition is {cmp_msg}')
             self._calculate_maximum_conversion()
-            logger.info(f'100% conversion is {self.maxconv} bonds')
+            if self.maxconv or not self._ring_reactions():
+                logger.info(f'100% conversion is {self.maxconv} bonds')
+            else:
+                logger.info('Conversion is counted in reactive groups by the ring cure; '
+                            'see "Ring cure begins" for the total')
 
         logger.debug(f'Reaction bond(s) in each molecular template:')
         for M in self.molecules.values():
