@@ -774,7 +774,15 @@ def do_E_plots(phases,projdirs,outfile='e.png',save_data='E.csv',fit_strain=None
         strain_name=f'Box-{dir.upper()}-strain'
         stress_name=f'Pres-{dir.upper()}{dir.upper()}-stress'
         for d in projdirs:
-            for sub in replica_subdirs(params):
+            subs=replica_subdirs(params)
+            found=[s for s in subs if os.path.isdir(os.path.join(d,s))]
+            if not found and os.path.isdir(os.path.join(d,params['subdir'])):
+                # a run from before replicas existed, or one with replicas: 1
+                found=[params['subdir']]
+            elif len(found)<len(subs):
+                logger.warning(f'{d}: found {len(found)} of {len(subs)} replica directories for '
+                               f'{params["subdir"]}; fitting those')
+            for sub in found:
                 df=pd.read_csv(os.path.join(d,sub,f'deform-{dir}.csv'),index_col=None,header=0)
                 curves.append((os.path.join(d,sub),pd.DataFrame({'strain':df[strain_name],'stress':(df[stress_name]*MPa_per_bar)})))
     reached=min(c['strain'].max() for _,c in curves)
@@ -823,12 +831,9 @@ def do_E_plots(phases,projdirs,outfile='e.png',save_data='E.csv',fit_strain=None
     elif E_sem>0.2*abs(E_mean):
         logger.warning(f'the standard error is {abs(E_sem/E_mean):.0%} of E; pull further '
                        f'(a longer deform stage) or add replicas before reporting it')
-    if R2 < 0.5:
-        # the fit is through the origin, so R^2 is against the mean and goes
-        # negative when a line explains less than a constant would
-        logger.warning(f'R^2 {R2:.3f}: the stress-strain curve is mostly pressure noise, and '
-                       f'{E/1000.0:.3f} GPa is not a modulus.  Pull further (a longer deform '
-                       f'stage) or average more replicas before reporting E.')
+    # No R^2 gate: single-frame pressure scatters so much that a sound fit to a real
+    # trace sits near R^2 0.45 (test_postsim_real_traces).  The scatter between pulls is
+    # what says whether E is known.
     return {'E':E_mean,'E_sem':E_sem,'n':n,'E_mean_curve':E,'R2_mean_curve':R2,'fit_strain':[lo,min(hi,reached)]}
 
 def post_plots(args):

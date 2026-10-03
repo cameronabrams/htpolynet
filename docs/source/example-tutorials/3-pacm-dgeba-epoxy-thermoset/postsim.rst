@@ -272,7 +272,15 @@ Again, in practice, this should be the result of much longer simulations and ave
 
 .. figure:: pics/prod-e.png
 
-    Stress vs. strain, averaged over deformations along x, y, and z, and over five replicas and a strain rate of 10\ :sup:`8` s\ :sup:`-1`. 
+    Stress vs. strain, averaged over deformations along x, y, and z, and over five replicas and a strain rate of 10\ :sup:`8` s\ :sup:`-1`.
+
+.. note::
+
+   Since 2.15.0 a ``deform`` stage defaults to a 40 ps pull (4 % strain at ``edot: 0.001``),
+   three replicas, and a fit over 0.1-3 % strain, and ``plots post`` reports *E* with an
+   error bar from the scatter between pulls.  The short stanzas above are kept to show what
+   too short a pull looks like; see :ref:`the deform options <htpolynet_postsim>` for
+   where the defaults come from. 
 
 
 Finally, let's use ``analyze`` to measure fractional free volume in the equilibration stage.  Using the shortcut approach, we need an input YAML file ``fv.yaml`` that just has one line:

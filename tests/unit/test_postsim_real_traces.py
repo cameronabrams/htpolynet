@@ -89,7 +89,9 @@ class TestYoungsModulusOnARealDeformation(unittest.TestCase):
     def test_it_gives_a_modulus_of_the_right_order(self):
         d = deform()
         E, _ = compute_E(d['Box-X-strain'], d['Pres-XX-stress'], fit_domain=[10, 200])
-        self.assertAlmostEqual(E / 10.0, 4254.0, delta=50.0)   # bar -> MPa
+        # 4254 when the fit was forced through the origin; this trace starts at -180 bar,
+        # and with the intercept free the slope is 4825
+        self.assertAlmostEqual(E / 10.0, 4825.0, delta=50.0)   # bar -> MPa
         self.assertGreater(E / 10.0, 500.0)                    # a solid, not a liquid
 
     def test_the_fit_is_poor_even_where_the_modulus_is_sensible(self):
@@ -109,8 +111,10 @@ class TestYoungsModulusOnARealDeformation(unittest.TestCase):
         d = deform()
         got = [compute_E(d['Box-X-strain'], d['Pres-XX-stress'], fit_domain=w)[0] / 10.0
                for w in ([5, 50], [10, 100], [10, 200], [20, 300])]
-        self.assertAlmostEqual(min(got), 2420.0, delta=50.0)
-        self.assertAlmostEqual(max(got), 4398.0, delta=50.0)
+        # through the origin this spread was 2420-4398; with the intercept free it is
+        # 4590-7913, the short windows being the noisy ones (0.7% and 1.3% strain)
+        self.assertAlmostEqual(min(got), 4590.0, delta=50.0)
+        self.assertAlmostEqual(max(got), 7913.0, delta=50.0)
         self.assertGreater(max(got) / min(got), 1.7)
 
 

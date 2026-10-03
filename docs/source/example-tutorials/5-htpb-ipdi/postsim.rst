@@ -58,7 +58,8 @@ postsim.yaml
         P: 1
         direction: x
         edot: 0.001
-        ps: 10
+        ps: 40
+        replicas: 3
     - deform:
         input_top: systems/final-results/final.top
         input_gro: postsim/equilibrate/equilibrate.gro
@@ -67,7 +68,8 @@ postsim.yaml
         P: 1
         direction: y
         edot: 0.001
-        ps: 10
+        ps: 40
+        replicas: 3
     - deform:
         input_top: systems/final-results/final.top
         input_gro: postsim/equilibrate/equilibrate.gro
@@ -76,7 +78,8 @@ postsim.yaml
         P: 1
         direction: z
         edot: 0.001
-        ps: 10
+        ps: 40
+        replicas: 3
 
 The Tg ladder ranges are narrower (250-500 K) than for the rigid
 thermosets in tutorials 3 and 4, because HTPB-based polyurethanes

@@ -18,11 +18,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   their own velocities, in `<subdir>-r1` ... `<subdir>-rN`, and `seed` to make them
   reproducible.
 
-- **`fit_strain` sets the strain window E is fitted over** (default `[0.001, 0.02]`).
-  The window used to be a range of rows, `[10, 200]`, which covers 0.1-2% strain only at
-  the default rate and energy-output interval, and silently covered something else
-  whenever either changed or the pull was shorter.  The default reproduces the old
-  window at the default settings.  `plots post` says when a pull stops short of it.
+- **`fit_strain` sets the strain window E is fitted over.**  The window used to be a
+  range of rows, `[10, 200]`, which covers 0.1-2% strain only at the default rate and
+  energy-output interval, and silently covered something else whenever either changed
+  or the pull was shorter.  `plots post` says when a pull stops short of it.
+
+### Changed
+
+- **`deform` now defaults to a 40 ps pull, three replicas, and a fit over 0.1-3%
+  strain** (was 1000 ps -- a pull to 100% strain -- one replica, and rows 10-200).  The
+  defaults were measured on example 6's network, 15 pulls to 10% strain: E is flat to
+  3-4% and softens past it, a single pull scatters by 80% fitted to 2% but by 30% fitted
+  to 3%, and nine pulls give E to about 10% (2.67 +/- 0.19 GPa there).  Tutorials 2, 4, 5
+  and 6 use them.  `plots post` on a run from before replicas existed still finds its
+  single `deform-<d>` directory.
+
+- **Young's modulus is fitted with a free intercept.**  The fit used to be forced
+  through zero stress at zero strain, which assumes the structure starts unstressed.  A
+  glass equilibrated for tens of ps does not: example 6's started at +150-200 bar, which
+  through the origin adds that offset over the strain to E -- about +1 GPa over a 2%
+  window -- and another network's started at -180 bar, biasing it low.  Moduli computed
+  by earlier versions are off by an amount that depends on each structure's residual
+  stress.  The R^2 warning added earlier in this cycle is gone: a sound fit to a real
+  trace has R^2 near 0.45, and the scatter between pulls is the real test.
 
 ### Changed
 
@@ -66,9 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`htpolynet plots post` crashed before computing Young's modulus** on pandas 3
   ("Columns with duplicate values are not supported in stack"), losing `e.png` and
   `E.csv` after Tg had been plotted.  The deform curves are now averaged without stacking
-  same-named columns.  It also now warns when the fit's R^2 is below 0.5, which means the
-  curve is mostly pressure noise and the number printed is not a modulus -- the example 6
-  reference build, at 1% strain, gave R^2 -0.04.
+  same-named columns.
 
 - **A bond stored with its atoms in descending order could silently keep stale
   parameters.**  `Topology.reset_override_from_type` put the requested pair in canonical

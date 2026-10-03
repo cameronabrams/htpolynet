@@ -56,7 +56,8 @@ Create ``postsim.yaml`` in the project base directory:
         P: 1
         direction: x
         edot: 0.001
-        ps: 10
+        ps: 40
+        replicas: 3
     - deform:
         input_top: systems/final-results/final.top
         input_gro: postsim/equilibrate/equilibrate.gro
@@ -65,7 +66,8 @@ Create ``postsim.yaml`` in the project base directory:
         P: 1
         direction: y
         edot: 0.001
-        ps: 10
+        ps: 40
+        replicas: 3
     - deform:
         input_top: systems/final-results/final.top
         input_gro: postsim/equilibrate/equilibrate.gro
@@ -74,7 +76,8 @@ Create ``postsim.yaml`` in the project base directory:
         P: 1
         direction: z
         edot: 0.001
-        ps: 10
+        ps: 40
+        replicas: 3
 
 Run it:
 

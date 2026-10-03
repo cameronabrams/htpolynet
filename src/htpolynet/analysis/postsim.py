@@ -247,7 +247,7 @@ class PostSimLadder(PostSimMD):
             }
         mdp_modify(mdpname,mod_dict)
 
-def _strain_advice(edot,ps,logger=logger,what='strain'):
+def _strain_advice(edot,ps,logger=logger,what='strain',rate_warning=True):
     """Says what strain a deformation will reach, and what a modulus from it is worth.
 
     The measured warning is not about the rate, it is about replicates.  Eight
@@ -279,7 +279,9 @@ def _strain_advice(edot,ps,logger=logger,what='strain'):
                 'reported a much smaller error. Set `replicas` and take the scatter '
                 'between them as the error bar; `plots post` reports it.')
     if edot>=1e-3:
-        logger.warning(
+        # uniaxial passes rate_warning=False: its defaults were measured at this rate
+        # and fit [0.001, 0.03], inside the window this warning is about
+        (logger.warning if rate_warning else logger.info)(
             f'{what} passes 0.02 after only {0.02/edot:.0f} ps at edot={edot:g}, so '
             f'little of this run samples the low strains a modulus would come from; what '
             f'is fitted is a secant over a large window.  edot=1e-4 reaches 0.03 in the '
@@ -308,15 +310,20 @@ class PostSimDeform(PostSimMD):
         'direction':'x',
         'T':300.0,
         'P':1.0,
-        'ps':1000,
+        # Defaults measured on example 6 (2026-10-03: 15 pulls to 10% plus 6 at a tenth
+        # the rate; see the CHANGELOG).  E is flat to 3-4% strain and softens past it; a
+        # single pull scatters ~30% over [0.001, 0.03] but ~80% over [0, 0.02], so 2% is
+        # too short at any replica count.  Nine pulls -- three directions, three
+        # replicas -- give E to about 10%.
+        'ps': 40,      # 4% at the default rate, clearing the fit window
         'edot': 0.001, # strain rate in ps^-1
         # independent pulls of this stage, each in <subdir>-r<k> with its own velocities;
         # `plots post` fits each and reports the scatter between them as the error bar
-        'replicas': 1,
+        'replicas': 3,
         # velocity seed; replica k uses seed+k-1.  None leaves Gromacs to pick one
         'seed': None,
         # strain window `plots post` fits E over
-        'fit_strain': [0.001, 0.02],
+        'fit_strain': [0.001, 0.03],
     }
 
     def build_mdp(self,mdpname,**kwargs):
@@ -389,7 +396,7 @@ class PostSimDeform(PostSimMD):
         else:
             logger.error(f'Bad direction for uniaxial strain {direction}')
             return
-        _strain_advice(edot,duration)
+        _strain_advice(edot,duration,rate_warning=False)
 
         mdp_modify(mdpname,mod_dict)
 

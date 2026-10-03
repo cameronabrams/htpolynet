@@ -193,10 +193,15 @@ class TestItSaysWhenTheRateCannotResolveAModulus(unittest.TestCase):
         self.assertIn('0.100', '\n'.join(cm.output))
 
     def test_uniaxial_says_it_too(self):
+        # as information, not a warning: uniaxial's defaults were measured at this rate
+        # (example 6, 2026-10-03) and fit a window the warning's concern does not reach
         from htpolynet.analysis.postsim import PostSimDeform
         d = PostSimDeform({'direction': 'x', 'edot': 0.001, 'ps': 1000})
         with tempfile.TemporaryDirectory() as t:
             f = os.path.join(t, 'deform.mdp')
             open(f, 'w').write(MDP)
-            with self.assertLogs('htpolynet.analysis.postsim', level='WARNING'):
+            with self.assertLogs('htpolynet.analysis.postsim', level='INFO') as cm:
                 d.build_mdp(f, box=BOX)
+        msg = '\n'.join(cm.output)
+        self.assertIn('edot=1e-4', msg)
+        self.assertNotIn('WARNING', msg)

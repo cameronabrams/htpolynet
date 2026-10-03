@@ -423,10 +423,12 @@ def compute_E(strain,stress,fit_domain=[10,100],fit_strain=None):
         y=np.array(stress[fit_domain[0]:fit_domain[1]])
     # logger.info(f'x: {x[0]} -> {x[-1]}')
     # logger.info(f'y: {y[0]} -> {y[-1]}')
-    def func(x,a):
-        return a*x
-    popt,pcov=curve_fit(func,x,y,p0=(1000.0))
-    sse=(y-func(x,*popt))**2
+    # The intercept is free.  A modulus is the slope; forcing the line through the
+    # origin assumes the structure starts unstressed, and a glass equilibrated for
+    # tens of ps does not -- example 6's reference structure started at +150-200 bar,
+    # which through the origin adds offset/strain to E, about +1 GPa over a 2% window.
+    a,b=np.polyfit(x,y,1)
+    sse=(y-(a*x+b))**2
     sst=(y-y.mean())**2
     r2=1-sse.sum()/sst.sum()
-    return popt[0],r2
+    return a,r2

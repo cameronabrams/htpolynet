@@ -811,22 +811,28 @@ Coverage as of the last measurement: **38.8%** overall.
   per-reason histogram at each iteration.  A filter that silently removes half the
   candidates is worse than no filter.
 
-- **Example 6's tutorial: two images, and a modulus it cannot yet quote.**  The
-  2.15.0 reference build (htpolynet-sweep, 2026-10-03, commit 6ca6406, results in
-  `~/devtests/htpolynet/ex6-ref-20261003/`) filled every number on the tutorial.  The
-  GPU arm's postcure anneal did not explode -- the study's CUDA #700 failures predate
-  the settle stage -- so the GPU default stands.  Still open:
-  - VMD renders (a triazine junction, the liquid, the cured network) on `results.rst`,
-    and a 2D structure of BDC on `monomers.rst`.  Both are placeholders.
-  - **No Young's modulus.**  The tutorial's `deform` stages (edot 0.001, 10 ps, so 1%
-    strain) cannot resolve E against several hundred bar of pressure noise on 13662
-    atoms: R^2 -0.04 on the reference build, and per-direction standard errors larger
-    than the slopes.  `postsim.rst` says so instead of quoting a number.  Choosing a
-    protocol that does measure E -- a longer pull, replicas, or one of the ramp-free
-    routes recorded under the shear-modulus entry -- is the same open question as G's
-    protocol dependence, and the other tutorials' deform settings should be checked
-    against it, since they may share the problem.
+- **Example 6's tutorial: two images.**  The 2.15.0 reference build (htpolynet-sweep,
+  2026-10-03, commit 6ca6406, results in `~/devtests/htpolynet/ex6-ref-20261003/`) filled
+  every number, and the modulus grid on the same structure supplied E.  Still
+  placeholders: VMD renders (a triazine junction, the liquid, the cured network) on
+  `results.rst`, and a 2D structure of BDC on `monomers.rst`.
 
+- **What the deform defaults do not yet cover.**  The defaults (40 ps, three replicas,
+  fit 0.1-3%, free intercept) come from one network, example 6, 15 pulls at edot 1e-3
+  plus 6 at 1e-4 (`modulus-grid/` beside the reference build).  Open:
+  - *Other chemistries.*  The linear region (3-4% there) and the single-pull scatter
+    (30%) are properties of that glass.  A rubbery network (example 5, MPa-scale) or a
+    larger box would shift both.  One grid on an epoxy would say whether the defaults
+    travel; htpolynet-sweep had no finished epoxy postsim to start from.
+  - *Rate.*  Six slower pulls could not resolve a rate effect (2.3 +/- 0.6 GPa fitted to
+    2% at 1e-4 against 1.8 +/- 0.4 at 1e-3).  Settling it needs more replicas, not a
+    slower pull.
+  - *Shear.*  `shear` still defaults to 1000 ps, one replica, and has no `fit_strain`,
+    and `plots post` does not fit G at all -- `compute_G` is reachable only from Python.
+    The same treatment applies, alongside G's open protocol question below.
+  - *Anisotropy.*  On example 6 the three directions differ beyond their error bars
+    (3.3, 2.5, 2.1 GPa).  The reported error includes that spread, which is honest for
+    an isotropic estimate, but `plots post` could report the per-direction means too.
 - **`htpolynet plots build` does not see the ring cure.**  Its temperature, density and
   energy traces skip from precure to postcure on a ring-cure run, and its bond-count
   overlay stays at zero (example 6 reference build, 2026-10-03).  It reads CURE's

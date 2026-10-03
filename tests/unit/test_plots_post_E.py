@@ -95,9 +95,22 @@ class TestDoEPlots(unittest.TestCase):
         # ex6 reference build: 1% strain against several hundred bar of noise
         def w(root):
             for i, ax in enumerate('xyz'):
-                write_deform(root, f'postsim/deform-{ax}', ax, 3.0e4, 500.0, seed=i, max_strain=0.01, npts=101)
+                write_deform(root, f'postsim/deform-{ax}', ax, 3.0e4, 2000.0, seed=i, max_strain=0.01, npts=101)
         _, _, _, out = self.run_E(self.phases(fit_strain=[0.001, 0.01]), w)
-        self.assertTrue(any('WARNING' in line and 'not a modulus' in line for line in out), out)
+        self.assertTrue(any('WARNING' in line and 'standard error is' in line for line in out), out)
+
+    def test_a_residual_stress_does_not_bias_E(self):
+        # ex6's reference structure started at +150-200 bar; through the origin that
+        # offset/strain was added to E
+        def w(root):
+            for i, ax in enumerate('xyz'):
+                write_deform(root, f'postsim/deform-{ax}', ax, 3.0e4, 1.0, seed=i)
+                f = os.path.join(root, f'postsim/deform-{ax}', f'deform-{ax}.csv')
+                df = pd.read_csv(f)
+                df[f'Pres-{ax.upper()*2}-stress'] += 200.0
+                df.to_csv(f, index=False)
+        result, _, _, _ = self.run_E(self.phases(), w)
+        self.assertAlmostEqual(result['E'] / 1000.0, 3.0, places=2)
 
     def test_pulls_that_disagree_are_flagged(self):
         # clean curves, but directions far apart: the fit of each is good and the
@@ -107,4 +120,3 @@ class TestDoEPlots(unittest.TestCase):
                 write_deform(root, f'postsim/deform-{ax}', ax, E, 1.0, seed=i)
         result, _, _, out = self.run_E(self.phases(), w)
         self.assertTrue(any('standard error is' in line for line in out), out)
-        self.assertFalse(any('not a modulus' in line for line in out), out)

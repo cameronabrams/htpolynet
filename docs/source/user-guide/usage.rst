@@ -375,6 +375,8 @@ The purpose of this subcommand is to report the size of the initial system that 
   Molecule PAC: 41 atoms, 100 molecules
   3-pacm-dgeba-epoxy-thermoset.yaml: 14700 atoms in initial system.
 
+.. _htpolynet_postsim:
+
 ``htpolynet postsim``
 !!!!!!!!!!!!!!!!!!!!!
 
@@ -402,11 +404,13 @@ The simulations are controlled by the YAML-format config file, which is _distinc
 
 A ``deform`` stage stretches the box along ``direction`` (``x``, ``y`` or ``z``) at the strain rate ``edot`` (ps\ :sup:`-1`) for ``ps`` picoseconds, holding the other two directions at ``P``, so the pull reaches a strain of ``edot`` × ``ps``.  ``htpolynet plots post`` fits Young's modulus *E* to every ``deform`` stage in the config.  Three settings control how well that number is known:
 
-* ``fit_strain`` (default ``[0.001, 0.02]``) is the strain window the fit covers.  The pull must reach its upper end; if it does not, ``plots post`` says so and fits what there is.
-* ``replicas`` (default 1) runs the stage that many times, in ``<subdir>-r1`` ... ``<subdir>-rN``, each with its own initial velocities.  ``seed``, if given, makes them reproducible: replica *k* uses ``seed`` + *k* − 1.
+* ``fit_strain`` (default ``[0.001, 0.03]``) is the strain window the fit covers, and ``ps`` (default 40, so 4 % at the default ``edot`` of 0.001) must take the pull past its upper end; if it does not, ``plots post`` says so and fits what there is.
+* ``replicas`` (default 3) runs the stage that many times, in ``<subdir>-r1`` ... ``<subdir>-rN``, each with its own initial velocities.  ``seed``, if given, makes them reproducible: replica *k* uses ``seed`` + *k* − 1.
 * Every pull -- each direction and each replica -- is fitted on its own, and *E* is reported as the mean of those fits with the standard error between them, because a single fit's own statistics do not measure how far a second pull would land.  ``plots post`` warns when that error exceeds 20 % of *E*, or when the averaged curve is mostly noise (R\ :sup:`2` below 0.5).
 
-The pressure in a box of ten thousand atoms fluctuates by several hundred bar, while a 1 % strain of a glassy network produces a stress of the same order, so a short pull cannot resolve *E*: pull further or add replicas until the reported error is small enough for your purpose.
+The defaults come from a measurement on the :ref:`example 6 <badcy_tutorial>` network: 15 pulls to 10 % strain.  The pressure in a box of ten thousand atoms fluctuates by several hundred bar, while a 1 % strain of a glassy network produces a stress of the same order.  A single pull fitted to 2 % scattered by 80 %; fitted to 3 %, by 30 %, and nine pulls -- three directions, three replicas -- then give *E* to about 10 %.  Past 3-4 % the network begins to yield and a wider window gives a lower, secant modulus, so do not widen ``fit_strain`` to buy precision.  The three directions of one small box can differ by more than their error bars (on that network, 3.3 ± 0.2, 2.5 ± 0.2 and 2.1 ± 0.3 GPa along x, y and z), so the average is an isotropic estimate and part of its error bar is that anisotropy.
+
+The fit leaves the intercept free.  A structure equilibrated for tens of ps carries a residual stress -- that network started at +150 to 200 bar -- and a line forced through zero adds that offset divided by the strain to *E*.
 
 .. code-block:: yaml
 
@@ -416,8 +420,8 @@ The pressure in a box of ten thousand atoms fluctuates by several hundred bar, w
       T: 300.0
       P: 1.0
       edot: 0.001
-      ps: 20
-      fit_strain: [0.001, 0.02]
+      ps: 40
+      fit_strain: [0.001, 0.03]
       replicas: 3
 
 A ``shear`` stage is the shear counterpart of ``deform``: Gromacs' ``deform`` drives one off-diagonal element of the box matrix at a constant rate, and the shear modulus *G* is the slope of shear stress against engineering shear strain, just as *E* is the slope of tensile stress against tensile strain.  ``direction`` names the plane --- ``xy``, ``xz`` or ``yz`` --- and ``edot`` is the shear rate in ps\ :sup:`-1`.  The normal directions stay pressure-coupled at ``P`` while the off-diagonal is driven, because the anisotropic barostat is given zero compressibility off the diagonal and so does not oppose the deformation.
