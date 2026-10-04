@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.15.0] - 2026-10-04
+
 ### Added
 
 - **Young's modulus now comes with an error bar, and `deform` stages can be
