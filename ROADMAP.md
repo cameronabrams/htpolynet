@@ -189,6 +189,15 @@ Coverage as of the last measurement: **38.8%** overall.
   documented option (`clamped`, `isochoric`) with the default unchanged and the choice
   logged, rather than a silent switch.
 
+  **Not the through-origin fit that 2.15.0 removed.**  htpolynet-study refit its raw
+  traces on 2026-10-05: the E = 3.03 and G = 1.51 above reproduce exactly with a free
+  intercept and do not through the origin (2.47 and 1.76), so they were fitted with an
+  intercept all along.  The same audit found the stress at zero strain has *opposite*
+  signs in the two stages of one network (shear +0.8 to +95.5 bar, tension -0.3 to
+  -151 bar), so a through-origin fit pushes G high and E low together; on these traces
+  it would have turned nu -0.01 into -0.30.  An E/G from pre-2.15.0 numbers is wrong by
+  about the sum of the two errors.
+
   **What would settle it: a modulus that does not come from a ramp at all.**  Every
   number in the table above is a non-equilibrium measurement --- impose a strain rate,
   read the stress --- so they share the assumptions being argued about.  Two standard
