@@ -22,6 +22,7 @@ Subcommand           Description
 ``gen-slurm-script`` Emit a SLURM batch script that runs ``htpolynet run`` for a given config
 ``make-viz``         Regenerate VMD visualization files (``.viz.psf`` + ``.viz.tcl``) from an existing ``top`` + ``gro`` pair
 ``piercings``        Report any bond threaded through a ring in an existing ``top`` + ``gro`` pair
+``ring-contacts``    Measure non-covalent structure around rings: face-on contacts, ring-centroid RDFs, ring-flip clearance
 ``setup-claude``     Install htpolynet's Claude Code skill so an agent can drive htpolynet
 ==================== ========================
 
@@ -602,6 +603,63 @@ has none, it finds the smallest ring through each bond, up to ``-max-ring`` atom
    A threaded ring is a topological defect, not a strain that relaxation removes.  If
    you find one in a finished build, rebuilding with the ring-cure filters enabled is
    the remedy; there is no post-hoc repair for it.
+
+``htpolynet ring-contacts``
+!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Three measurements of what sits *around* the rings of a finished network, on any ``top``
++ ``gro`` pair.  Rings are chosen by composition --- ``C3N3`` for a triazine, ``C6`` for
+a phenylene --- and atoms by force-field type, so nothing is specific to one chemistry.
+
+.. code-block:: console
+
+  $ htpolynet ring-contacts -h
+  usage: htpolynet ring-contacts [-h] [-top TOP] [-gro GRO] [-rings RINGS [RINGS ...]]
+                                 [-donors DONORS [DONORS ...]] [-bridge BRIDGE]
+                                 [-rmax RMAX] [-rmin RMIN] [-angle ANGLE]
+                                 [-exclude {bonds,residue}] [-exclude-bonds EXCLUDE_BONDS]
+                                 [-rdf-max RDF_MAX] [-dr DR] [-o O] [-max-ring MAX_RING]
+                                 {contacts,rdf,flip}
+
+**contacts** counts *face-on* contacts: a selected atom close to a ring's centroid and
+near its normal, the geometry of a lone-pair/pi contact.  The count is divided by what a
+uniform random placement would give --- the number of eligible atom-ring pairs times the
+fraction of the box the two acceptance cones occupy --- so ``1.00x`` is chance, and
+excluded volume usually puts unrelated pairs below it.  Rings covalently close to the
+atom are not eligible, or every atom would score its own substituents: ``-exclude
+bonds`` (the default) drops rings within ``-exclude-bonds`` bonds, ``-exclude residue``
+drops rings that share the atom's residue.  ``-rmin`` turns the sphere into a shell.
+
+.. code-block:: console
+
+  $ htpolynet ring-contacts contacts -donors o os -rings C3N3 C6
+  rings: 937 C3N3, 2880 C6
+  face-on: < 3.7 A from the centroid, < 35 deg from the normal; rings within 4 bonds excluded
+                        donors      n   rings  observed  expected  enhancement
+                             o   2880    C3N3       321     200.1        1.60x
+                             o   2880      C6       445     614.7        0.72x
+                            os   2880    C3N3       153     199.9        0.77x
+                            os   2880      C6       425     614.9        0.69x
+
+That is a bisphenol-S dicyanate network built with ``ring_cure``: sulfone oxygens (GAFF
+type ``o``) sit over triazine faces 1.6 times as often as chance, and neither control ---
+the same oxygens over phenylenes, or ether oxygens over triazines --- does.  Ask for the
+controls; the enhancement alone does not say the contact is specific.
+
+**rdf** is the orientation-averaged companion: g(r) from each selected atom, or with
+``-bridge C6`` from the centre of mass of each bridge between two phenylenes (an -SO2-,
+-C(CH3)2-, -O- and so on, with its substituents), to triazine centroids, excluding rings
+of the selection's own residue.  ``-o`` writes every curve to one file.
+
+**flip** asks how much room each ring needs to flip about its para axis and how much it
+has.  The axis is the para pair carrying substituents --- a hexagon has three para pairs
+at nearly the same separation, so the farthest-apart pair is not an axis --- and the ring
+sweeps a cylinder out to its farthest own atom, ortho-methyl hydrogens included.  The
+report gives that radius and the number of foreign heavy atoms inside the cylinder.  It
+is the static steric part of a flip barrier, not the barrier.
+
+Each analysis reads one structure.  For a trajectory average, run it on frames written
+with ``gmx trjconv -sep``.
 
 ``htpolynet setup-claude``
 !!!!!!!!!!!!!!!!!!!!!!!!!!

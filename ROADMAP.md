@@ -1867,6 +1867,17 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Usability
 
+- **`ring-contacts` reads one structure, not a trajectory.**  The sulfone-triazine
+  result it was ported for (htpolynet-study, 2026-10-06) got its energy from a
+  temperature series: the enhancement averaged over ladder trajectories rose from 1.21x
+  at 900 K to 1.87x at 300 K, and a van't Hoff fit above Tg gave dH = -5.5 +/- 1.1
+  kJ/mol.  Reproducing that today means `gmx trjconv -sep` and one run per frame, which
+  re-reads the topology and re-detects rings every time.  The fix is to load the
+  topology and rings once and loop over frames of a `.trr`/`.xtc`, summing observed and
+  expected counts rather than averaging per-frame ratios.  It needs a trajectory reader
+  htpolynet does not have yet (MDAnalysis or `gmx trjconv` piped to gro), which is why
+  it was left out.
+
 - **The atom-serial column in `final.gro` wraps modulo 10000, and nothing
   says so.** That is the GROMACS `.gro` format, not an htpolynet bug -- atom
   10000 prints as `0` -- but every htpolynet system large enough to matter

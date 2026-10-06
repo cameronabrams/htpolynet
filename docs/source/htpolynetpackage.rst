@@ -27,6 +27,11 @@ htpolynet.analysis
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: htpolynet.analysis.ringcontacts
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: htpolynet.analysis.postsim
    :members:
    :undoc-members:

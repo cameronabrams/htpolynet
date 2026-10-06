@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`htpolynet ring-contacts` measures non-covalent structure around rings.**  Three
+  analyses on any `top` + `gro` pair, with rings chosen by composition (`C3N3`, `C6`)
+  and atoms by force-field type:
+  - `contacts`: how often a chosen atom sits over a ring's face, against a uniform
+    random expectation, with covalently close rings excluded by bond count or residue;
+  - `rdf`: g(r) from chosen atoms, or from the bridges between two phenylenes, to ring
+    centroids;
+  - `flip`: the cylinder each ring sweeps to flip about its substituted para axis, and
+    how many foreign heavy atoms are inside it.
+
+  In a bisphenol-S dicyanate network built with `ring_cure`, `contacts` finds sulfone
+  oxygens over triazine faces 1.6 times as often as chance, while the same oxygens over
+  phenylenes and ether oxygens over triazines both sit below it.
+
 ## [2.15.0] - 2026-10-04
 
 ### Added

@@ -26,6 +26,7 @@ from .utils.inputcheck import input_check
 from .utils.logsetup import setup_logging
 from .utils.stringthings import my_logger
 from .analysis.piercings import piercings
+from .analysis.ringcontacts import ring_contacts
 from .utils.vmd_viz import make_viz
 
 logger = logging.getLogger(__name__)
@@ -294,6 +295,7 @@ def cli():
         ('gen-slurm-script', gen_slurm_script, 'generate a SLURM submission script for running htpolynet on a cluster'),
         ('make-viz',         make_viz,         'regenerate VMD viz files (.viz.psf + .viz.tcl) from an existing gromacs top + gro pair'),
         ('piercings',        piercings,        'report any bond threaded through a ring in a gromacs top + gro pair; exits 1 if any are found'),
+        ('ring-contacts',    ring_contacts,    'non-covalent structure around rings in a gromacs top + gro pair: face-on contacts, ring-centroid RDFs, ring-flip clearance'),
         ('setup-claude',     setup_claude,     "install htpolynet's Claude Code skill so an agent can drive htpolynet"),
     ]
 
@@ -333,6 +335,23 @@ def cli():
     cp['piercings'].add_argument('-gro', type=str, default='final.gro', help='input gromacs coordinate file (default: final.gro)')
     cp['piercings'].add_argument('-max-ring', dest='max_ring', type=int, default=8, help='largest ring to consider when the topology carries no ring list (default: 8)')
     cp['piercings'].add_argument('-json', type=str, default=None, help='also write the findings to this JSON file')
+
+    rc = cp['ring-contacts']
+    rc.add_argument('analysis', type=str, choices=['contacts', 'rdf', 'flip'], help='contacts: face-on atom-over-ring contacts vs. random; rdf: atom or bridge to ring-centroid g(r); flip: room each ring needs to flip and what blocks it')
+    rc.add_argument('-top', type=str, default='final.top', help='input gromacs topology file (default: final.top)')
+    rc.add_argument('-gro', type=str, default='final.gro', help='input gromacs coordinate file (default: final.gro)')
+    rc.add_argument('-rings', type=str, nargs='+', default=None, help='ring compositions, e.g. C3N3 C6 (default: C3N3; C6 for flip)')
+    rc.add_argument('-donors', type=str, nargs='+', default=None, help="atom types to measure from; a comma-joined entry (e.g. 'os,ss') is one group")
+    rc.add_argument('-bridge', type=str, default=None, help='also measure from the bridges between rings of this composition (e.g. C6)')
+    rc.add_argument('-rmax', type=float, default=0.37, help='contacts: outer distance from the ring centroid, nm (default: %(default)s)')
+    rc.add_argument('-rmin', type=float, default=0.0, help='contacts: inner distance, nm; nonzero makes a shell (default: %(default)s)')
+    rc.add_argument('-angle', type=float, default=35.0, help='contacts: largest angle from the ring normal, degrees (default: %(default)s)')
+    rc.add_argument('-exclude', type=str, choices=['bonds', 'residue'], default='bonds', help='contacts: exclude rings near the donor by bond count or by residue (default: %(default)s)')
+    rc.add_argument('-exclude-bonds', dest='exclude_bonds', type=int, default=4, help='contacts: bond-count exclusion depth (default: %(default)s)')
+    rc.add_argument('-rdf-max', dest='rdf_max', type=float, default=1.5, help='rdf: largest distance, nm (default: %(default)s)')
+    rc.add_argument('-dr', type=float, default=0.02, help='rdf: bin width, nm (default: %(default)s)')
+    rc.add_argument('-o', type=str, default=None, help='rdf: write r and every g(r) to this file')
+    rc.add_argument('-max-ring', dest='max_ring', type=int, default=6, help='largest ring to detect (default: %(default)s)')
 
     cp['setup-claude'].add_argument('--skills-dir', type=str, default='~/.claude/skills',
                                     help='skills directory to install into (default: %(default)s); use ./.claude/skills to scope the skill to one project')
