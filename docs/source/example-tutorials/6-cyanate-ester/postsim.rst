@@ -166,8 +166,13 @@ Two things about how these numbers arise:
   this example ended 19 kg/m³ lighter than the others and gave a heating *T*:sub:`g`
   of 332.5 K.
 
-A *T*:sub:`g` for this network needs replicate builds and much slower ladders than
-these, and should be reported with its spread over both.
+A wider ladder is what fixes it.  Five builds run on 100-700 K ladders
+(htpolynet-sweep, 2026-10-25) give a cooling *T*:sub:`g` of 478 +/- 28 K from the
+whole-curve fit ``plots post`` now reports beside the two-line one, with three of the
+five builds clearing its checks on their own.  The heating direction is still refused:
+its fitted transition does not end inside even that range.  Read the whole-curve line
+of the log, quote its uncertainty and how many builds it kept, and widen the ladder
+when it says the ladder does not reach past the transition.
 
 When comparing with a DSC or DMA measurement, remember also that the ladder runs at
 0.05 K/ps, many orders of magnitude faster than any experiment, and a faster rate

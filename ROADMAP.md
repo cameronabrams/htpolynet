@@ -1708,50 +1708,35 @@ Coverage as of the last measurement: **38.8%** overall.
   example, never the same one twice, which is what noise against a tight
   tolerance looks like.
 
-- **The ladder protocol does not give a reproducible Tg on most shipped examples.**
-  htpolynet-sweep's five-build replicate run on 2.16.0 (2026-10-20, examples 1-6):
-  only polystyrene (example 1) was clean on all ten fits, at 413 +/- 15 K heating and
-  427 +/- 21 K cooling.  Elsewhere which direction fails depends on the chemistry --
-  examples 4 and 5 are steady on heating and not cooling, example 3 the reverse,
-  example 2 neither -- and `tg_window_range` warned on 23 of 60 fits.  "Steady" is
-  not "right": example 5's heating Tg, 300 +/- 4 K, sits exactly where its default
-  10-point glassy window ends (250-295 K on a ladder from 250 K), which is what a
-  barely sampled glassy region would produce for an elastomer whose Tg is well
-  below room temperature.  Unchecked; a ladder starting lower would settle it.  On example 6,
-  cooling spans 409-557 K over five builds; the two-build agreement that had the
-  tutorial recommending cooling was coincidence.  Two separate causes are plausible
-  and neither is measured: the heating ladder starts after a 10 ps equilibrate from a
-  glass that is still densifying (the one example 6 build that ended 19 kg/m^3 light
-  gave a heating Tg of 332.5 K); and 5 K per 100 ps rungs at 360 monomers may simply be
-  too noisy for a two-line fit whose window alone moves it 100 K.  The work is a
-  protocol study -- slower ladders, a longer or above-Tg equilibrate before heating,
-  and a fit less sensitive to its window than two-line intersection -- costed against
-  GPU hours per example.  Until then the tutorials should not quote a single-build Tg.
+- **The shipped Tg ladders (300-600 K) are too narrow; wider ones work.**
+  History: htpolynet-sweep's five-build replicate run on 2.16.0 (2026-10-20) found
+  the two-line Tg reproducible only for polystyrene.  The whole-curve estimator
+  (`fit_tg_hyperbola`, `pooled_tg`, Patrone 2016) then showed why: on 300-600 K
+  ladders most transitions do not fit inside the ladder at 90 % slope convergence.
+  Cameron approved wider ladders (plan B for example 5, then plan C for all, sweep
+  job 26566470, 2026-10-25), and with 100-700/800 K ladders 10 of 12
+  example/direction cells now pool to a Tg, with heating above cooling by 14-30 K in
+  all four chemistries where both pass -- the sign and size rate hysteresis should
+  have.  Spot-checked here from sweep's data (example 1: 436.4 heating, 422.6
+  cooling; example 6 cooling 478.1 K, heating refused).  Every narrow-ladder value
+  that had passed moved by 12-61 K, so none of them should be quoted.
 
-  **The estimator is not what limits it (2026-10-23).**  The whole-curve fit
-  (`fit_tg_hyperbola`, `pooled_tg`), run on those same 60 ladders, pools to a Tg
-  only for example 1 heating (417 +/- 6 K), example 3 heating (462 +/- 7 K) and
-  example 6 cooling (509 +/- 25 K, though its four kept builds spread by 46 K).
-  htpolynet-sweep reproduced these exactly.  A fourth, example 2 cooling at 381 K,
-  was a sharp break in the pool that four of five builds refused on their own, with
-  no step in the local slope (sweep's diagnosis); it is now held out.  Example 3's is not settled: the
-  two-line estimate on the same ladders is 427 +/- 19 K (mean, s.e.), further apart
-  than either error bar, so on these ladders the answer still depends on the
-  estimator.  And a tight two-line spread is not evidence either way -- example 4
-  heating gives 403 +/- 9 K that way, while the whole-curve fit puts its center on
-  the ladder's floor.
-  Elsewhere Patrone's screening criterion fails: the fitted transitions are 70-200 K
-  wide, so their 90 % intervals span roughly 180-730 K, past both ends of a
-  300-600 K ladder; example 5's pooled fits sit on its 250 K floor.  So the next step
-  is wider ladders -- down to ~200 K (lower still for example 5) and up past 700 K
-  where the chemistry survives it -- and that is new compute, Cameron's call.  He
-  approved it for example 5 only (sweep job 26556275, 100-500 K, 2026-10-23).
-  That worked: example 5's heating ladder now pools to 219.9 +/- 2.9 K, width 38.5 K,
-  4 of 5 builds kept (s.d. 5.4 K over those 4), where the 250 K floor gave nothing --
-  reproduced here from sweep's data.  Its cooling ladder still fails screening, its
-  transition interval reaching 92 K, below the new floor.  So widening the ladder is
-  the fix the screening said it would be, at least on one chemistry; the other
-  examples' wider ladders are still Cameron's call.
+  Still open:
+  - **The shipped tutorials' `postsim` ladders are still 300-600 K**, so a user
+    following them gets the refusals.  Sweep's measured sizing rule: about 50 K of
+    headroom above the transition's upper edge (35 K costs a build, 15 K costs
+    three).  Widening them lengthens every tutorial's postsim, and above ~700 K is
+    beyond where GAFF was validated for these chemistries, so it is Cameron's call.
+  - **A kept fit is not a converged one.**  Truncating example 1's 800 K ladder to
+    700 and 650 K moves its Tg from 436.4 to 443.0 and 450.8 K while passing every
+    gate.  `plots post` could report that drift itself -- refit with the top 50 and
+    100 K removed -- so the error bar includes it.  Not done: it multiplies the fit
+    cost and nobody has decided what drift should count as failure.
+  - **Example 2 heating** needs a ceiling near 830 K; **example 6 heating** is
+    refused on 0 of 5 builds even at 700 K and needs a diagnosis, not a bigger
+    ladder.
+  - **Example 5's** heating Tg, 219.9 K, sits on a ladder that starts at 100 K where
+    one of five builds' transitions runs below it.
 
 - **grompp warns 8 times per example 2 build about two transposed hydrogens.**
   Surfaced by 2.15.0 relaying grompp's warnings (htpolynet-sweep, v2.15.0
