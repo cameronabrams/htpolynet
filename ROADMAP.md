@@ -2012,23 +2012,37 @@ Coverage as of the last measurement: **38.8%** overall.
   would silence them; it is not done yet because `Analyze`'s option dict
   expects key/value pairs, and a bare boolean flag needs checking there.
 
-- **A "Publications using HTPolyNet" page, waiting for a second paper.** The
-  docs list only works they cite (`docs/source/references/index.rst`); nothing
-  lists outside work built with the tool. The first such paper is
-  Godinez-Leon et al., *Carbohydrate Polymers* 393 (2026) 125978, open
-  access: an epichlorohydrin-crosslinked cyclodextrin drug carrier, not a
-  thermoset, with composition set from NMR and SEC rather than a cure
-  schedule ("The computational LpCD model was constructed using HTPolyNet",
-  p. 4). Cameron, 2026-11-04: "I'd say yes, but with only one paper it seems a
-  little weak..." So the page, and a matching line in the README, wait until
-  a second outside paper turns up. What qualifies (Cameron's ruling, as the
-  library session relayed it on 2026-11-04): applications only, meaning
-  papers that built a real system with HTPolyNet to answer a question. A
-  rival generator benchmarking against it is a prior-art citation and does
-  not go on the page. The library session is reading all 15 other known
-  citers and will report each one that qualifies. Check the authors' spelling and the
-  DOI against the paper itself before publishing; the library's quotes are
-  in its findings file for `Godinezleon2026Cyclodextrin`.
+- **A "Publications using HTPolyNet" page: eight papers qualify, waiting on
+  their citekeys.** The docs list only works they cite
+  (`docs/source/references/index.rst`); nothing lists outside work built with
+  the tool. Cameron, 2026-11-04, when only one paper was known: "I'd say yes,
+  but with only one paper it seems a little weak..." What qualifies (his
+  ruling, as the library session relayed it on 2026-11-04): applications only,
+  meaning papers that built a real system with HTPolyNet to answer a question.
+  A rival generator benchmarking against it is a prior-art citation.
+
+  The library session has now read all 16 papers OpenAlex lists as citing the
+  SoftwareX paper. Eight used the tool: Godinez-Leon 2026 (cyclodextrin
+  carrier), Wei 2026 (vulcanized polyisoprene), Lee 2026 (IBOA/PEGDA
+  photopolymer), Thebault 2025 (polyester-melamine coatings, SSRN preprint),
+  AL-Hamdani 2025 (gel polymer electrolytes), Orszulak 2024 (PVP solid
+  dispersions), Gholami 2024 ("a modified version" of the algorithm, DLP
+  ink), and Sun 2025 (eutectogel), which cites the paper without ever naming
+  the tool. Fratarcangeli 2026 (*Chem. Mater.*) describes the CURE algorithm
+  and cites us but never says it ran the code, so it is held out unless the
+  authors confirm it. The other seven only cite it as prior art; none
+  benchmarked it.
+
+  Build the page from the library's citekey version only. Its current list
+  (`htpolynet-external-users-20261104.md` in the fleet drops) quotes
+  publisher PDFs by PDF page, before filing. Check the authors' spelling and
+  the DOI against each paper.
+
+  Two of these papers describe limits worth reading as user feedback:
+  Orszulak 2024 found a 38 kDa linear PVP too large to build at a usable
+  system size and built smaller proportional systems instead (PDF p. 4).
+  SuSi 2025, a rival generator, says HTPolyNet "assumes predefined
+  polymerization chemistries".
 
 ## Example depot
 
