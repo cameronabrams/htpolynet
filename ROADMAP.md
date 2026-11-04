@@ -2021,7 +2021,12 @@ Coverage as of the last measurement: **38.8%** overall.
   schedule ("The computational LpCD model was constructed using HTPolyNet",
   p. 4). Cameron, 2026-11-04: "I'd say yes, but with only one paper it seems a
   little weak..." So the page, and a matching line in the README, wait until
-  a second outside paper turns up. Check the authors' spelling and the
+  a second outside paper turns up. What qualifies (Cameron's ruling, as the
+  library session relayed it on 2026-11-04): applications only, meaning
+  papers that built a real system with HTPolyNet to answer a question. A
+  rival generator benchmarking against it is a prior-art citation and does
+  not go on the page. The library session is reading all 15 other known
+  citers and will report each one that qualifies. Check the authors' spelling and the
   DOI against the paper itself before publishing; the library's quotes are
   in its findings file for `Godinezleon2026Cyclodextrin`.
 
