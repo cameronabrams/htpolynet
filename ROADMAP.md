@@ -2012,37 +2012,21 @@ Coverage as of the last measurement: **38.8%** overall.
   would silence them; it is not done yet because `Analyze`'s option dict
   expects key/value pairs, and a bare boolean flag needs checking there.
 
-- **A "Publications using HTPolyNet" page: eight papers qualify, waiting on
-  their citekeys.** The docs list only works they cite
-  (`docs/source/references/index.rst`); nothing lists outside work built with
-  the tool. Cameron, 2026-11-04, when only one paper was known: "I'd say yes,
-  but with only one paper it seems a little weak..." What qualifies (his
-  ruling, as the library session relayed it on 2026-11-04): applications only,
-  meaning papers that built a real system with HTPolyNet to answer a question.
-  A rival generator benchmarking against it is a prior-art citation.
-
-  The library session has now read all 16 papers OpenAlex lists as citing the
-  SoftwareX paper. Eight used the tool: Godinez-Leon 2026 (cyclodextrin
-  carrier), Wei 2026 (vulcanized polyisoprene), Lee 2026 (IBOA/PEGDA
-  photopolymer), Thebault 2025 (polyester-melamine coatings, SSRN preprint),
-  AL-Hamdani 2025 (gel polymer electrolytes), Orszulak 2024 (PVP solid
-  dispersions), Gholami 2024 ("a modified version" of the algorithm, DLP
-  ink), and Sun 2025 (eutectogel), which cites the paper without ever naming
-  the tool. Fratarcangeli 2026 (*Chem. Mater.*) describes the CURE algorithm
-  and cites us but never says it ran the code, so it is held out unless the
-  authors confirm it. The other seven only cite it as prior art; none
-  benchmarked it.
-
-  Build the page from the library's citekey version only. Its current list
-  (`htpolynet-external-users-20261104.md` in the fleet drops) quotes
-  publisher PDFs by PDF page, before filing. Check the authors' spelling and
-  the DOI against each paper.
-
-  Two of these papers describe limits worth reading as user feedback:
-  Orszulak 2024 found a 38 kDa linear PVP too large to build at a usable
-  system size and built smaller proportional systems instead (PDF p. 4).
-  SuSi 2025, a rival generator, says HTPolyNet "assumes predefined
-  polymerization chemistries".
+- **Two published limits, from a user and a rival tool.** Orszulak *et al.*,
+  *Eur. J. Pharm. Biopharm.* 207, 114581 (2025), built linear and star PVP
+  with htpolynet but could not reach a 38 kDa chain: "Obtaining the linPVP38k
+  system by HTPolyNet would be difficult for the reasonable system size for
+  simulation purposes, therefore we have decided to make smaller systems but
+  with proportions reflecting experimental systems". Long linear chains are
+  a real use case that the iterative capture-radius cure handles poorly, and
+  nobody has measured where it stops being practical. SuSi (Naranjo *et al.*,
+  2025), a rival generator, says htpolynet "excels at constructing
+  thermosetting networks but assumes predefined polymerization chemistries and
+  is limited to specific force fields". The force-field half is accurate (GAFF
+  only), and is the larger obstacle to new users. Gholami *et al.*, *Adv.
+  Mater.* 36 (2024), used "a modified version" of the algorithm without saying
+  what they changed; asking them could show what users need that is missing.
+  All three quotes are in the library's findings files.
 
 ## Example depot
 

@@ -78,6 +78,8 @@ its published description to that earlier work.  When using htpolynet in publish
 please cite Huang and Abrams, *SoftwareX* **21**, 101303 (2023),
 [doi:10.1016/j.softx.2022.101303](https://doi.org/10.1016/j.softx.2022.101303), along with
 the GAFF and Gromacs papers listed in the [documentation](https://htpolynet.readthedocs.io/).
+Papers by other groups that have used htpolynet are listed on the
+[Publications Using HTPolyNet](https://htpolynet.readthedocs.io/en/latest/publications.html) page.
 
 ## Meta
 

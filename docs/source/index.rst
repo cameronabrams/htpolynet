@@ -59,6 +59,7 @@ using Gromacs.
    user-guide/index
    example-tutorials/index
    references/index
+   publications
    htpolynetpackage
    changelog
 

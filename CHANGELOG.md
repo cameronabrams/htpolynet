@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A "Publications Using HTPolyNet" page in the docs**, listing eight papers by
+  other groups that built their systems with htpolynet, linked from the README.
+
 - **`plots post` also fits Tg to the whole curve, and pools replica builds.**
   Following Patrone et al. (Polymer 87, 246, 2016), a hyperbola whose asymptotes are
   the glassy and rubbery lines is fitted to every point of a ladder, and Tg is read
