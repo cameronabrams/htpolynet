@@ -2012,6 +2012,19 @@ Coverage as of the last measurement: **38.8%** overall.
   would silence them; it is not done yet because `Analyze`'s option dict
   expects key/value pairs, and a bare boolean flag needs checking there.
 
+- **A "Publications using HTPolyNet" page, waiting for a second paper.** The
+  docs list only works they cite (`docs/source/references/index.rst`); nothing
+  lists outside work built with the tool. The first such paper is
+  Godinez-Leon et al., *Carbohydrate Polymers* 393 (2026) 125978, open
+  access: an epichlorohydrin-crosslinked cyclodextrin drug carrier, not a
+  thermoset, with composition set from NMR and SEC rather than a cure
+  schedule ("The computational LpCD model was constructed using HTPolyNet",
+  p. 4). Cameron, 2026-11-04: "I'd say yes, but with only one paper it seems a
+  little weak..." So the page, and a matching line in the README, wait until
+  a second outside paper turns up. Check the authors' spelling and the
+  DOI against the paper itself before publishing; the library's quotes are
+  in its findings file for `Godinezleon2026Cyclodextrin`.
+
 ## Example depot
 
 - **Example 6's postcure anneal peaks too close to *T*:sub:`g` to relax the
