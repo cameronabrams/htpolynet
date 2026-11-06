@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ladders this wide, five replicate builds per example gave a Tg in 10 of 12
   example/direction cases, against 3 before.  The cooling ladder now runs first,
   so the heating ladder starts cold rather than quenching the 300 K structure
-  in its warmup.  Each ladder takes 2-2.5 times as long as before.
+  in its warmup.  Each ladder takes 1.8-2.6 times as long as before.
 
 ## [2.17.0] - 2026-11-06
 
