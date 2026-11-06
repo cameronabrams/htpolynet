@@ -33,7 +33,7 @@ Create ``postsim.yaml`` in the project base directory:
         input_gro: postsim/equilibrate/equilibrate.gro
         subdir: postsim/ladder-cool
         Tlo: 100
-        Thi: 700
+        Thi: 800
         deltaT: -5
         ps_per_rise: 10
         ps_per_run: 90
@@ -43,7 +43,7 @@ Create ``postsim.yaml`` in the project base directory:
         input_gro: postsim/ladder-cool/ladder.gro
         subdir: postsim/ladder-heat
         Tlo: 100
-        Thi: 700
+        Thi: 800
         deltaT: 5
         ps_per_rise: 10
         ps_per_run: 90
@@ -79,17 +79,24 @@ Create ``postsim.yaml`` in the project base directory:
         ps: 40
         replicas: 3
 
-The two ladders run from 100 to 700 K, 121 rungs of 100 ps each, so
-12.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
-``plots post`` to see past both ends of the transition.
+The two ladders run from 100 to 800 K, 141 rungs of 100 ps each, so
+14.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
+``plots post`` to see past both ends of the transition.  The top is 800 K because the
+*T*:sub:`g` depends on it: five builds give a heating *T*:sub:`g` of 421 K on 700 K
+ladders and 402 K on 800 K ones, with cooling moving the same way (htpolynet-sweep,
+2026-11-06).  Even at 800 K it still moves as the top is lowered, so treat it as an
+upper bound; ``plots post`` reports how far it moves.  Above about 700 K the ladder is
+beyond where the force field was checked for this chemistry, so look at the top rungs'
+densities for anything anomalous before trusting the rubbery line.
 
 The cooling ladder runs first, starting from the equilibrated structure, and the
 heating ladder starts from where it ends.  Run the other way round, the heating
 ladder's 10 ps warmup would drop the 300 K structure to 100 K, a quench that distorts
 the glassy branch the fit depends on.  The cooling ladder instead begins with a jump
-from 300 K to 700 K in its warmup.  That has not been tested as such; the hot rubbery
-state should relax quickly, but look at the first few cooling rungs before trusting
-them.
+from 300 K to 800 K in its warmup.  That was tested on example 1 (htpolynet-sweep, 2026-11-06): against cooling from
+an already-hot structure, on the same builds, it left the heating *T*:sub:`g` where it
+was (-0.0 +/- 2.9 K) and moved the cooling one by +9.9 +/- 6.3 K, which is not
+significant, and the top cooling rungs show no sign of an unrelaxed start.
 
 Run it:
 

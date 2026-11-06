@@ -1721,49 +1721,38 @@ Coverage as of the last measurement: **38.8%** overall.
   cooling; example 6 cooling 478.1 K, heating refused).  Every narrow-ladder value
   that had passed moved by 12-61 K, so none of them should be quoted.
 
-  Still open:
-  - **The tutorials' new cooling-first order starts with an untested jump.**
-    The tutorials (widened 2026-11-06 on Cameron's go) now run the cooling
-    ladder first, and its 10 ps warmup takes the 300 K equilibrated structure
-    straight to 700-850 K.  Plans B and C instead began cooling from a structure
-    that had already been near the top of a ladder.  The jump should be harmless
-    in the rubbery state, but nobody has measured it.  The test: example 1,
-    five builds, the tutorial protocol against plan C's, then compare the pooled
-    cooling Tg and the first rungs' densities.  That is sweep's work and
-    Cameron's call to run.  If it is not harmless, the fix is a short ramp to
-    the top before the ladder (an `anneal` stage) rather than going back to
-    heating first.
-  - **Tutorials 2 and 3 run past 700 K**, beyond where GAFF was checked for
-    these chemistries; their pages say to look at the top rungs.
-  - **The drift check flags three of plan C's ten kept cells**, so tutorials 4
-    and 6 and example 2 cooling may need taller ladders.  `plots post` now refits
-    with the top 50 and 100 K cut away.  On plan C's CSVs (htpolynet-repo,
-    2026-11-06):
-    - **Example 4 heating** moves +8.8 K at a 650 K top, against its 1.2 K error
-      bar.
-    - **Examples 2 and 6 cooling** give no Tg at all with 50 K removed.
+  Settled by sweep's tutorial-ladder test (job 26724992, 2026-11-06, reproduced
+  here from its CSVs):
+  - **The cooling-first jump is harmless.**  On example 1, against the same
+    builds cooled from a hot structure, heating moved -0.0 +/- 2.9 K and cooling
+    moved +9.9 +/- 6.3 K (not significant).
+  - **Example 2 heating is kept at 850 K**, at 464.1 +/- 16.1 K with 4 of 5 builds
+    kept.  Its transition ends near 751 K.
+  - **Example 6 has no reproducible Tg**, and the cooling 478.1 K above does not
+    hold.  Re-run on 800 K ladders, the same five structures refuse the pool at
+    every ceiling from 650 to 800 K.  Plan C's value pooled three builds spanning
+    390-543 K.  Tutorial 6 now says so.  A wider ladder will not help.
 
-    Example 1 is clean, and it reproduces sweep's 443.0 K at a 700 K top.
-    Examples 3 and 5 move by about their error bars.  The warning threshold is
-    the larger of the error bar and one rung.  That choice is mine, made so a
-    noise-free ladder does not warn; Cameron has not set one.  Tutorial 4 ships
-    a 700 K top on the strength of plan C's ex4, which this now questions.
-    Proposed to sweep as an addition to its 2026-11-06 test request.
-  - **Example 2 heating** needs a ceiling near 830 K (tutorial 2 now goes to
-    850 K, untested).  **Example 6 heating** is refused on 0 of 5 builds at
-    700 K.  Diagnosis from plan C's CSVs (htpolynet-repo; offsets reproduced
-    exactly by sweep): the heating curve stays denser than cooling between 450
-    and 650 K, by +4.8 +/- 1.3 kg/m^3 at 500 K and +7.6 +/- 3.0 at 600 K (5-build
-    mean +/- s.e.m.), and rejoins it only near 700 K (+1.8 +/- 3.5).  That is a
-    heating overshoot whose rubbery branch begins at the ladder's top.  The
-    steep catch-up at 650-705 K is weaker evidence: per build, the slope
-    differences are -0.130, -0.175, -0.348, +0.004 and -0.018, so it rests on
-    three of five builds (sweep).  A 750-800 K top should give a heating Tg,
-    but that is a bet; it is item 3 of sweep's test request.  The
-    hyperbola is symmetric and cannot represent an overshoot, which may also
-    be part of why heating sits 14-30 K above cooling.
+  Still open:
+  - **Example 3 and example 4 heating are ceiling-limited even at 800 K.**
+    Example 4 heating went from 421.3 K (700 K top) to 401.9 K (800 K top), with
+    cooling moving the same way.  Near the top it still drifts about 0.10 K per K
+    of ceiling, and example 3 drifts 0.29 K/K, against example 1's 0.002.  Their
+    true heating Tg values are lower than quoted, and the manuscript table carries
+    example 3's.  Converging them needs ceilings above 800 K, beyond where GAFF
+    was checked.  That is Cameron's call, and a force-field question as much as
+    a ladder one.  Tutorial 4 now runs to 800 K and calls its Tg an upper bound.
+  - **Tutorials 2-4 run past 700 K**, beyond where GAFF was checked for these
+    chemistries; their pages say to look at the top rungs.
+  - **The drift warning's threshold** is the larger of the error bar and one
+    rung.  I chose that; Cameron has not set one.  On sweep's new ladders it
+    flags example 1 cooling (+6.7 K at a 750 K top) and, barely, example 4
+    heating (+5.6 K).
   - **Example 5's** heating Tg, 219.9 K, sits on a ladder that starts at 100 K where
-    one of five builds' transitions runs below it.
+    one of five builds' transitions runs below it.  The tutorial's ladder now
+    starts at 50 K, but heating from 50 K has not been run.
+  - **Example 1 rep 0's heating ladder** died on a transient GPU fault at 785 K
+    in sweep's test.  It was not re-run (about USD 0.64), which is Cameron's call.
 
 - **grompp warns 8 times per example 2 build about two transposed hydrogens.**
   Surfaced by 2.15.0 relaying grompp's warnings (htpolynet-sweep, v2.15.0

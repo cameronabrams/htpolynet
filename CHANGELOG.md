@@ -18,6 +18,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entirely, and says to raise the ladder's top.  The two-line Tg and the existing
   holds are unchanged.
 
+### Changed
+
+- **Tutorial 4's Tg ladders run to 800 K.**  Its heating Tg is about 20 K lower at
+  800 K than at 700 K, and is still moving at 800 K, so the page calls it an
+  upper bound.
+- **The tutorials say the cooling-first protocol has been tested.**  The jump to
+  the top temperature at the start of the cooling ladder did not change the
+  heating Tg on example 1, and changed the cooling one by an insignificant
+  +9.9 +/- 6.3 K.
+
+### Fixed
+
+- **Tutorial 6 withdraws its cooling Tg of 478 ± 28 K**, quoted in 2.17.0 and
+  2.17.1.  The same five structures re-run on wider ladders do not reproduce
+  it, so the page now says the network has no reproducible Tg under this
+  protocol.
+
 ## [2.17.1] - 2026-11-06
 
 ### Changed

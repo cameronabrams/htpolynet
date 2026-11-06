@@ -108,7 +108,9 @@ The two ladders run from 100 to 800 K, 141 rungs of 100 ps each, so
 14.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
 ``plots post`` to see past both ends of the transition.  The top
 is 800 K because on a 700 K ladder only two of five builds gave a heating *T*:sub:`g`
-on their own.  Above about 700 K the ladder is beyond where the force field was checked for this chemistry,
+on their own.  Even at 800 K the heating *T*:sub:`g` is still moving as the top is
+lowered, so it may not have settled; ``plots post`` reports how far it moves.  Above
+about 700 K the ladder is beyond where the force field was checked for this chemistry,
 so look at the top rungs' densities for anything anomalous before trusting the
 rubbery line.
 
@@ -116,9 +118,10 @@ The cooling ladder runs first, starting from the equilibrated structure, and the
 heating ladder starts from where it ends.  Run the other way round, the heating
 ladder's 10 ps warmup would drop the 300 K structure to 100 K, a quench that distorts
 the glassy branch the fit depends on.  The cooling ladder instead begins with a jump
-from 300 K to 800 K in its warmup.  That has not been tested as such; the hot rubbery
-state should relax quickly, but look at the first few cooling rungs before trusting
-them.
+from 300 K to 800 K in its warmup.  That was tested on example 1 (htpolynet-sweep, 2026-11-06): against cooling from
+an already-hot structure, on the same builds, it left the heating *T*:sub:`g` where it
+was (-0.0 +/- 2.9 K) and moved the cooling one by +9.9 +/- 6.3 K, which is not
+significant, and the top cooling rungs show no sign of an unrelaxed start.
 
 *Important disclaimer*:  Although ``htpolynet postsim`` is meant to facilitate production-grade MD simulations, those illustrated here are NOT; they are WAY TOO SHORT.  It is your responsibility to determine how long a simulation is needed for each kind of simulation.
 

@@ -83,16 +83,17 @@ postsim.yaml
 
 The two ladders run from 100 to 700 K, 121 rungs of 100 ps each, so
 12.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
-``plots post`` to see past both ends of the transition.  It gives a
-cooling *T*:sub:`g`; the heating fit is still refused, as described below.
+``plots post`` to see past both ends of the transition.  Neither direction
+gives a reproducible *T*:sub:`g` for this network, as described below.
 
 The cooling ladder runs first, starting from the equilibrated structure, and the
 heating ladder starts from where it ends.  Run the other way round, the heating
 ladder's 10 ps warmup would drop the 300 K structure to 100 K, a quench that distorts
 the glassy branch the fit depends on.  The cooling ladder instead begins with a jump
-from 300 K to 700 K in its warmup.  That has not been tested as such; the hot rubbery
-state should relax quickly, but look at the first few cooling rungs before trusting
-them.
+from 300 K to 700 K in its warmup.  That was tested on example 1 (htpolynet-sweep, 2026-11-06): against cooling from
+an already-hot structure, on the same builds, it left the heating *T*:sub:`g` where it
+was (-0.0 +/- 2.9 K) and moved the cooling one by +9.9 +/- 6.3 K, which is not
+significant, and the top cooling rungs show no sign of an unrelaxed start.
 
 Run it:
 
@@ -180,13 +181,16 @@ Two things about how these numbers arise:
   this example ended 19 kg/m³ lighter than the others and gave a heating *T*:sub:`g`
   of 332.5 K.
 
-A wider ladder is what fixes it.  Five builds run on the 100-700 K ladders now in
-the YAML above (htpolynet-sweep, 2026-10-25) give a cooling *T*:sub:`g` of 478 +/- 28 K from the
-whole-curve fit ``plots post`` now reports beside the two-line one, with three of the
-five builds clearing its checks on their own.  The heating direction is still refused:
-its fitted transition does not end inside even that range.  Read the whole-curve line
-of the log, quote its uncertainty and how many builds it kept, and widen the ladder
-when it says the ladder does not reach past the transition.
+A wider ladder does not fix it.  Five builds run on the 100-700 K ladders now in the
+YAML above (htpolynet-sweep, 2026-10-25) gave a cooling *T*:sub:`g` of 478 +/- 28 K
+from the whole-curve fit ``plots post`` reports beside the two-line one, but that
+pooled three builds whose own values spanned 390-543 K.  The same five structures run
+again on 100-800 K ladders (2026-11-06) kept a different two, and the pool was refused
+at every ceiling from 650 to 800 K.  Heating was refused in both runs.  An earlier
+version of this page quoted the 478 K value; do not use it.  The problem here is the
+spread between builds, not the ladder's width.  For other systems, read the
+whole-curve line of the log, quote its uncertainty and how many builds it kept, and
+widen the ladder when it says the ladder does not reach past the transition.
 
 When comparing with a DSC or DMA measurement, remember also that the ladder runs at
 0.05 K/ps, many orders of magnitude faster than any experiment, and a faster rate

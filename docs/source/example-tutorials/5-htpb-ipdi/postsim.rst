@@ -91,9 +91,10 @@ The cooling ladder runs first, starting from the equilibrated structure, and the
 heating ladder starts from where it ends.  Run the other way round, the heating
 ladder's 10 ps warmup would drop the 300 K structure to 50 K, a quench that distorts
 the glassy branch the fit depends on.  The cooling ladder instead begins with a jump
-from 300 K to 500 K in its warmup.  That has not been tested as such; the hot rubbery
-state should relax quickly, but look at the first few cooling rungs before trusting
-them.
+from 300 K to 500 K in its warmup.  That was tested on example 1 (htpolynet-sweep, 2026-11-06): against cooling from
+an already-hot structure, on the same builds, it left the heating *T*:sub:`g` where it
+was (-0.0 +/- 2.9 K) and moved the cooling one by +9.9 +/- 6.3 K, which is not
+significant, and the top cooling rungs show no sign of an unrelaxed start.
 
 Run it:
 
