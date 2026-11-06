@@ -1740,19 +1740,19 @@ Coverage as of the last measurement: **38.8%** overall.
     of ceiling, and example 3 drifts 0.29 K/K, against example 1's 0.002.  Their
     true heating Tg values are lower than quoted, and the manuscript table carries
     example 3's.  Converging them needs ceilings above 800 K, beyond where GAFF
-    was checked.  That is Cameron's call, and a force-field question as much as
-    a ladder one.  Tutorial 4 now runs to 800 K and calls its Tg an upper bound.
+    was checked.  Cameron, 2026-11-06: "run 3 and 4 above 800"; requested from
+    sweep the same day, with a check of the top rungs for force-field trouble.  Tutorial 4 now runs to 800 K and calls its Tg an upper bound.
   - **Tutorials 2-4 run past 700 K**, beyond where GAFF was checked for these
     chemistries; their pages say to look at the top rungs.
-  - **The drift warning's threshold** is the larger of the error bar and one
-    rung.  I chose that; Cameron has not set one.  On sweep's new ladders it
-    flags example 1 cooling (+6.7 K at a 750 K top) and, barely, example 4
-    heating (+5.6 K).
+  - **The drift warning's threshold**, the larger of the error bar and one rung,
+    was accepted by Cameron on 2026-11-06 ("ok").  On sweep's new ladders it flags
+    example 1 cooling (+6.7 K at a 750 K top) and, barely, example 4 heating
+    (+5.6 K).
   - **Example 5's** heating Tg, 219.9 K, sits on a ladder that starts at 100 K where
     one of five builds' transitions runs below it.  The tutorial's ladder now
     starts at 50 K, but heating from 50 K has not been run.
   - **Example 1 rep 0's heating ladder** died on a transient GPU fault at 785 K
-    in sweep's test.  It was not re-run (about USD 0.64), which is Cameron's call.
+    in sweep's test.  Cameron, 2026-11-06: "complete ex1 b0"; requested from sweep.
 
 - **grompp warns 8 times per example 2 build about two transposed hydrogens.**
   Surfaced by 2.15.0 relaying grompp's warnings (htpolynet-sweep, v2.15.0
