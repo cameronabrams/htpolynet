@@ -84,19 +84,21 @@ The two ladders run from 100 to 800 K, 141 rungs of 100 ps each, so
 ``plots post`` to see past both ends of the transition.  The top is 800 K because the
 *T*:sub:`g` depends on it: five builds give a heating *T*:sub:`g` of 421 K on 700 K
 ladders and 402 K on 800 K ones, with cooling moving the same way (htpolynet-sweep,
-2026-11-06).  Even at 800 K it still moves as the top is lowered, so treat it as an
-upper bound; ``plots post`` reports how far it moves.  Above about 700 K the ladder is
-beyond where the force field was checked for this chemistry, so look at the top rungs'
-densities for anything anomalous before trusting the rubbery line.
+2026-11-06).  It keeps moving above 800 K: ladders run to 1000 K on three of the
+builds give 406 K with the top cut to 800 K and 394 K at 1000 K, still falling.  So
+treat this ladder's *T*:sub:`g` as an upper bound; ``plots post`` warns when it
+moves with the top.  Going taller is not free: the bonded energies stay linear in
+temperature and identical on heating and cooling up to 1000 K, so the force field
+holds, but 4 of 10 runs on 1000 K ladders died, against 1 of 21 on 800 K ones.
 
 The cooling ladder runs first, starting from the equilibrated structure, and the
 heating ladder starts from where it ends.  Run the other way round, the heating
 ladder's 10 ps warmup would drop the 300 K structure to 100 K, a quench that distorts
 the glassy branch the fit depends on.  The cooling ladder instead begins with a jump
 from 300 K to 800 K in its warmup.  That was tested on example 1 (htpolynet-sweep, 2026-11-06): against cooling from
-an already-hot structure, on the same builds, it left the heating *T*:sub:`g` where it
-was (-0.0 +/- 2.9 K) and moved the cooling one by +9.9 +/- 6.3 K, which is not
-significant, and the top cooling rungs show no sign of an unrelaxed start.
+an already-hot structure, on the same builds, neither *T*:sub:`g`
+moved significantly over five builds (heating -4.4 +/- 4.8 K, cooling +6.9 +/- 5.8 K),
+and the top cooling rungs show no sign of an unrelaxed start.
 
 Run it:
 

@@ -675,13 +675,26 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
     spread=[]
     span=[]
     whole=[]
-    nproj=len(projdirs)
     for i,phase in enumerate(phases):
         p=phase['ladder']
+        # a ladder that crashed leaves no ladder.csv; it must not take the finished
+        # ladders down with it (htpolynet-sweep lost two complete example-3 cooling
+        # ladders that way when their heating partners died, job 26725677)
+        found=[]
+        for d in projdirs:
+            f=os.path.join(d,p['subdir'],'ladder.csv')
+            if os.path.exists(f):
+                found.append(f)
+            else:
+                logger.warning(f'{f} not found (did this ladder finish?); leaving {d} out of '
+                               f'ladder {i} ({p["subdir"]})')
+        if not found:
+            logger.warning(f'no build has ladder {i} ({p["subdir"]}); skipping it')
+            continue
         rate.append(p['deltaT']/(p['ps_per_rise']+p['ps_per_run']))
         res[i]=[]
-        for d in projdirs:
-            df=pd.read_csv(os.path.join(d,p['subdir'],'ladder.csv'),index_col=None,header=0)
+        for f in found:
+            df=pd.read_csv(f,index_col=None,header=0)
             t0=p['warmup_ps']
             ps_per_step=p['ps_per_rise']+p['ps_per_run']
             final_ps=df['time(ps)'].iloc[-1]
@@ -706,13 +719,20 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
 
             res[i].append(pd.DataFrame({'Temperature':T,'Volume':V,'Density':rho,'Temperature-std':Tstd,'Volume-std':Vstd,'Density-std':rhostd}))
 
-        df_concat0 = pd.concat(res[i], axis=1)
-        means[i]=df_concat0.stack().groupby(level=[0,1]).mean().unstack()
-        stds[i]=df_concat0.stack().groupby(level=[0,1]).std().unstack()
+        # mean and spread over builds at each rung.  Side-by-side concat and stack(), as
+        # this used to do, is refused by pandas >= 3 whenever there is more than one build
+        # (duplicate column names); do_E_plots had the same break.
+        df_concat0=pd.concat(res[i],keys=range(len(res[i])))
+        means[i]=df_concat0.groupby(level=1).mean().sort_index(axis=1)
+        stds[i]=df_concat0.groupby(level=1).std().sort_index(axis=1)
         means[i]['Volume-std']=stds[i]['Volume']
         means[i]['Density-std']=stds[i]['Density']
 
     
+    if not means:
+        logger.warning('no ladder finished in any build; no Tg to report')
+        return {'heating':None,'cooling':None,'directions':[],'window_range':[],
+                'unquotable':[],'whole_curve':[]}
     fig,ax=plt.subplots(1,max(2,len(means)),figsize=(10,6),sharex=True,sharey=True)
     for i,v in enumerate(means.keys()):
         m=means[v]
@@ -723,7 +743,7 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
         ax[i].set_xlabel('Temperature [K]')
         ax[i].set_title('heating' if rate[i]>0 else 'cooling')
         ax[i].set_ylabel('Density [kg/m$^3$]')
-        if nproj<2:
+        if len(res[v])<2:
             ax[i].scatter(m['Temperature'],m['Density'])
         else:
             ax[i].errorbar(m['Temperature'],m['Density'],std['Density'])

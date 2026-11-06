@@ -235,6 +235,50 @@ class TestDoTgPlots(unittest.TestCase):
         self.assertIn('raise its top', log)
         self.assertNotIn('the cooling Tg moves', log)
 
+    def test_a_crashed_ladder_does_not_discard_the_finished_one(self):
+        """Job 26725677: a heating ladder that died took its finished cooling ladder with it."""
+        h = {'ladder': dict(LADDER, subdir='heat')}
+        c = {'ladder': dict(LADDER, subdir='cool', deltaT=-LADDER['deltaT'])}
+        with tempfile.TemporaryDirectory() as top:
+            builds = [os.path.join(top, f'proj-{k}') for k in range(2)]
+            for k, d in enumerate(builds):
+                os.makedirs(d)
+                write_ladder(d, 'cool', kinked(TEMPS, Tg=440.0, seed=k))
+            write_ladder(builds[1], 'heat', kinked(TEMPS, seed=1))  # proj-0's heating died
+            cwd = os.getcwd()
+            os.chdir(top)
+            try:
+                with self.assertLogs('htpolynet.analysis.plot', level='INFO') as logs:
+                    result = do_tg_plots([c, h], builds)
+                written = sorted(f for f in os.listdir(top) if f.endswith('data.csv'))
+            finally:
+                os.chdir(cwd)
+        log = '\n'.join(logs.output)
+        self.assertEqual(written, ['ladder0-data.csv', 'ladder1-data.csv'])
+        self.assertEqual(result['directions'], ['cooling', 'heating'])
+        self.assertAlmostEqual(result['cooling'], 440.0, delta=2.0)
+        self.assertAlmostEqual(result['heating'], 450.0, delta=2.0)
+        self.assertIn('proj-0', log)
+        self.assertIn('did this ladder finish', log)
+
+    def test_a_ladder_no_build_finished_is_skipped(self):
+        h = {'ladder': dict(LADDER, subdir='heat')}
+        c = {'ladder': dict(LADDER, subdir='cool', deltaT=-LADDER['deltaT'])}
+        with tempfile.TemporaryDirectory() as d:
+            write_ladder(d, 'cool', kinked(TEMPS, Tg=440.0))
+            cwd = os.getcwd()
+            os.chdir(d)
+            try:
+                with self.assertLogs('htpolynet.analysis.plot', level='INFO') as logs:
+                    result = do_tg_plots([c, h], [d])
+                self.assertTrue(os.path.exists('ladder0-data.csv'))
+                self.assertFalse(os.path.exists('ladder1-data.csv'))
+            finally:
+                os.chdir(cwd)
+        self.assertEqual(result['directions'], ['cooling'])
+        self.assertIsNone(result['heating'])
+        self.assertIn('skipping it', '\n'.join(logs.output))
+
     def test_heating_and_cooling_far_apart_is_flagged(self):
         result, log = self.run_tg(kinked(TEMPS, Tg=422.0), kinked(TEMPS, Tg=478.0))
         self.assertIn('differ by 56 K', log)

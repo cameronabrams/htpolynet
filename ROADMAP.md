@@ -1723,9 +1723,10 @@ Coverage as of the last measurement: **38.8%** overall.
 
   Settled by sweep's tutorial-ladder test (job 26724992, 2026-11-06, reproduced
   here from its CSVs):
-  - **The cooling-first jump is harmless.**  On example 1, against the same
-    builds cooled from a hot structure, heating moved -0.0 +/- 2.9 K and cooling
-    moved +9.9 +/- 6.3 K (not significant).
+  - **The cooling-first jump is harmless.**  On example 1, against the same five
+    builds cooled from a hot structure, heating moved -4.4 +/- 4.8 K and cooling
+    +6.9 +/- 5.8 K, neither significant (four builds in job 26724992, the fifth
+    in job 26725677).
   - **Example 2 heating is kept at 850 K**, at 464.1 +/- 16.1 K with 4 of 5 builds
     kept.  Its transition ends near 751 K.
   - **Example 6 has no reproducible Tg**, and the cooling 478.1 K above does not
@@ -1734,16 +1735,32 @@ Coverage as of the last measurement: **38.8%** overall.
     390-543 K.  Tutorial 6 now says so.  A wider ladder will not help.
 
   Still open:
-  - **Example 3 and example 4 heating are ceiling-limited even at 800 K.**
-    Example 4 heating went from 421.3 K (700 K top) to 401.9 K (800 K top), with
-    cooling moving the same way.  Near the top it still drifts about 0.10 K per K
-    of ceiling, and example 3 drifts 0.29 K/K, against example 1's 0.002.  Their
-    true heating Tg values are lower than quoted, and the manuscript table carries
-    example 3's.  Converging them needs ceilings above 800 K, beyond where GAFF
-    was checked.  Cameron, 2026-11-06: "run 3 and 4 above 800"; requested from
-    sweep the same day, with a check of the top rungs for force-field trouble.  Tutorial 4 now runs to 800 K and calls its Tg an upper bound.
-  - **Tutorials 2-4 run past 700 K**, beyond where GAFF was checked for these
-    chemistries; their pages say to look at the top rungs.
+  - **Example 3 and example 4 do not converge by a 1000 K ceiling.**  Cameron,
+    2026-11-06: "run 3 and 4 above 800".  Sweep ran 100-1000 K ladders on the same
+    builds (job 26725677; reproduced here from its CSVs).  Pooled Tg as the top is
+    cut back:
+
+    | top (K)     | 1000  | 950   | 900   | 850   | 800   | 750   |
+    |-------------|-------|-------|-------|-------|-------|-------|
+    | ex3 heating | 441.3 | 446.7 | 453.1 | 459.8 | 471.0 | 486.8 |
+    | ex3 cooling | 413.6 | 418.5 | 421.9 | 426.9 | 432.2 | 443.5 |
+    | ex4 heating | 393.9 | 397.1 | 399.8 | 402.7 | 406.1 | 410.8 |
+    | ex4 cooling | 370.8 | 373.0 | 374.7 | 375.6 | 377.4 | 378.1 |
+
+    Paired per build, 800 K top minus 1000 K: ex3 heating +30.3 +/- 1.6 K, ex4
+    heating +12.1 +/- 1.1 K.  The 1000 K-run-cut-to-800 agrees with real 800 K
+    runs (ex4) and with plan C's ex3 474.4, so cutting reads the ceiling, not the
+    history.  The force field holds to 1000 K (bonded energies linear in T and
+    the same on heating and cooling, no LINCS warnings), but 4 of 10 runs on
+    1000 K ladders died on GPU faults or a box blowup, against 1 of 21 at 800 K.
+    The manuscript table's ex3 heating 474.4 K is about 30 K above its own
+    1000 K value and still an upper bound.  Ex3 and ex4 heating have 3 builds
+    each.  Whether to go above 1000 K, or to report these as ceiling-limited, is
+    Cameron's call.  Tutorials 3 and 4 stay at 800 K and say their Tg is an
+    upper bound.
+  - **Tutorial 2 runs to 850 K** with GAFF unchecked there for its chemistry;
+    the page says to look at the top rungs.  Examples 3 and 4 were checked to
+    1000 K (above) and hold.
   - **The drift warning's threshold**, the larger of the error bar and one rung,
     was accepted by Cameron on 2026-11-06 ("ok").  On sweep's new ladders it flags
     example 1 cooling (+6.7 K at a 750 K top) and, barely, example 4 heating
@@ -1751,8 +1768,6 @@ Coverage as of the last measurement: **38.8%** overall.
   - **Example 5's** heating Tg, 219.9 K, sits on a ladder that starts at 100 K where
     one of five builds' transitions runs below it.  The tutorial's ladder now
     starts at 50 K, but heating from 50 K has not been run.
-  - **Example 1 rep 0's heating ladder** died on a transient GPU fault at 785 K
-    in sweep's test.  Cameron, 2026-11-06: "complete ex1 b0"; requested from sweep.
 
 - **grompp warns 8 times per example 2 build about two transposed hydrogens.**
   Surfaced by 2.15.0 relaying grompp's warnings (htpolynet-sweep, v2.15.0

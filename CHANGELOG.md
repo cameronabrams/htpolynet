@@ -21,15 +21,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Tutorial 4's Tg ladders run to 800 K.**  Its heating Tg is about 20 K lower at
-  800 K than at 700 K, and is still moving at 800 K, so the page calls it an
-  upper bound.
+  800 K than at 700 K.
+- **Tutorials 3 and 4 call their Tg an upper bound.**  On ladders run to 1000 K,
+  example 3's heating Tg falls from 471 K at an 800 K top to 441 K, and example
+  4's from 406 K to 394 K, both still falling.  The pages give these numbers, and
+  note that the force field holds to 1000 K but such runs fail far more often.
 - **The tutorials say the cooling-first protocol has been tested.**  The jump to
-  the top temperature at the start of the cooling ladder did not change the
-  heating Tg on example 1, and changed the cooling one by an insignificant
-  +9.9 +/- 6.3 K.
+  the top temperature at the start of the cooling ladder changed neither Tg
+  significantly on example 1 over five builds: heating by -4.4 +/- 4.8 K and
+  cooling by +6.9 +/- 5.8 K.
 
 ### Fixed
 
+- **`plots post` no longer discards a finished Tg ladder because another one
+  crashed.**  If a build's heating ladder died, the missing file aborted the whole
+  analysis and no ladder's data was written, including the complete cooling
+  ladders.  A missing ladder is now left out of that ladder's average with a
+  warning, and the others are analyzed as usual.
+- **`plots post` can average Tg ladders over more than one build again under
+  pandas 3.**  The averaging stacked side-by-side frames with duplicate column
+  names, which pandas 3 refuses; it now groups them the way the modulus analysis
+  already does.
 - **Tutorial 6 withdraws its cooling Tg of 478 ± 28 K**, quoted in 2.17.0 and
   2.17.1.  The same five structures re-run on wider ladders do not reproduce
   it, so the page now says the network has no reproducible Tg under this
