@@ -45,7 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tutorial 6 no longer recommends quoting the cooling Tg.**  2.16.0's tutorial
   did, because two builds agreed on it to 10 K.  Five builds spread it over
   409-557 K, so the page now reports the five-build spread in both directions and
-  says to read `plots post`'s window warnings for every ladder.
+  says to read `plots post`'s window warnings for every ladder.  It also shows that
+  a ladder wide enough to span the transition gives a cooling Tg, 478 ± 28 K.
 
 ### Fixed
 
