@@ -33,20 +33,20 @@ postsim.yaml
     - ladder:
         input_top: systems/final-results/final.top
         input_gro: postsim/equilibrate/equilibrate.gro
-        subdir: postsim/ladder-heat
-        Tlo: 300
-        Thi: 600
-        deltaT: 5
+        subdir: postsim/ladder-cool
+        Tlo: 100
+        Thi: 700
+        deltaT: -5
         ps_per_rise: 10
         ps_per_run: 90
         warmup_ps: 10
     - ladder:
         input_top: systems/final-results/final.top
-        input_gro: postsim/ladder-heat/ladder.gro
-        subdir: postsim/ladder-cool
-        Tlo: 300
-        Thi: 600
-        deltaT: -5
+        input_gro: postsim/ladder-cool/ladder.gro
+        subdir: postsim/ladder-heat
+        Tlo: 100
+        Thi: 700
+        deltaT: 5
         ps_per_rise: 10
         ps_per_run: 90
         warmup_ps: 10
@@ -81,6 +81,19 @@ postsim.yaml
         ps: 40
         replicas: 3
 
+The two ladders run from 100 to 700 K, 121 rungs of 100 ps each, so
+12.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
+``plots post`` to see past both ends of the transition.  It gives a
+cooling *T*:sub:`g`; the heating fit is still refused, as described below.
+
+The cooling ladder runs first, starting from the equilibrated structure, and the
+heating ladder starts from where it ends.  Run the other way round, the heating
+ladder's 10 ps warmup would drop the 300 K structure to 100 K, a quench that distorts
+the glassy branch the fit depends on.  The cooling ladder instead begins with a jump
+from 300 K to 700 K in its warmup.  That has not been tested as such; the hot rubbery
+state should relax quickly, but look at the first few cooling rungs before trusting
+them.
+
 Run it:
 
 .. code-block:: console
@@ -88,7 +101,8 @@ Run it:
     $ htpolynet postsim -cfg postsim.yaml -ocfg 6-cyanate-ester.yaml -proj proj-0
 
 The numbers below come from the GPU reference build described on the
-:ref:`results page <badcy_results>`.  Each ladder is 60 rungs of 100 ps, 6 ns in all,
+:ref:`results page <badcy_results>`, run on the earlier 300-600 K ladders, heating
+first.  Each of those ladders was 61 rungs of 100 ps, about 6 ns,
 and the whole post-build sequence took 30 minutes on one V100.  The moduli come from a
 separate set of pulls on the same structure, described below.
 
@@ -100,7 +114,7 @@ Density
    The density the postcure stage ends at -- 1149.5 kg/m³ here -- is **not** an
    equilibrated density.  This example's postcure anneal peaks at 500 K, which is not
    clearly above this network's *T*:sub:`g` (see below), so it may never let the network
-   rearrange.  On the reference build the cooling ladder, which starts at 600 K, ends at
+   rearrange.  On the reference build the cooling ladder, which started at 600 K, ended at
    1157.0 kg/m³ at 300 K, 0.7 % denser.  Take densities from the cooling ladder, not
    from the end of the build.
 
@@ -160,14 +174,14 @@ Two things about how these numbers arise:
   varied by chemistry.
   **Read the warnings for every ladder; there is no direction that is safe by
   default.**  Polystyrene (example 1) was the one system clean on all ten fits.
-- The heating ladder starts from the postcure structure after only a 10 ps
+- On those ladders the heating ladder started from the postcure structure after only a 10 ps
   equilibration.  A glass still densifying while it is heated loses density for a
   second reason, which flattens the region the glassy fit uses.  One earlier build of
   this example ended 19 kg/m³ lighter than the others and gave a heating *T*:sub:`g`
   of 332.5 K.
 
-A wider ladder is what fixes it.  Five builds run on 100-700 K ladders
-(htpolynet-sweep, 2026-10-25) give a cooling *T*:sub:`g` of 478 +/- 28 K from the
+A wider ladder is what fixes it.  Five builds run on the 100-700 K ladders now in
+the YAML above (htpolynet-sweep, 2026-10-25) give a cooling *T*:sub:`g` of 478 +/- 28 K from the
 whole-curve fit ``plots post`` now reports beside the two-line one, with three of the
 five builds clearing its checks on their own.  The heating direction is still refused:
 its fitted transition does not end inside even that range.  Read the whole-curve line

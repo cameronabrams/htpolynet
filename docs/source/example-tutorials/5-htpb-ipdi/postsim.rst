@@ -33,20 +33,20 @@ postsim.yaml
     - ladder:
         input_top: systems/final-results/final.top
         input_gro: postsim/equilibrate/equilibrate.gro
-        subdir: postsim/ladder-heat
-        Tlo: 250
+        subdir: postsim/ladder-cool
+        Tlo: 50
         Thi: 500
-        deltaT: 5
+        deltaT: -5
         ps_per_rise: 10
         ps_per_run: 90
         warmup_ps: 10
     - ladder:
         input_top: systems/final-results/final.top
-        input_gro: postsim/ladder-heat/ladder.gro
-        subdir: postsim/ladder-cool
-        Tlo: 250
+        input_gro: postsim/ladder-cool/ladder.gro
+        subdir: postsim/ladder-heat
+        Tlo: 50
         Thi: 500
-        deltaT: -5
+        deltaT: 5
         ps_per_rise: 10
         ps_per_run: 90
         warmup_ps: 10
@@ -81,10 +81,19 @@ postsim.yaml
         ps: 40
         replicas: 3
 
-The Tg ladder ranges are narrower (250-500 K) than for the rigid
-thermosets in tutorials 3 and 4, because HTPB-based polyurethanes
-are elastomers with sub-ambient Tg — the heating ladder needs to
-sample below 300 K to bracket the transition cleanly.
+The two ladders run from 50 to 500 K, 91 rungs of 100 ps each, so
+9.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
+``plots post`` to see past both ends of the transition.  This elastomer's
+*T*:sub:`g` is near 200-220 K, so it is the bottom of the ladder that matters here:
+an earlier 250 K floor sat inside the transition.
+
+The cooling ladder runs first, starting from the equilibrated structure, and the
+heating ladder starts from where it ends.  Run the other way round, the heating
+ladder's 10 ps warmup would drop the 300 K structure to 50 K, a quench that distorts
+the glassy branch the fit depends on.  The cooling ladder instead begins with a jump
+from 300 K to 500 K in its warmup.  That has not been tested as such; the hot rubbery
+state should relax quickly, but look at the first few cooling rungs before trusting
+them.
 
 Run it:
 
@@ -149,8 +158,8 @@ A note on system size
 ^^^^^^^^^^^^^^^^^^^^^
 
 At 56k atoms this is by far the largest depot example.  Postsim
-times scale accordingly — expect the Tg ladder (50 temperatures ×
-100 ps each = 5 ns total) to take several hours on a single GPU,
+times scale accordingly — expect each Tg ladder (91 temperatures ×
+100 ps each = 9.1 ns) to take several hours on a single GPU,
 and the deformation runs to take a few minutes each.  A useful
 exercise is to compare wall-clock to the build itself: the postsim
 suite is a small fraction (1-2 hours) of the ~12 hours the build

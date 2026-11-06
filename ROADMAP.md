@@ -1708,7 +1708,7 @@ Coverage as of the last measurement: **38.8%** overall.
   example, never the same one twice, which is what noise against a tight
   tolerance looks like.
 
-- **The shipped Tg ladders (300-600 K) are too narrow; wider ones work.**
+- **Tg ladders: 300-600 K was too narrow; the tutorials now ship wider ones.**
   History: htpolynet-sweep's five-build replicate run on 2.16.0 (2026-10-20) found
   the two-line Tg reproducible only for polystyrene.  The whole-curve estimator
   (`fit_tg_hyperbola`, `pooled_tg`, Patrone 2016) then showed why: on 300-600 K
@@ -1722,11 +1722,19 @@ Coverage as of the last measurement: **38.8%** overall.
   that had passed moved by 12-61 K, so none of them should be quoted.
 
   Still open:
-  - **The shipped tutorials' `postsim` ladders are still 300-600 K**, so a user
-    following them gets the refusals.  Sweep's measured sizing rule: about 50 K of
-    headroom above the transition's upper edge (35 K costs a build, 15 K costs
-    three).  Widening them lengthens every tutorial's postsim, and above ~700 K is
-    beyond where GAFF was validated for these chemistries, so it is Cameron's call.
+  - **The tutorials' new cooling-first order starts with an untested jump.**
+    The tutorials (widened 2026-11-06 on Cameron's go) now run the cooling
+    ladder first, and its 10 ps warmup takes the 300 K equilibrated structure
+    straight to 700-850 K.  Plans B and C instead began cooling from a structure
+    that had already been near the top of a ladder.  The jump should be harmless
+    in the rubbery state, but nobody has measured it.  The test: example 1,
+    five builds, the tutorial protocol against plan C's, then compare the pooled
+    cooling Tg and the first rungs' densities.  That is sweep's work and
+    Cameron's call to run.  If it is not harmless, the fix is a short ramp to
+    the top before the ladder (an `anneal` stage) rather than going back to
+    heating first.
+  - **Tutorials 2 and 3 run past 700 K**, beyond where GAFF was checked for
+    these chemistries; their pages say to look at the top rungs.
   - **A kept fit is not a converged one.**  Truncating example 1's 800 K ladder to
     700 and 650 K moves its Tg from 436.4 to 443.0 and 450.8 K while passing every
     gate.  `plots post` could report that drift itself -- refit with the top 50 and

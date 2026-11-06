@@ -10,8 +10,8 @@ We perform the following:
 
 1. Using the final results of the build as inputs, anneal the system for two cycles of heating and cooling between 300 and 600 K, using 10 ps rise-times and 10 ps hold-times.
 2. Equilibrate at 300 K for an additional 10 ps.
-3. Perform temperature ladder up to 600 K at 5 K per 100 ps, beginning with a 10 ps warmup.
-4. Perform temperature ladder down to 300 K at 5 K per 100 ps, also beginning with a 10 ps warmup.
+3. Perform a temperature ladder down from 800 K to 100 K at 5 K per 100 ps, beginning with a 10 ps warmup.
+4. Perform a temperature ladder back up from 100 K to 800 K at 5 K per 100 ps, also beginning with a 10 ps warmup.
 5. Using the result of 2, perform independent uniaxial deformations along the x, y, and z directions at a strain rate of 0.001 ps\ :sup:`-1` (10\ :sup:`9` s\ :sup:`-1`) for 40 ps, to 4% strain, three times each -- the ``deform`` defaults, written out.
 
 The flowchart below illustrates:
@@ -42,23 +42,23 @@ In the project base directory, create the file ``postsim.yaml`` with these conte
     - ladder:
         input_top: systems/final-results/final.top
         input_gro: postsim/equilibrate/equilibrate.gro
-        subdir: postsim/ladder-heat
-        Tlo: 300
-        Thi: 600
-        deltaT: 5
-        ps_per_rise: 10
-        ps_per_run: 90
-        warmup_ps: 10 
-    - ladder:
-        input_top: systems/final-results/final.top
-        input_gro: postsim/ladder-heat/ladder.gro
         subdir: postsim/ladder-cool
-        Tlo: 300
-        Thi: 600
+        Tlo: 100
+        Thi: 800
         deltaT: -5
         ps_per_rise: 10
         ps_per_run: 90
-        warmup_ps: 10 
+        warmup_ps: 10
+    - ladder:
+        input_top: systems/final-results/final.top
+        input_gro: postsim/ladder-cool/ladder.gro
+        subdir: postsim/ladder-heat
+        Tlo: 100
+        Thi: 800
+        deltaT: 5
+        ps_per_rise: 10
+        ps_per_run: 90
+        warmup_ps: 10
     - deform:
         input_top: systems/final-results/final.top
         input_gro: postsim/equilibrate/equilibrate.gro
@@ -102,7 +102,23 @@ In the project base directory, create the file ``postsim.yaml`` with these conte
           mdrun: gmx mdrun -ntmpi 1
           options: -quiet -nobackup
 
-This file will instruct HTPolyNet to use Gromacs to conduct several MD simulations.  First, the final results of the build are annealed for two cycles between 300 and 600 K.  Then the result of the annealing is equilibrated at 300 K.  Following, both an increasing and then decreasing temperature ladders are run; in parallel (using the equilibrated output), three uniaxial deformations are run.
+This file will instruct HTPolyNet to use Gromacs to conduct several MD simulations.  First, the final results of the build are annealed for two cycles between 300 and 600 K.  Then the result of the annealing is equilibrated at 300 K.  Following, a cooling and then a heating temperature ladder are run; in parallel (using the equilibrated output), three uniaxial deformations are run.
+
+The two ladders run from 100 to 800 K, 141 rungs of 100 ps each, so
+14.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
+``plots post`` to see past both ends of the transition.  The top
+is 800 K because on a 700 K ladder only two of five builds gave a heating *T*:sub:`g`
+on their own.  Above about 700 K the ladder is beyond where the force field was checked for this chemistry,
+so look at the top rungs' densities for anything anomalous before trusting the
+rubbery line.
+
+The cooling ladder runs first, starting from the equilibrated structure, and the
+heating ladder starts from where it ends.  Run the other way round, the heating
+ladder's 10 ps warmup would drop the 300 K structure to 100 K, a quench that distorts
+the glassy branch the fit depends on.  The cooling ladder instead begins with a jump
+from 300 K to 800 K in its warmup.  That has not been tested as such; the hot rubbery
+state should relax quickly, but look at the first few cooling rungs before trusting
+them.
 
 *Important disclaimer*:  Although ``htpolynet postsim`` is meant to facilitate production-grade MD simulations, those illustrated here are NOT; they are WAY TOO SHORT.  It is your responsibility to determine how long a simulation is needed for each kind of simulation.
 
@@ -223,8 +239,8 @@ That equilibration lasted 100 ns and resulted in a significant densification.  T
 
 Now, with a single invocation of ``htpolynet plots``, we can compute T\ :sub:`g` and E.
 
-The output and the two "short" figures below were recorded with HTPolyNet 1.0.6, when
-each ``deform`` stage was a single 10 ps pull to 1 % strain and *E* was one fit to the
+The output and the two "short" figures below were recorded with HTPolyNet 1.0.6, on
+300-600 K ladders run heating first, when each ``deform`` stage was a single 10 ps pull to 1 % strain and *E* was one fit to the
 averaged curve.  With the stanzas above, ``plots post`` instead fits all nine pulls and
 reports ``E = <mean> +/- <standard error> GPa``, writes the individual fits to
 ``E-fits.csv``, and logs how far each *T*:sub:`g` moves with the fit window.

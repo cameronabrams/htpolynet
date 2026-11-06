@@ -31,20 +31,20 @@ Create ``postsim.yaml`` in the project base directory:
     - ladder:
         input_top: systems/final-results/final.top
         input_gro: postsim/equilibrate/equilibrate.gro
-        subdir: postsim/ladder-heat
-        Tlo: 300
-        Thi: 600
-        deltaT: 5
+        subdir: postsim/ladder-cool
+        Tlo: 100
+        Thi: 850
+        deltaT: -5
         ps_per_rise: 10
         ps_per_run: 90
         warmup_ps: 10
     - ladder:
         input_top: systems/final-results/final.top
-        input_gro: postsim/ladder-heat/ladder.gro
-        subdir: postsim/ladder-cool
-        Tlo: 300
-        Thi: 600
-        deltaT: -5
+        input_gro: postsim/ladder-cool/ladder.gro
+        subdir: postsim/ladder-heat
+        Tlo: 100
+        Thi: 850
+        deltaT: 5
         ps_per_rise: 10
         ps_per_run: 90
         warmup_ps: 10
@@ -78,6 +78,22 @@ Create ``postsim.yaml`` in the project base directory:
         edot: 0.001
         ps: 40
         replicas: 3
+
+The two ladders run from 100 to 850 K, 151 rungs of 100 ps each, so
+15.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
+``plots post`` to see past both ends of the transition.  The heating
+fit needs the top this high: on a 700 K ladder its transition ran on to about
+780 K and the fit was refused.  Above about 700 K the ladder is beyond where the force field was checked for this chemistry,
+so look at the top rungs' densities for anything anomalous before trusting the
+rubbery line.
+
+The cooling ladder runs first, starting from the equilibrated structure, and the
+heating ladder starts from where it ends.  Run the other way round, the heating
+ladder's 10 ps warmup would drop the 300 K structure to 100 K, a quench that distorts
+the glassy branch the fit depends on.  The cooling ladder instead begins with a jump
+from 300 K to 850 K in its warmup.  That has not been tested as such; the hot rubbery
+state should relax quickly, but look at the first few cooling rungs before trusting
+them.
 
 Run it:
 

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The tutorials' Tg ladders are wide enough for a Tg.**  At 300-600 K, the
+  whole-curve fit 2.17.0 added refused most of the tutorials' transitions: they did
+  not finish inside the ladder.  The ladders now run 100-700 K (tutorials 1, 4 and
+  6), 100-850 K (2), 100-800 K (3) and 50-500 K (5), at the same 0.05 K/ps.  On
+  ladders this wide, five replicate builds per example gave a Tg in 10 of 12
+  example/direction cases, against 3 before.  The cooling ladder now runs first,
+  so the heating ladder starts cold rather than quenching the 300 K structure
+  in its warmup.  Each ladder takes 2-2.5 times as long as before.
+
 ## [2.17.0] - 2026-11-06
 
 ### Added
