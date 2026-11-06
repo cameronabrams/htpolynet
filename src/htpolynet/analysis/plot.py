@@ -734,6 +734,10 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
         w=pooled_tg(curves)
         if len(curves)==1 and w['fit'] is not None and not w['fit']['held_out']:
             w['fit']=fit_tg_hyperbola(*curves[0],n_synth=200)
+        f=w['fit']
+        w['ceiling_drift']=(ceiling_drift(curves) if f is not None and not f['held_out']
+                            else None)
+        w['rung']=float(np.median(np.abs(np.diff(curves[0][0]))))
         whole.append(w)
         span.append((m['Temperature'].min(),m['Temperature'].max()))
         if Tg!=-1:
@@ -784,6 +788,27 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
             logger.info(f'{label} Tg, whole-curve fit: {f["Tg"]:.1f} K {err}; tangents at the '
                         f'ladder ends cross at {f["Tg_tangents"]:.1f} K'
                         + ('; a sharp break' if f['sharp'] else ''))
+            bar=w['Tg_boot_sd'] if w['Tg_boot_sd'] is not None else f.get('Tg_synth_sd')
+            # a move smaller than one rung is below what the ladder resolves, whatever the
+            # error bar says; a noise-free ladder has an error bar of zero
+            bar=max(bar or 0.0,w['rung'])
+            drift=w.get('ceiling_drift') or []
+            if drift:
+                logger.info(f'{label} Tg, whole-curve fit with the top of the ladder cut away: '
+                            + '; '.join(f'{d["ceiling"]:.0f} K top: '
+                                        + (f'{d["Tg"]:.1f} K ({d["Tg"]-f["Tg"]:+.1f})'
+                                           if d['Tg'] is not None else f'none ({d["reason"]})')
+                                        for d in drift))
+                first_cut=drift[0]
+                if first_cut['Tg'] is None:
+                    logger.warning(f'the {label} Tg is lost when the top {first_cut["cut"]:.0f} K of '
+                                   f'the ladder is removed: the ladder only just reaches past this '
+                                   f'transition, so raise its top')
+                elif abs(first_cut['Tg']-f['Tg'])>bar:
+                    logger.warning(f'the {label} Tg moves {first_cut["Tg"]-f["Tg"]:+.1f} K when the '
+                                   f'top {first_cut["cut"]:.0f} K of the ladder is removed, more than '
+                                   f'{bar:.1f} K, the larger of its error bar and one rung: the ladder is not tall enough for '
+                                   f'this Tg to have settled, so raise its top')
     first={}
     for i,label in enumerate(labels):
         first.setdefault(label,i)

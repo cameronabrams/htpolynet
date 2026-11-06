@@ -616,6 +616,36 @@ def pooled_tg(curves,n_boot=500,seed=0):
             'Tg_boot_sd':sd,'per_build':per,'n_builds':len(curves),'n_kept':len(kept),
             'per_build_sd':float(np.std(kept,ddof=1)) if len(kept)>1 else None}
 
+def ceiling_drift(curves,cuts=(50.0,100.0)):
+    """Pooled Tg refitted with the top of the ladder cut away.
+
+    Passing every check in :func:`fit_tg_hyperbola` says a Tg is not obviously broken,
+    not that the ladder was tall enough for it to have settled.  Example 1's heating
+    Tg moved from 436.4 K on an 800 K ladder to 443.0 K at 700 K and 450.8 K at 650 K,
+    kept by every check at each (htpolynet-sweep, plan C, 2026-10-25).  How far Tg moves
+    as the top comes off is the part of its uncertainty the bootstrap cannot see.
+
+    Args:
+        curves (list): one (T, v) pair of arrays per build
+        cuts (tuple): how many K to remove from the top of the ladder, one refit each
+
+    Returns:
+        list: one dict per cut, with cut, ceiling, Tg (None when the refit is held out)
+            and reason
+    """
+    top=min(float(np.max(t)) for t,_ in curves)
+    out=[]
+    for cut in cuts:
+        ceiling=top-cut
+        trimmed=[(np.asarray(t)[np.asarray(t)<=ceiling],np.asarray(y)[np.asarray(t)<=ceiling])
+                 for t,y in curves]
+        r=pooled_tg(trimmed,n_boot=0)
+        f=r['fit']
+        out.append({'cut':cut,'ceiling':ceiling,'Tg':r['Tg'],
+                    'reason':None if r['Tg'] is not None
+                    else (f['reason'] if f is not None else 'did not converge')})
+    return out
+
 def compute_G(shear_strain,shear_stress,fit_domain=[10,100],fit_strain=None):
     """Computes the shear modulus by a linear fit to the elastic regime of a simple shear.
 

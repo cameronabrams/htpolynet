@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 
 from htpolynet.analysis.plot import do_tg_plots, post_plots
-from htpolynet.analysis.utils import (_tg_hyperbola, fit_tg_hyperbola, pooled_tg,
-                                      tg_window_range)
+from htpolynet.analysis.utils import (_tg_hyperbola, ceiling_drift, fit_tg_hyperbola,
+                                      pooled_tg, tg_window_range)
 
 TEMPS = np.arange(300.0, 605.0, 5.0)          # 61 rungs, as in example 6's ladders
 LADDER = {'warmup_ps': 0, 'ps_per_rise': 1, 'ps_per_run': 10, 'deltaT': 5}
@@ -152,6 +152,35 @@ class TestPooledFit(unittest.TestCase):
         self.assertEqual(a, b)
 
 
+def still_bending(T, noise=0.3, seed=0):
+    """A rubbery branch that keeps steepening, so the top of the ladder pulls Tg along."""
+    return smooth(T, noise=noise, seed=seed) - 0.0015 * np.clip(T - 450.0, 0, None) ** 2
+
+
+class TestCeilingDrift(unittest.TestCase):
+    def test_a_tall_enough_ladder_barely_moves(self):
+        T = np.arange(300.0, 705.0, 5.0)
+        curves = [(T, smooth(T, noise=1.0, seed=k)) for k in range(5)]
+        full = pooled_tg(curves, n_boot=100)
+        d = ceiling_drift(curves)
+        self.assertEqual([x['cut'] for x in d], [50.0, 100.0])
+        self.assertAlmostEqual(d[0]['ceiling'], 650.0)
+        self.assertLess(abs(d[0]['Tg'] - full['Tg']), full['Tg_boot_sd'])
+
+    def test_a_branch_still_bending_at_the_top_drifts(self):
+        curves = [(TEMPS, still_bending(TEMPS, seed=k)) for k in range(5)]
+        full = pooled_tg(curves, n_boot=20)
+        self.assertIsNotNone(full['Tg'])
+        d = ceiling_drift(curves)
+        self.assertGreater(abs(d[0]['Tg'] - full['Tg']), 10.0)
+
+    def test_a_cut_that_loses_the_transition_says_why(self):
+        curves = [(TEMPS, smooth(TEMPS, noise=0.3, seed=k)) for k in range(3)]
+        d = ceiling_drift(curves)
+        self.assertIsNone(d[1]['Tg'])
+        self.assertIn('does not reach past the transition', d[1]['reason'])
+
+
 class TestDoTgPlots(unittest.TestCase):
     def run_tg(self, heat, cool, cooling_first=False, only=None):
         h = {'ladder': dict(LADDER, subdir='heat')}
@@ -198,6 +227,13 @@ class TestDoTgPlots(unittest.TestCase):
         self.assertEqual(result['directions'], ['cooling'])
         self.assertIsNone(result['heating'])
         self.assertNotIn('differ by', log)
+
+    def test_a_tg_that_follows_the_ladder_top_is_flagged(self):
+        result, log = self.run_tg(still_bending(TEMPS), kinked(TEMPS))
+        self.assertIn('heating Tg, whole-curve fit with the top of the ladder cut away', log)
+        self.assertIn('the heating Tg moves', log)
+        self.assertIn('raise its top', log)
+        self.assertNotIn('the cooling Tg moves', log)
 
     def test_heating_and_cooling_far_apart_is_flagged(self):
         result, log = self.run_tg(kinked(TEMPS, Tg=422.0), kinked(TEMPS, Tg=478.0))

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`plots post` checks whether a Tg has settled.**  Passing the whole-curve fit's
+  checks says a Tg is not obviously broken, not that the ladder was tall enough:
+  example 1's heating Tg moved 14 K when its 800 K ladder was cut to 650 K, kept at
+  every step.  Each kept whole-curve Tg is now refitted with the top 50 and 100 K of
+  the ladder removed, and the log reports both.  It warns when the 50 K cut moves Tg
+  by more than its error bar (or one rung, whichever is larger), or loses it
+  entirely, and says to raise the ladder's top.  The two-line Tg and the existing
+  holds are unchanged.
+
 ## [2.17.1] - 2026-11-06
 
 ### Changed

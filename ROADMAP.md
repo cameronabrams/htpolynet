@@ -1735,14 +1735,33 @@ Coverage as of the last measurement: **38.8%** overall.
     heating first.
   - **Tutorials 2 and 3 run past 700 K**, beyond where GAFF was checked for
     these chemistries; their pages say to look at the top rungs.
-  - **A kept fit is not a converged one.**  Truncating example 1's 800 K ladder to
-    700 and 650 K moves its Tg from 436.4 to 443.0 and 450.8 K while passing every
-    gate.  `plots post` could report that drift itself -- refit with the top 50 and
-    100 K removed -- so the error bar includes it.  Not done: it multiplies the fit
-    cost and nobody has decided what drift should count as failure.
-  - **Example 2 heating** needs a ceiling near 830 K; **example 6 heating** is
-    refused on 0 of 5 builds even at 700 K and needs a diagnosis, not a bigger
-    ladder.
+  - **The drift check flags three of plan C's ten kept cells**, so tutorials 4
+    and 6 and example 2 cooling may need taller ladders.  `plots post` now refits
+    with the top 50 and 100 K cut away.  On plan C's CSVs (htpolynet-repo,
+    2026-11-06):
+    - **Example 4 heating** moves +8.8 K at a 650 K top, against its 1.2 K error
+      bar.
+    - **Examples 2 and 6 cooling** give no Tg at all with 50 K removed.
+
+    Example 1 is clean, and it reproduces sweep's 443.0 K at a 700 K top.
+    Examples 3 and 5 move by about their error bars.  The warning threshold is
+    the larger of the error bar and one rung.  That choice is mine, made so a
+    noise-free ladder does not warn; Cameron has not set one.  Tutorial 4 ships
+    a 700 K top on the strength of plan C's ex4, which this now questions.
+    Proposed to sweep as an addition to its 2026-11-06 test request.
+  - **Example 2 heating** needs a ceiling near 830 K (tutorial 2 now goes to
+    850 K, untested).  **Example 6 heating** is refused on 0 of 5 builds at
+    700 K.  Diagnosis from plan C's CSVs (htpolynet-repo; offsets reproduced
+    exactly by sweep): the heating curve stays denser than cooling between 450
+    and 650 K, by +4.8 +/- 1.3 kg/m^3 at 500 K and +7.6 +/- 3.0 at 600 K (5-build
+    mean +/- s.e.m.), and rejoins it only near 700 K (+1.8 +/- 3.5).  That is a
+    heating overshoot whose rubbery branch begins at the ladder's top.  The
+    steep catch-up at 650-705 K is weaker evidence: per build, the slope
+    differences are -0.130, -0.175, -0.348, +0.004 and -0.018, so it rests on
+    three of five builds (sweep).  A 750-800 K top should give a heating Tg,
+    but that is a bet; it is item 3 of sweep's test request.  The
+    hyperbola is symmetric and cannot represent an overshoot, which may also
+    be part of why heating sits 14-30 K above cooling.
   - **Example 5's** heating Tg, 219.9 K, sits on a ladder that starts at 100 K where
     one of five builds' transitions runs below it.
 
