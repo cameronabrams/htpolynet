@@ -41,7 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`plots post` can average Tg ladders over more than one build again under
   pandas 3.**  The averaging stacked side-by-side frames with duplicate column
   names, which pandas 3 refuses; it now groups them the way the modulus analysis
-  already does.
+  already does.  The failure was an error, not a wrong number, so no Tg it
+  produced before this is affected.
 - **Tutorial 6 withdraws its cooling Tg of 478 ± 28 K**, quoted in 2.17.0 and
   2.17.1.  The same five structures re-run on wider ladders do not reproduce
   it, so the page now says the network has no reproducible Tg under this
