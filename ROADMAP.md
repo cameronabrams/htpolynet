@@ -1758,8 +1758,8 @@ Coverage as of the last measurement: **38.8%** overall.
     each.  Whether to go above 1000 K, or to report these as ceiling-limited, is
     Cameron's call.  Tutorials 3 and 4 stay at 800 K and say their Tg is an
     upper bound.
-  - **The drift is the estimator's, not the ladder's (htpolynet-repo, 2026-11-07,
-    on sweep's CSVs).**  Above about 600 K the expansivity -(1/rho) drho/dT is
+  - **Much of the drift is the estimator's (htpolynet-repo, 2026-11-07, on sweep's
+    CSVs; corrected by htpolynet-sweep the same day).**  Above about 600 K the expansivity -(1/rho) drho/dT is
     constant (ex3 heating 5.6-6.1e-4/K from 650 to 950 K), so density curves and
     a straight rubbery asymptote rotates shallower with every rung added on top.
     The same ex3 heating data give 441 K fitted in density, 472 K in ln density
@@ -1774,8 +1774,20 @@ Coverage as of the last measurement: **38.8%** overall.
     floor raised to 200 K) and does not rescue ex2, ex5 or ex6 (bootstrap s.d.
     27-104 K).  Windowed: refused on ex3 for any W under 300 K, and moves 5-12 K
     with W on ex4.  Re-running the same three ex4 builds at 800 K moved the
-    expansivity-step value 20 K, so realistic error bars are 10-15 K.  Replacing the
-    estimator changes every quoted Tg, so it waits on Cameron.
+    expansivity-step value 20 K, so realistic error bars are 10-15 K.
+    Sweep's check (htpolynet-sweep-estimator-check-20261107.md, reproduced here):
+    ln rho is straight on the rubbery branch (F-test, 650-950 K, all six builds),
+    yet the hyperbola in ln rho still drifts +22.6 +/- 2.4 K from 1000 to 800 K on
+    ex3 heating, against +30.3 +/- 1.6 in rho, so straightening the rubbery side
+    removes only a quarter of the drift; the rest comes from a transition hundreds
+    of K wide whose glassy side is not straight either (1/rho: +7.7 +/- 0.9, on two
+    builds).  And on the one comparison whose true answer is zero, the same three
+    ex4 builds run twice, the expansivity step differs by -20.0 (heating) and -23.0 K
+    (cooling) where the hyperbola differs by +4.8 and +7.1.  The step fit holds steady
+    as the top moves but not between runs, and the hyperbola is the reverse;
+    neither measures these Tgs to better than about 20 K.  If the step fit ships,
+    it goes beside the current fit with the run-to-run spread quoted.  Waits on
+    Cameron.
   - **Tutorial 2 runs to 850 K** with GAFF unchecked there for its chemistry;
     the page says to look at the top rungs.  Examples 3 and 4 were checked to
     1000 K (above) and hold.
