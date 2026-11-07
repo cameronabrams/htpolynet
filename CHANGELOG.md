@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The network-polymer examples are larger.**  Examples 2, 3, 4 and 6 have
+  doubled box sides (8 times the monomers), and example 5 has 5 times the
+  monomers (about 111,000 atoms), so that the analysis has enough material to
+  show.  Examples 0 and 1 are unchanged.  Each tutorial page notes that its
+  recorded output is from the earlier, smaller builds until it is re-recorded.
 - **Tutorial 4's Tg ladders run to 800 K.**  Its heating Tg is about 20 K lower at
   800 K than at 700 K.
 - **Tutorials 3 and 4 call their Tg an upper bound.**  On ladders run to 1000 K,

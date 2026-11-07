@@ -24,6 +24,13 @@ path now in ``htpolynet`` (``[CH:1]``, ``[NH2:1]`` etc.) sidesteps that
 entirely — the same self-contained-YAML approach used by the earlier
 examples works cleanly here too.
 
+.. note::
+
+   The configuration was enlarged in November 2026 for showcasing the analysis: it
+   doubles the box side, 8 times the monomers of the earlier one.  Recorded output, timings and
+   measured values on these pages are from the earlier, smaller builds until they are
+   re-recorded from builds at the new size.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

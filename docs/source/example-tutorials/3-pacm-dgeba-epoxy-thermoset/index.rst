@@ -21,6 +21,13 @@ amines.  Compared to :ref:`example 2 <bgs_tutorial>`, the new wrinkles are:
   oxirane gets its hydroxyl-to-carbon bond re-formed as an epoxide
   three-ring at the end of the build.
 
+.. note::
+
+   The configuration was enlarged in November 2026 for showcasing the analysis: it
+   doubles the box side, 8 times the monomers of the earlier one.  Recorded output, timings and
+   measured values on these pages are from the earlier, smaller builds until they are
+   re-recorded from builds at the new size.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

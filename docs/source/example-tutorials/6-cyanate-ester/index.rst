@@ -34,6 +34,13 @@ Two things set it apart from the earlier examples:
    conversion only roughly as its cube.  The repair stage remains available for
    reproducing builds made that way.
 
+.. note::
+
+   The configuration was enlarged in November 2026 for showcasing the analysis: it
+   doubles the box side, 8 times the monomers of the earlier one.  Recorded output, timings and
+   measured values on these pages are from the earlier, smaller builds until they are
+   re-recorded from builds at the new size.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

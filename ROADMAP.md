@@ -1799,6 +1799,17 @@ Coverage as of the last measurement: **38.8%** overall.
     one of five builds' transitions runs below it.  The tutorial's ladder now
     starts at 50 K, but heating from 50 K has not been run.
 
+- **Re-record tutorials 2-6 at the new size.**  Cameron, 2026-11-07 (relayed by
+  htpolynet-sweep, then confirmed to me directly to grow the shipped configs):
+  "Let's double the side-length of the boxes for the network-polymer examples ...
+  and then sweep them and do baseline Tg and E measurements", corrected to "make
+  ex5 5x larger, not 8x, then go".  The configs are enlarged.  The pages' recorded
+  output, timings, atom tables (ex4 and ex5 results.rst), Tg and E values and
+  "box of 360 monomers" remarks (ex6 postsim) are still from the small builds,
+  flagged by a note on each index page.  Replace them from sweep's runs at the new size,
+  then remove the notes.  Check too whether 150 cure iterations and the cure
+  timings still hold at 8x.
+
 - **grompp warns 8 times per example 2 build about two transposed hydrogens.**
   Surfaced by 2.15.0 relaying grompp's warnings (htpolynet-sweep, v2.15.0
   sweep): atoms 76/77 are H11/H12 in GMA.top and H12/H11 in the GMAS-N

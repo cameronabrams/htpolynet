@@ -25,7 +25,7 @@ The atom-mapped SMILES:
      smiles: "[N:1]#[C:2]Oc1ccc(cc1)C(C)(C)c1ccc(O[C:3]#[N:4])cc1"
      reactive_atoms: {1: N1, 2: C1, 3: C2, 4: N2}
      symmetry_equivalent_atoms: [[C1, C2], [N1, N2]]
-     count: 360
+     count: 2880
 
 * ``N1#C1`` and ``C2#N2`` are the two cyanate groups.  **Both atoms of each group are
   reactive**: around a triazine, the carbon of one group bonds to the nitrogen of the

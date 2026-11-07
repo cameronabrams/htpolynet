@@ -27,10 +27,17 @@ examples:
   backbone.  The 2:1:1 stoichiometry (125 IPD : 50 DHT : 50 THT)
   ensures every IPD's two isocyanates can find HTPB hydroxyl partners.
 
-This is the largest depot example by atom count (~56,000 atoms after
+This is the largest depot example by atom count (~111,000 atoms after
 build) and by wall-clock time (cure alone takes roughly 10 hours on a
 single CPU + GPU).  A full run is meaningful as an overnight job
 rather than an interactive demo.
+
+.. note::
+
+   The configuration was enlarged in November 2026 for showcasing the analysis: it
+   has 5 times the monomers of the earlier one.  Recorded output, timings and
+   measured values on these pages are from the earlier, smaller builds until they are
+   re-recorded from builds at the new size.
 
 .. toctree::
    :maxdepth: 2

@@ -22,7 +22,7 @@ The ``Title``, ``gromacs``, ``ambertools``, ``precure``, ``CURE``, and
      STY:
        smiles: "c1ccccc1[CH2:1][CH3:2]"
        reactive_atoms: {1: C1, 2: C2}
-       count: 150
+       count: 1200
      BPA:
        smiles: "CC(c1ccc([OH:1])cc1)(c1ccc([OH:2])cc1)C"
        reactive_atoms: {1: O1, 2: O2}
@@ -33,7 +33,7 @@ The ``Title``, ``gromacs``, ``ambertools``, ``precure``, ``CURE``, and
          - C1
          - C3
      GMA:
-       count: 75
+       count: 600
 
 Four species, three of them generated from SMILES.  Three things worth
 noting:
@@ -45,8 +45,8 @@ noting:
   consume.
 * **GMA has no ``smiles``.**  ``htpolynet`` knows GMA from the
   ``param``-stage reactions in the ``reactions`` block; it builds the
-  template by running ``B1`` and ``B2`` at startup.  GMA's ``count: 75``
-  is what actually populates the initial liquid (paired with 150 STY,
+  template by running ``B1`` and ``B2`` at startup.  GMA's ``count: 600``
+  is what actually populates the initial liquid (paired with 1200 STY,
   giving a 1:2 BisGMA:styrene ratio).
 * **``stereocenters`` is declared on HIE, not GMA.**  HIE has two chiral
   carbons (``C1`` and ``C3``).  Each GMA contains two HIE moieties, so

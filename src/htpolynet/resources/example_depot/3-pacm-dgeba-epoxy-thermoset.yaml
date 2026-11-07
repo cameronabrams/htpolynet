@@ -21,7 +21,7 @@ constituents:
   DGE:
     smiles: "CC(C)(c1ccc(OC[CH:3]([OH:5])[CH3:1])cc1)c1ccc(OC[CH:4]([OH:6])[CH3:2])cc1"
     reactive_atoms: {1: C1, 2: C2, 3: C3, 4: C4, 5: O1, 6: O2}
-    count: 200
+    count: 1600
     symmetry_equivalent_atoms: [[C1, C2], [C3, C4], [O1, O2]]
     stereocenters: [C3]
   PAC:
@@ -30,7 +30,7 @@ constituents:
     # second copies as C2 / N2.
     smiles: "C1C[CH:1](CCC1CC2CC[CH:2](CC2)[NH2:3])[NH2:4]"
     reactive_atoms: {1: C1, 2: C1, 3: N1, 4: N1}
-    count: 100
+    count: 800
     symmetry_equivalent_atoms: [[N1, N2], [C1, C2]]
     stereocenters: [C1]
 densification:

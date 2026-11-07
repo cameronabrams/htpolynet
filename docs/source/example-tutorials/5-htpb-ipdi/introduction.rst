@@ -44,7 +44,7 @@ What's chemically new here is the two-tier construction:
 What you'll see in the build
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The build is long — both because the system is large (~56,000 atoms
+The build is long — both because the system is large (~111,000 atoms
 final) and because the cure step-growth runs out of nearby reactive
 pairs much faster than in the bulk-cure examples.  On a typical
 single-CPU + single-GPU run, expect:

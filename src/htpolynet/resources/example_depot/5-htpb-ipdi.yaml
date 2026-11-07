@@ -67,13 +67,13 @@ constituents:
     reactive_atoms: {1: C1, 2: C2, 3: C3}
     stereocenters:
       - C3
-    count: 50 # 125 # (2*(DHT count) + 3*(THT count)) / 2
+    count: 250  # (2*(DHT count) + 3*(THT count)) / 2
   # --- Long-chain HTPB monomers, assembled at runtime ---
   # DHT (linear HTPB) and THT (branched HTPB) are built by the param- and
   # build-stage reactions below; htpolynet treats them as constituents
   # whose structures are derived rather than supplied.
   DHT:
-    count: 20 # 50
+    count: 100
     conformers:
       count: 6
       generator:
@@ -84,7 +84,7 @@ constituents:
           ps: 100
           pad: 10.0
   THT:
-    count: 20 # 50
+    count: 100
     conformers:
       count: 6
       generator:

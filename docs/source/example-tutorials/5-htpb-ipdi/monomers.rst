@@ -89,7 +89,7 @@ hydrated/formamide ``-N(H)-C(H)=O``:
      reactive_atoms: {1: C1, 2: C2, 3: C3}
      stereocenters:
        - C3
-     count: 125
+     count: 250
 
 * ``C1, C2`` — the two formyl carbons.  Each loses its sacrificial H
   when forming a urethane bond with a ``TBO.O1``.  The two are
@@ -102,7 +102,7 @@ hydrated/formamide ``-N(H)-C(H)=O``:
 * ``C3`` — the ring stereocenter.  Declared in ``stereocenters:``
   so the initial liquid samples both diastereomers uniformly; the
   one user-declared center expands to a 2-isomer pool that htpolynet
-  draws from when placing the 125 IPD molecules in the initial box.
+  draws from when placing the 250 IPD molecules in the initial box.
 
 DHT and THT: assembled HTPB chains
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -117,7 +117,7 @@ generation parameters:
 .. code-block:: yaml
 
    DHT:
-     count: 50
+     count: 100
      conformers:
        count: 6
        generator:
@@ -128,21 +128,21 @@ generation parameters:
            ps: 100
            pad: 10.0
    THT:
-     count: 50
+     count: 100
      conformers:
        count: 6
        ...
 
 The ``conformers`` block tells htpolynet to generate **6 thermalized
 conformers per chain** at 900 K via GROMACS MD before placement, so
-the initial liquid has chain-shape diversity rather than 50 copies of
+the initial liquid has chain-shape diversity rather than 100 copies of
 a single rigid conformer.  This is a meaningful cost (~10 min per
 chain × 100 chains × 6 conformers) but is essential for getting a
 plausible starting state of a polymer melt.
 
 Once assembled, each ``DHT`` chain has ~960 atoms and each ``THT``
-chain has ~1100 atoms; combined with 125 IPDs, the initial system
-totals roughly 55,000-56,000 atoms.
+chain has ~1100 atoms; combined with 250 IPDs, the initial system
+totals roughly 111,000 atoms.
 
 The next page walks through the :ref:`param/build/cure reactions
 <htpb_reactions>` that assemble the chains and cure the urethane
