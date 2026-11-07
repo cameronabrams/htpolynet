@@ -1758,6 +1758,24 @@ Coverage as of the last measurement: **38.8%** overall.
     each.  Whether to go above 1000 K, or to report these as ceiling-limited, is
     Cameron's call.  Tutorials 3 and 4 stay at 800 K and say their Tg is an
     upper bound.
+  - **The drift is the estimator's, not the ladder's (htpolynet-repo, 2026-11-07,
+    on sweep's CSVs).**  Above about 600 K the expansivity -(1/rho) drho/dT is
+    constant (ex3 heating 5.6-6.1e-4/K from 650 to 950 K), so density curves and
+    a straight rubbery asymptote rotates shallower with every rung added on top.
+    The same ex3 heating data give 441 K fitted in density, 472 K in ln density
+    and 508 K in specific volume.  Two replacements were tested, in scratch code only:
+    an expansivity-step fit (ln rho fitted with glassy alpha linear in T, rubbery
+    alpha constant, logistic switch; Tg = the switch's midpoint) and a hyperbola
+    in ln rho refitted on a window Tg +/- W.  Expansivity step: steady to 2-5 K as
+    the top is cut 150 K for ex1 heating (467-469), ex3 heating (515-517), ex4 heating
+    (420-421) and ex4 cooling (397), and it agrees between 800 and 1000 K ladders (ex3
+    heating 518 vs 515).  It reads 30-75 K above the density hyperbola, close to
+    the specific-volume one.  It is floor-sensitive on ex3 (+19/+34 K with the
+    floor raised to 200 K) and does not rescue ex2, ex5 or ex6 (bootstrap s.d.
+    27-104 K).  Windowed: refused on ex3 for any W under 300 K, and moves 5-12 K
+    with W on ex4.  Re-running the same three ex4 builds at 800 K moved the
+    expansivity-step value 20 K, so realistic error bars are 10-15 K.  Replacing the
+    estimator changes every quoted Tg, so it waits on Cameron.
   - **Tutorial 2 runs to 850 K** with GAFF unchecked there for its chemistry;
     the page says to look at the top rungs.  Examples 3 and 4 were checked to
     1000 K (above) and hold.
