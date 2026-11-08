@@ -826,6 +826,12 @@ Coverage as of the last measurement: **38.8%** overall.
   - *Rate.*  Six slower pulls could not resolve a rate effect (2.3 +/- 0.6 GPa fitted to
     2% at 1e-4 against 1.8 +/- 0.4 at 1e-3).  Settling it needs more replicas, not a
     slower pull.
+  - *Tutorials 2-6 now pull at 2.5e-4 for 160 ps* (Cameron, 2026-11-08, "2 ok", on
+    htpolynet-sweep's flag that E-fits R^2 was 0.02-0.11 on every example and E
+    negative on example 5).  The aim is more frames inside the fit window, not a rate
+    study.  Since the rate effect on E is unresolved, the tutorial E values are not
+    comparable one-to-one with those from the 1e-3 defaults.  If sweep's enlarged-box
+    runs show the slower pulls fit well, consider moving the defaults.
   - *Shear.*  `shear` still defaults to 1000 ps, one replica, and has no `fit_strain`,
     and `plots post` does not fit G at all -- `compute_G` is reachable only from Python.
     The same treatment applies, alongside G's open protocol question below.

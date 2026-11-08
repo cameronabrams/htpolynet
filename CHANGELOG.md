@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Tutorials 2-6 pull more slowly for Young's modulus.**  Each pull runs
+  160 ps at 0.00025 ps^-1 instead of 40 ps at 0.001, reaching the same 4 %
+  strain with four times as many frames inside the 0.1-3 % fit window, at a few
+  percent of the postsim's cost.  The `deform` defaults are unchanged.
 - **The network-polymer examples are larger.**  Examples 2, 3, 4 and 6 have
   doubled box sides (8 times the monomers), and example 5 has 5 times the
   monomers (about 111,000 atoms), so that the analysis has enough material to

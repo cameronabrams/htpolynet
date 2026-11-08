@@ -12,7 +12,7 @@ We perform the following:
 2. Equilibrate at 300 K for an additional 10 ps.
 3. Perform a temperature ladder down from 800 K to 100 K at 5 K per 100 ps, beginning with a 10 ps warmup.
 4. Perform a temperature ladder back up from 100 K to 800 K at 5 K per 100 ps, also beginning with a 10 ps warmup.
-5. Using the result of 2, perform independent uniaxial deformations along the x, y, and z directions at a strain rate of 0.001 ps\ :sup:`-1` (10\ :sup:`9` s\ :sup:`-1`) for 40 ps, to 4% strain, three times each -- the ``deform`` defaults, written out.
+5. Using the result of 2, perform independent uniaxial deformations along the x, y, and z directions at a strain rate of 0.00025 ps\ :sup:`-1` (2.5 × 10\ :sup:`8` s\ :sup:`-1`) for 160 ps, to 4% strain, three times each.  That is four times slower and longer than the ``deform`` defaults, so four times as many frames fall inside the fit window.
 
 The flowchart below illustrates:
 
@@ -66,8 +66,8 @@ In the project base directory, create the file ``postsim.yaml`` with these conte
         T: 300
         P: 1
         direction: x
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
         gromacs:
           gmx: gmx
@@ -80,8 +80,8 @@ In the project base directory, create the file ``postsim.yaml`` with these conte
         T: 300
         P: 1
         direction: y
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
         gromacs:
           gmx: gmx
@@ -94,8 +94,8 @@ In the project base directory, create the file ``postsim.yaml`` with these conte
         T: 300
         P: 1
         direction: z
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
         gromacs:
           gmx: gmx
@@ -307,8 +307,9 @@ Again, in practice, this should be the result of much longer simulations and ave
 
 .. note::
 
-   The ``deform`` settings above are the defaults since 2.15.0: a 40 ps pull, three
-   replicas per direction, and a fit over 0.1-3 % strain.  They were chosen on the
+   The ``deform`` defaults since 2.15.0 are a 40 ps pull at 0.001 ps\ :sup:`-1`, three
+   replicas per direction, and a fit over 0.1-3 % strain; the stanzas above pull four
+   times slower for four times as long to the same strain.  They were chosen on the
    example 6 network, where a 10 ps pull could not measure *E* at all; see
    :ref:`the deform options <htpolynet_postsim>`.  They have not been re-derived for
    this epoxy.

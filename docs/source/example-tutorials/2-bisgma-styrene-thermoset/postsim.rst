@@ -55,8 +55,8 @@ Create ``postsim.yaml`` in the project base directory:
         T: 300
         P: 1
         direction: x
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
     - deform:
         input_top: systems/final-results/final.top
@@ -65,8 +65,8 @@ Create ``postsim.yaml`` in the project base directory:
         T: 300
         P: 1
         direction: y
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
     - deform:
         input_top: systems/final-results/final.top
@@ -75,8 +75,8 @@ Create ``postsim.yaml`` in the project base directory:
         T: 300
         P: 1
         direction: z
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
 
 The two ladders run from 100 to 850 K, 151 rungs of 100 ps each, so

@@ -57,8 +57,8 @@ postsim.yaml
         T: 300
         P: 1
         direction: x
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
     - deform:
         input_top: systems/final-results/final.top
@@ -67,8 +67,8 @@ postsim.yaml
         T: 300
         P: 1
         direction: y
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
     - deform:
         input_top: systems/final-results/final.top
@@ -77,8 +77,8 @@ postsim.yaml
         T: 300
         P: 1
         direction: z
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
 
 The two ladders run from 50 to 500 K, 91 rungs of 100 ps each, so
@@ -158,7 +158,7 @@ Free volume
 A note on system size
 ^^^^^^^^^^^^^^^^^^^^^
 
-At 56k atoms this is by far the largest depot example.  Postsim
+At about 111k atoms this is the largest depot example.  Postsim
 times scale accordingly — expect each Tg ladder (91 temperatures ×
 100 ps each = 9.1 ns) to take several hours on a single GPU,
 and the deformation runs to take a few minutes each.  A useful

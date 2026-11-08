@@ -57,8 +57,8 @@ postsim.yaml
         T: 300
         P: 1
         direction: x
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
     - deform:
         input_top: systems/final-results/final.top
@@ -67,8 +67,8 @@ postsim.yaml
         T: 300
         P: 1
         direction: y
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
     - deform:
         input_top: systems/final-results/final.top
@@ -77,8 +77,8 @@ postsim.yaml
         T: 300
         P: 1
         direction: z
-        edot: 0.001
-        ps: 40
+        edot: 0.00025
+        ps: 160
         replicas: 3
 
 The two ladders run from 100 to 700 K, 121 rungs of 100 ps each, so
@@ -204,9 +204,11 @@ every direction, every replica -- over ``fit_strain``, and reports *E* as the me
 those fits with the standard error between them, writing ``e.png``, ``E.csv`` and the
 individual fits to ``E-fits.csv``.
 
-The ``deform`` stanzas above are the defaults, written out: each pull runs 40 ps at
-``edot: 0.001`` to 4 % strain, *E* is fitted over 0.1-3 %, and each direction is pulled
-three times, nine pulls in all.  Those defaults were chosen on this network.  Fifteen
+Each pull above runs 160 ps at ``edot: 0.00025`` to 4 % strain, *E* is fitted over
+0.1-3 %, and each direction is pulled three times, nine pulls in all.  The ``deform``
+defaults reach the same strain four times faster (40 ps at ``edot: 0.001``); the
+tutorial pulls more slowly so that four times as many frames fall inside the fit
+window, at a few percent of the postsim's cost.  The defaults were chosen on this network.  Fifteen
 pulls to 10 % strain -- five along each axis -- gave:
 
 .. list-table::
