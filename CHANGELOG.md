@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`CURE.controls.min_bond_fraction_per_iteration`**, the pairwise cure's
+  per-iteration floor as a fraction of the bonds at 100 % conversion; the larger of
+  it and `min_bonds_per_iteration` applies.  It defaults to 0, which leaves cures
+  exactly as they were: the enlarged examples 2-5 reached their targets without it.
 - **`plots post` checks whether a Tg has settled.**  Passing the whole-curve fit's
   checks says a Tg is not obviously broken, not that the ladder was tall enough:
   example 1's heating Tg moved 14 K when its 800 K ladder was cut to 650 K, kept at
@@ -42,6 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The ring cure widens its search in large boxes.**  It widens only when an
+  iteration finds fewer than `min_rings_per_iteration` rings, a fixed count of 4.
+  A box 8 times larger finds 8 times the candidates at the same concentration, so it
+  never dropped below 4, never searched past 0.5 nm, and never formed the
+  macrocycles a cyanate ester needs beyond 75 % conversion.  Example 6 at 2880
+  monomers stalled at about 0.75 against a 0.97 target.  The new
+  `min_ring_fraction_per_iteration` (default 0.0167 of the rings the system could
+  form) raises the floor with system size: 4 at the old 360 monomers, as before,
+  and 32 at 2880.
 - **`plots post` no longer discards a finished Tg ladder because another one
   crashed.**  If a build's heating ladder died, the missing file aborted the whole
   analysis and no ladder's data was written, including the complete cooling

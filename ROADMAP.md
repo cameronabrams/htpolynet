@@ -1815,6 +1815,10 @@ Coverage as of the last measurement: **38.8%** overall.
   flagged by a note on each index page.  Replace them from sweep's runs at the new size,
   then remove the notes.  Check too whether 150 cure iterations and the cure
   timings still hold at 8x.
+  Example 6's config carries `min_rings_per_iteration: 32` because sweep's runs
+  use the released 2.17.1, which lacks `min_ring_fraction_per_iteration`.  Once a
+  release with it is out, the line is redundant (the default also gives 32) and can
+  be removed with its comment.
 
 - **grompp warns 8 times per example 2 build about two transposed hydrogens.**
   Surfaced by 2.15.0 relaying grompp's warnings (htpolynet-sweep, v2.15.0

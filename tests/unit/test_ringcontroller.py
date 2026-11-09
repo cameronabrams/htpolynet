@@ -188,6 +188,31 @@ class TestWideningWithinAnIteration(unittest.TestCase):
         c.setup(total_groups=300, max_radius=1.0)
         self.assertEqual(c.ring_floor(), 2)
 
+    def test_the_floor_grows_with_the_box(self):
+        """Example 6 at 8x stalled at 0.75: 2880 monomers never dropped below a floor of 4."""
+        small = RingController({'desired_conversion': 0.97})
+        small.setup(total_groups=720, max_radius=1.0)     # 360 dicyanates
+        big = RingController({'desired_conversion': 0.97})
+        big.setup(total_groups=5760, max_radius=1.0)      # 2880
+        self.assertEqual(small.ring_floor(), 4)
+        self.assertEqual(big.ring_floor(), 32)
+
+    def test_a_larger_count_still_wins(self):
+        c = RingController({'min_rings_per_iteration': 50, 'desired_conversion': 0.97})
+        c.setup(total_groups=5760, max_radius=1.0)
+        self.assertEqual(c.ring_floor(), 50)
+
+    def test_a_zero_fraction_is_the_old_fixed_floor(self):
+        c = RingController({'min_ring_fraction_per_iteration': 0.0, 'desired_conversion': 0.97})
+        c.setup(total_groups=5760, max_radius=1.0)
+        self.assertEqual(c.ring_floor(), 4)
+
+    def test_the_scaled_floor_is_still_clamped_near_the_target(self):
+        c = RingController({'desired_conversion': 0.97})
+        c.setup(total_groups=5760, max_radius=1.0)
+        c.state.groups_consumed = 5582     # target is 5587.2 groups: two rings short
+        self.assertEqual(c.ring_floor(), 2)
+
     def test_the_floor_is_never_zero(self):
         c = RingController({'desired_conversion': 0.5})
         c.setup(total_groups=300, max_radius=1.0)

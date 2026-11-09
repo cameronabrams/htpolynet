@@ -91,6 +91,7 @@ ring_cure:
   radial_increment: 0.05    # nm; widen the search by this when an iteration is short of rings
   desired_conversion: 0.97  # fraction of cyanate GROUPS consumed, three per ring
   max_iterations: 150
+  min_rings_per_iteration: 32  # 8 x the default 4, for 8 x the box; see below
   closure:
     nstages: 6              # restraint stages that pull each candidate ring shut
   # Every other ring_cure setting is left at its default.  Two are worth knowing:
@@ -100,6 +101,11 @@ ring_cure:
   #   so it is refused rather than repaired.  `htpolynet piercings` counts any that remain.
   # Each iteration then relaxes at 600 K and re-equilibrates at 300 K and 1 bar, as CURE
   # does, and the cure settles the network once on exit.
+  #
+  # The ring floor must grow with the box.  At a fixed floor of 4 this box finds more
+  # candidates than that at every iteration, so the search never widens past 0.5 nm and
+  # the cure stalls at about 0.75 (htpolynet-sweep, 2026-11-09).  From the next release
+  # on, min_ring_fraction_per_iteration scales the floor by default and gives 32 here.
   #
   # Fang & Shimp's end-group arithmetic caps acyclic growth at 75% cyanate conversion,
   # so a network that reaches 0.97 necessarily contains macrocycles.  That is the real

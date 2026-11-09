@@ -470,6 +470,14 @@ attributes:
               `max_conversion_per_iteration`, so a large value never stalls a
               build.  1 reproduces the un-batched legacy behavior.
             default: 10
+          - name: min_bond_fraction_per_iteration
+            type: float
+            text: >
+              The same floor as a fraction of the bonds at 100% conversion; the larger
+              of the two applies.  A count does not grow with the system, so in a large
+              box the radius may never widen; this one does.  0 (the default) leaves
+              min_bonds_per_iteration in charge.
+            default: 0.0
           - name: max_iterations
             type: int
             text: Absolute maximum number of cure iterations.
@@ -814,6 +822,14 @@ attributes:
           min_bonds_per_iteration, counted in rings.  Clamped against the rings still
           needed to reach desired_conversion.
         default: 4
+      - name: min_ring_fraction_per_iteration
+        type: float
+        text: >
+          The same floor as a fraction of the rings the whole system could form; the
+          larger of the two applies.  A count does not grow with the box, and a large
+          box that never drops below it never widens and never reaches the macrocycles.
+          The default gives 4 at 360 dicyanate monomers and 32 at 2880.
+        default: 0.0167
       - name: reject_threaded_rings
         type: bool
         text: >

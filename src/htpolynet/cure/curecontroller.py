@@ -296,6 +296,7 @@ class CureController:
             'desired_conversion': 0.5,
             'min_allowable_bondcycle_length':-1, # not set
             'min_bonds_per_iteration': 10, # grow radius until >= this many bonds (or max radius)
+            'min_bond_fraction_per_iteration': 0.0, # ...or this fraction of 100% conversion, if larger
             'completion_bias': False, # rank bond candidates by B-side completion before distance
             'ncpu' : os.cpu_count()
         },
@@ -355,6 +356,21 @@ class CureController:
         d=self.dicts['drag']
         if (d['nstages']>0 or d['increment']>0.0) and d['limit']>0.0:
             self.dragging_enabled=True
+
+    def bond_floor(self,bond_target,bond_limit):
+        """How many bonds an iteration should find before it stops widening the radius.
+
+        The larger of ``min_bonds_per_iteration`` and ``min_bond_fraction_per_iteration``
+        of the bonds at 100% conversion.  A count alone does not scale with the box: a
+        larger box finds more candidates at the same concentration and may never widen.
+        The fraction defaults to 0, which leaves the count in charge, as before.  The floor
+        is clamped against the bonds still needed (``bond_target``) and the most the
+        iteration will accept (``bond_limit``), and is never below 1.
+        """
+        d=self.dicts['controls']
+        base=max(int(d.get('min_bonds_per_iteration',1)),
+                 int(np.floor(float(d.get('min_bond_fraction_per_iteration',0.0))*self.state.max_nxlinkbonds+1.e-9)))
+        return max(1,min(base,bond_target,bond_limit))
 
     def setup(self,max_nxlinkbonds=0,desired_nxlinkbonds=0,max_search_radius=0.0):
         """Sets up this CureController object.
@@ -497,7 +513,7 @@ class CureController:
         # possible) and bond_limit (don't demand more than we'd accept).
         # If we hit max radius with fewer than this many but at least one,
         # we still proceed -- the post-loop branch handles that.
-        min_floor=max(1,min(int(d.get('min_bonds_per_iteration',1)),bond_target,bond_limit))
+        min_floor=self.bond_floor(bond_target,bond_limit)
         logger.debug(f'Iteration will grow radius until >= {min_floor} bonds (or max radius)')
         nbdf=pd.DataFrame()
         nbonds=0

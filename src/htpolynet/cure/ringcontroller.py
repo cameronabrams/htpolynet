@@ -111,6 +111,7 @@ class RingController:
         'desired_conversion': 0.95,
         'max_rings_per_iteration': 0,
         'min_rings_per_iteration': 4,
+        'min_ring_fraction_per_iteration': 0.0167,
         'reject_threaded_rings': True,
         'prefilter_threaded_candidates': False,
         'reject_new_threading': True,
@@ -186,12 +187,23 @@ class RingController:
         150 bisphenol A dicyanates, that is conversion 0.40 in eight iterations rather
         than the 0.60 asked for.
 
+        The floor is the larger of ``min_rings_per_iteration`` and
+        ``min_ring_fraction_per_iteration`` of the rings the whole system could form.  A
+        count alone does not scale with the box: at a given concentration of unreacted
+        groups a box 8 times larger finds 8 times the candidates, never drops below a floor
+        of 4, never widens, and so never reaches the macrocycles a cyanate ester needs
+        beyond 75 % conversion.  Example 6 at 2880 monomers stalled at 0.75 that way
+        (htpolynet-sweep, 2026-11-09).  The default fraction, 0.0167, gives 4 at the 360
+        monomers the floor of 4 was set on, and 32 at 2880.
+
         The floor is clamped against the rings still needed to reach the target, so the
         last iteration does not widen in search of rings it would decline to form.
         """
         remaining = self.dicts['desired_conversion'] * self.state.total_groups - self.state.groups_consumed
         needed = max(1, int(np.ceil(remaining / 3.0)))
-        floor = min(int(self.dicts['min_rings_per_iteration']), needed)
+        scaled = int(np.floor(float(self.dicts.get('min_ring_fraction_per_iteration', 0.0))
+                              * self.state.total_groups / 3.0 + 1.e-9))
+        floor = min(max(int(self.dicts['min_rings_per_iteration']), scaled), needed)
         if self.dicts['max_rings_per_iteration']:
             floor = min(floor, int(self.dicts['max_rings_per_iteration']))
         return max(1, floor)
