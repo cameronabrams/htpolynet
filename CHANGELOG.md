@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Monomers can be written as they really are.**  A constituent's `activate`
+  key names the bonds the cure consumes, as pairs of SMILES atom-map labels, and
+  htpolynet derives the active form from the real monomer: styrene
+  `c1ccccc1[CH:1]=[CH2:2]` with `activate: [[1, 2]]` becomes ethylbenzene, an
+  epoxide opens to an alcohol plus a methyl, an isocyanate becomes a formamide.
+  Each named bond loses one order (a ring single bond is removed) and each of its
+  atoms gains the sacrificial H a cure reaction deletes.  Written in the same atom
+  order, the real form gives the same mol2, byte for byte, as the hand-drawn active
+  form; this is tested for every active-form monomer the examples ship.  For each
+  opened bond whose atoms are named in `reactive_atoms`, htpolynet also writes the
+  `cap` reaction that restores it on groups left unreacted, unless the config has
+  its own cap on those atoms or sets `cap_activated: false`.  Configs that spell
+  out the active form work as before.
 - **`CURE.controls.min_bond_fraction_per_iteration`**, the pairwise cure's
   per-iteration floor as a fraction of the bonds at 100 % conversion; the larger of
   it and `min_bonds_per_iteration` applies.  It defaults to 0, which leaves cures

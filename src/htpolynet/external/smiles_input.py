@@ -60,10 +60,14 @@ def materialize_smiles_inputs(constituents, inputs_dir='lib/molecules/inputs'):
 def _generate(name, spec, output_path):
     """Dispatch to RDKit or obabel based on spec contents."""
     smiles = spec['smiles']
+    activate = spec.get('activate') or []
     rdkit_path_requested = _has_atom_mapping(smiles) and 'reactive_atoms' in spec
+    if activate and not rdkit_path_requested:
+        raise ValueError(f'{name}: `activate` needs a SMILES with `[*:N]` atom-map labels and a '
+                         f'`reactive_atoms` map; it names the bonds to open by their labels')
     if rdkit_path_requested:
         try:
-            _rdkit_path(name, smiles, spec['reactive_atoms'], output_path)
+            _rdkit_path(name, smiles, spec['reactive_atoms'], output_path, activate=activate)
             return
         except ImportError:
             if 'rename_atoms' not in spec:
@@ -113,14 +117,142 @@ def _obabel_path(name, smiles, rename_atoms, output_path):
     logger.info(f'{name}: wrote {output_path}')
 
 
-def _rdkit_path(name, smiles, reactive_atoms, output_path):
+def _activation_pairs(name, activate):
+    """Normalizes a constituent's ``activate`` list to (label, label) tuples."""
+    pairs = []
+    for entry in activate or []:
+        if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+            raise ValueError(f'{name}: each `activate` entry must be a pair of atom-map labels, '
+                             f'e.g. [1, 2]; got {entry!r}')
+        a, b = (int(x) for x in entry)
+        if a == b:
+            raise ValueError(f'{name}: `activate` entry {entry!r} pairs an atom with itself')
+        pairs.append((a, b))
+    return pairs
+
+
+def activated_bonds(name, smiles, activate):
+    """Reports the bond each ``activate`` pair opens, as written in the SMILES.
+
+    Args:
+        name (str): constituent name, for messages
+        smiles (str): the constituent's SMILES, in its real (inactive) form
+        activate (list): pairs of atom-map labels
+
+    Returns:
+        list: (label_a, label_b, order) with order the bond's order in ``smiles``
+            (1, 2 or 3) -- the order a cap reaction restores
+    """
+    from rdkit import Chem
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        raise ValueError(f'{name}: RDKit could not parse SMILES {smiles!r}')
+    m2i = {a.GetAtomMapNum(): a.GetIdx() for a in mol.GetAtoms() if a.GetAtomMapNum()}
+    out = []
+    for a, b in _activation_pairs(name, activate):
+        missing = [x for x in (a, b) if x not in m2i]
+        if missing:
+            raise ValueError(f'{name}: `activate` names atom-map label(s) {missing} that are not in '
+                             f'its SMILES {smiles!r}')
+        bond = mol.GetBondBetweenAtoms(m2i[a], m2i[b])
+        if bond is None:
+            raise ValueError(f'{name}: `activate` pair [{a}, {b}] is not bonded in its SMILES; '
+                             f'only an existing bond can be opened')
+        if bond.GetIsAromatic():
+            raise ValueError(f'{name}: `activate` pair [{a}, {b}] is an aromatic bond, which '
+                             f'cannot be opened one bond order at a time')
+        order = bond.GetBondTypeAsDouble()
+        if order not in (1.0, 2.0, 3.0):
+            raise ValueError(f'{name}: `activate` pair [{a}, {b}] has bond order {order}; '
+                             f'only single, double and triple bonds can be opened')
+        if order == 1.0 and not bond.IsInRing():
+            raise ValueError(f'{name}: `activate` pair [{a}, {b}] is an acyclic single bond; '
+                             f'opening it would split the molecule in two')
+        out.append((a, b, int(order)))
+    return out
+
+
+def activate_mol(name, smiles, activate):
+    """Converts a monomer's real SMILES into its active form.
+
+    Each pair of atom-map labels names a bond that the cure consumes.  The bond
+    loses one order -- a double bond becomes single, a triple double, and a
+    single bond in a ring is removed, opening the ring -- and each of its two
+    atoms gains one hydrogen.  That hydrogen is the sacrificial H a cure
+    reaction deletes, so the result is the valence-conserving active form
+    htpolynet parameterizes: vinyl to ethyl, epoxide to alcohol plus methyl,
+    isocyanate to formamide.
+
+    The result keeps the input's atom order and atom-map labels, so the
+    structure generated from it is the one a hand-drawn active SMILES written
+    in that order gives.  It is a molecule, not a SMILES, because a SMILES
+    cannot always keep that order: once an epoxide opens, the order a SMILES
+    must follow is set by the new bond graph.  The edited molecule is written
+    out and parsed again rather than used as edited, because RDKit's ring
+    perception of an edited molecule differs from that of a parsed one and
+    embeds it ~1e-4 nm away.
+
+    Args:
+        name (str): constituent name, for messages
+        smiles (str): real (inactive) SMILES with ``[*:N]`` labels
+        activate (list): pairs of atom-map labels
+
+    Returns:
+        rdkit.Chem.Mol: the active form, without explicit hydrogens
+    """
+    from rdkit import Chem
+    bonds = activated_bonds(name, smiles, activate)
+    mol = Chem.MolFromSmiles(smiles)
+    m2i = {a.GetAtomMapNum(): a.GetIdx() for a in mol.GetAtoms() if a.GetAtomMapNum()}
+    rw = Chem.RWMol(mol)
+    lower = {2: Chem.BondType.SINGLE, 3: Chem.BondType.DOUBLE}
+    for a, b, _ in bonds:
+        i, j = m2i[a], m2i[b]
+        bond = rw.GetBondBetweenAtoms(i, j)
+        if bond is None:
+            raise ValueError(f'{name}: `activate` opens the bond [{a}, {b}] more than once')
+        order = int(bond.GetBondTypeAsDouble())
+        if order == 1:
+            rw.RemoveBond(i, j)
+        else:
+            bond.SetBondType(lower[order])
+            bond.SetStereo(Chem.BondStereo.STEREONONE)
+        for k in (i, j):
+            atom = rw.GetAtomWithIdx(k)
+            nH = atom.GetTotalNumHs()
+            atom.SetNoImplicit(True)
+            atom.SetNumExplicitHs(nH + 1)
+    edited = rw.GetMol()
+    Chem.SanitizeMol(edited)
+    text = Chem.MolToSmiles(edited, canonical=False)
+    written = [int(x) for x in edited.GetProp('_smilesAtomOutputOrder').strip('[], ').split(',') if x.strip()]
+    reparsed = Chem.MolFromSmiles(text)
+    # reparsed atom k is edited atom written[k]; put every atom back where the input had it
+    return Chem.RenumberAtoms(reparsed, [written.index(k) for k in range(edited.GetNumAtoms())])
+
+
+def activate_smiles(name, smiles, activate):
+    """The active form as a SMILES, for messages and checks; see :func:`activate_mol`.
+
+    Its atom order can differ from the input's, so build structures from
+    :func:`activate_mol`, not from this string.
+    """
+    from rdkit import Chem
+    return Chem.MolToSmiles(activate_mol(name, smiles, activate), canonical=False)
+
+
+def _rdkit_path(name, smiles, reactive_atoms, output_path, activate=()):
     """Use RDKit to parse, embed, and write a mol2 with mapped atoms renamed."""
     from rdkit import Chem
     from rdkit.Chem import AllChem
 
     logger.info(f'{name}: generating mol2 from SMILES via RDKit')
     _t0 = time.monotonic()
-    mol = Chem.MolFromSmiles(smiles)
+    if activate:
+        mol = activate_mol(name, smiles, activate)
+        logger.info(f'{name}: active form of {smiles} is {Chem.MolToSmiles(mol, canonical=False)}')
+    else:
+        mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         raise ValueError(f'{name}: RDKit could not parse SMILES {smiles!r}')
 
@@ -262,3 +394,80 @@ def _rename_by_index(mol2_text, rename_atoms):
                 line = '  ' + '  '.join(parts)
         out.append(line)
     return '\n'.join(out) + '\n'
+
+def activation_cap_reactions(constituents, reaction_specs):
+    """Writes the cap reaction that restores each bond ``activate`` opened.
+
+    After the cure, a group that never reacted is still in its active form: a
+    vinyl is an ethyl, an epoxide an alcohol plus a methyl.  A cap reaction
+    re-forms the opened bond at its original order and deletes the two
+    sacrificial hydrogens, restoring the real group.  Until now every config
+    wrote those reactions by hand; for a constituent declared with ``activate``
+    they follow from the declaration, so htpolynet writes them.
+
+    One reaction is written per opened bond, unless the config already has a
+    cap reaction on that constituent joining the same two atoms (a hand-written
+    one wins), the constituent sets ``cap_activated: false``, or one of the two
+    atoms has no name in ``reactive_atoms`` (a reaction can only name named
+    atoms; that bond is left in its active form, with a log line saying so).
+
+    Args:
+        constituents (dict): {name: spec} from the parsed config
+        reaction_specs (list): the config's reaction dicts
+
+    Returns:
+        list: new reaction dicts, in the form the config's ``reactions`` takes
+    """
+    existing = set()
+    for r in reaction_specs:
+        if str(r.get('stage', '')) != 'cap':
+            continue
+        reactants = list((r.get('reactants') or {}).values())
+        if len(reactants) != 1:
+            continue
+        names = frozenset(a.get('atom') for a in (r.get('atoms') or {}).values())
+        existing.add((reactants[0], names))
+    taken = {r.get('product') for r in reaction_specs} | set(constituents)
+    out = []
+    for mname, spec in constituents.items():
+        if not isinstance(spec, dict) or not spec.get('activate') or not spec.get('smiles'):
+            continue
+        if spec.get('cap_activated', True) is False:
+            continue
+        labels = {int(k): str(v) for k, v in (spec.get('reactive_atoms') or {}).items()}
+        bonds = activated_bonds(mname, spec['smiles'], spec['activate'])
+        sites = {}
+        for a, b, _ in bonds:
+            for x in (a, b):
+                sites[x] = sites.get(x, 0) + 1
+        for a, b, order in bonds:
+            unnamed = [x for x in (a, b) if x not in labels]
+            if unnamed:
+                logger.info(f'{mname}: no cap reaction restores the bond [{a}, {b}] that `activate` '
+                            f'opened, because label(s) {unnamed} have no name in `reactive_atoms`; '
+                            f'unreacted, it stays in its active form')
+                continue
+            A, B = labels[a], labels[b]
+            key = (mname, frozenset((A, B)))
+            if key in existing:
+                continue
+            existing.add(key)
+            product = f'{mname}-capped-{A}-{B}'
+            if product in taken:
+                raise ValueError(f'{mname}: the cap reaction for `activate` pair [{a}, {b}] would make '
+                                 f'{product}, a name already in use; rename it or write that cap '
+                                 f'reaction by hand')
+            taken.add(product)
+            out.append({
+                'name': f'{mname}-restore-{A}-{B}',
+                'stage': 'cap',
+                'reactants': {1: mname},
+                'product': product,
+                'probability': 1.0,
+                'atoms': {'A': {'reactant': 1, 'resid': 1, 'atom': A, 'z': sites[a]},
+                          'B': {'reactant': 1, 'resid': 1, 'atom': B, 'z': sites[b]}},
+                'bonds': [{'atoms': ['A', 'B'], 'order': order}],
+            })
+            logger.debug(f'{mname}: wrote cap reaction {out[-1]["name"]} restoring {A}-{B} '
+                         f'at order {order}')
+    return out

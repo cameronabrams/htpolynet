@@ -98,6 +98,8 @@ In this section we show all subdirectives for each of the five main directives i
     ``smiles``                               string             (optional) SMILES for in-config monomer generation; htpolynet runs ``obabel`` (or RDKit) to materialize ``lib/molecules/inputs/<NAME>.mol2`` before parameterization
     ``rename_atoms``                         dict               (optional) ``{1-based-mol2-index: atom-name}`` map applied after obabel writes the mol2 (obabel path; pairs with ``smiles``)
     ``reactive_atoms``                       dict               (optional) ``{smiles-atom-map-label: atom-name}`` map (RDKit path; pairs with a ``smiles`` that uses ``[*:N]`` atom-mapping tokens).  ``rdkit`` is a required runtime dependency and is pulled in by any normal ``htpolynet`` install
+    ``activate``                             list               (optional) bonds the cure consumes, as pairs of atom-map labels, so ``smiles`` can describe the real monomer; htpolynet derives the active form (RDKit path).  See :ref:`writing the real monomer <real_form_smiles>`
+    ``cap_activated``                        bool               (optional) write the ``cap`` reactions that restore the bonds ``activate`` opened on groups left unreacted (true)
     ``frcmod``                               string             (optional) path, relative to the configuration file, to an Amber ``frcmod`` of parameter overrides for this molecule; see below
     =====================================    =================  =====================
 

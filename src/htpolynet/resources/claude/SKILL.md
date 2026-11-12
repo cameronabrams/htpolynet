@@ -14,7 +14,8 @@ Gromacs topology and coordinate pair plus the analysis to characterize it.
 
 1. Fetch the bundled example closest in **reaction topology** and run it
    unmodified once.
-2. Edit it into your system. Describe monomers in their **active form**.
+2. Edit it into your system. Give htpolynet each monomer's **active form**,
+   or the real monomer plus `activate` so htpolynet derives it.
 3. `htpolynet input-check <cfg>` — fast, touches nothing, reports the atom
    count you size a core request against.
 4. `htpolynet run <cfg>`, in the background, or via a batch script.
@@ -40,26 +41,37 @@ an example that shares a functional group but polymerizes by chain growth.
 Run it unmodified first. That confirms the toolchain and gives you a
 known-good log to diff against when your own config misbehaves.
 
-## Monomers are described in their active form
+## htpolynet cures the active form of a monomer
 
 The most common conceptual error, and it produces a build that completes and
 is wrong rather than one that fails.
 
 htpolynet conserves valence: when two atoms bond, each gives up a
-**sacrificial hydrogen**. So you do not describe the textbook monomer — you
-describe the monomer with its reactive sites already saturated. Styrene is
-described as ethylbenzene.
+**sacrificial hydrogen**. So it builds from the monomer with its reactive
+sites already saturated: styrene becomes ethylbenzene, an epoxide an alcohol
+plus a methyl, an isocyanate a formamide. Amines and alcohols are already in
+that form, and an addition that loses no atom (cyclotrimerization, example 6,
+`sacrificial_h: false`) needs none.
 
 Prefer SMILES written directly into `constituents` with RDKit atom-map
 labels, which name reactive atoms by chemical identity rather than by file
-index:
+index. Write the real monomer and name the bonds the cure consumes in
+`activate`; htpolynet derives the active form and writes the `cap` reactions
+that restore groups left unreacted:
 
 ```yaml
 constituents:
   STY:
-    smiles: "c1ccccc1[CH2:1][CH3:2]"
+    smiles: "c1ccccc1[CH:1]=[CH2:2]"   # styrene, as it is
     reactive_atoms: {1: C1, 2: C2}
+    activate: [[1, 2]]                 # the C=C the cure consumes
 ```
+
+For an epoxide, pair the ring O with the carbon that is attacked:
+`[CH:2]1[O:3][CH2:1]1` with `activate: [[3, 1]]`. The bundled examples still
+spell the active form out (`c1ccccc1[CH2:1][CH3:2]`), which also works; a
+generated cap reaction is skipped when the config has its own cap on the same
+atoms.
 
 In SMILES bracket atoms the hydrogen count is explicit: `[C:1]` means *zero*
 implicit hydrogens. For an sp³ carbon you almost always want `[CH2:1]` or

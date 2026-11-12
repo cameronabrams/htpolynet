@@ -123,7 +123,12 @@ class Configuration:
         self.title = self.basedict.get('Title', 'No title provided')
         self.ncpu = self.basedict.get('ncpu', os.cpu_count())
         self.constituents = self.basedict.get('constituents', {})
-        self.reaction_specs = self.basedict.get('reactions', [])
+        self.reaction_specs = list(self.basedict.get('reactions', []) or [])
+        if any(isinstance(v, dict) and v.get('activate') for v in self.constituents.values()):
+            # a constituent given in its real form gets the cap reactions that undo its
+            # activation written for it; see external.smiles_input.activate_smiles
+            from ..external.smiles_input import activation_cap_reactions
+            self.reaction_specs += activation_cap_reactions(self.constituents, self.reaction_specs)
         self.gromacs = self.basedict.get('gromacs', {})
         self.densification = self.basedict.get('densification', {})
         self.precure = self.basedict.get('precure', {})

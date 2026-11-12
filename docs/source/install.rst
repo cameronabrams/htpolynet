@@ -266,7 +266,7 @@ Driving htpolynet with Claude Code
 
 ``htpolynet`` ships a skill for `Claude Code
 <https://claude.com/claude-code>`_ that teaches the agent how to use it:
-start from the nearest example, describe monomers in their active form,
+start from the nearest example, describe monomers in their real or active form,
 check a configuration before spending compute, and recognize the failure
 modes that are known rather than mysterious.  Install it once, after
 installing the package:

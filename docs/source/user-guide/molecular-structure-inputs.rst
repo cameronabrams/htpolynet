@@ -18,7 +18,9 @@ For ``htpolynet``, however, styrene's **active** form is ethylbenzene:
 
 .. image:: pics/STY.png
 
-So the SMILES (or ``mol2``) you give to ``htpolynet`` for styrene must describe ethylbenzene, with the two reactive carbons saturated and carrying the sacrificial hydrogens that will be removed when the inter-monomer bond forms.
+``htpolynet`` parameterizes and cures the active form.  You can describe it yourself -- a ``mol2`` for styrene, or a SMILES, that is really ethylbenzene -- or, on the in-config SMILES path, write the real monomer and let ``htpolynet`` derive the active form (see :ref:`writing the real monomer <real_form_smiles>` below).
+
+Not every chemistry needs an active form.  An addition that forms its bonds without losing any atom, such as the cyclotrimerization of cyanate esters into triazine rings (:ref:`tutorial 6 <example_tutorials>`), takes its monomers as they really are, with ``sacrificial_h: false`` on its bonds.  Amines and alcohols are already in their real form: the H they lose is a real one.
 
 In-config SMILES (recommended)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,6 +39,42 @@ The simplest way to supply a monomer is to write its SMILES string directly into
   .. warning::
 
      SMILES bracket atoms (``[...]``) take an **explicit** hydrogen count.  ``[C:1]`` means *zero implicit H* — the carbon stays at its explicit valence.  For an sp³ carbon you almost always want ``[CH:1]`` (one implicit H) or ``[CH2:1]`` / ``[CH3:1]`` as appropriate.  Mis-specified hydrogen counts typically show up as antechamber typing a saturated carbon as ``c2`` instead of ``c3``, propagating into a missing GAFF angle parameter in ``tleap``.
+
+  .. _real_form_smiles:
+
+  **Writing the real monomer.**  Add ``activate``, a list of the bonds the cure consumes, each as a pair of atom-map labels, and write the SMILES as the monomer really is::
+
+    constituents:
+      STY:
+        smiles: "c1ccccc1[CH:1]=[CH2:2]"     # styrene
+        reactive_atoms: {1: C1, 2: C2}
+        activate: [[1, 2]]
+
+  Each named bond loses one order (a single bond in a ring is removed, opening the ring) and each of its two atoms gains one hydrogen -- the sacrificial H a cure reaction deletes.  That turns the SMILES into the active form before any structure is generated.  The usual cases:
+
+  .. list-table::
+     :header-rows: 1
+
+     * - Group
+       - Real form
+       - ``activate``
+       - Active form
+     * - vinyl
+       - ``[CH:1]=[CH2:2]``
+       - ``[[1, 2]]``
+       - ethyl, ``[CH2:1][CH3:2]``
+     * - isocyanate
+       - ``[N:3]=[C:1]=O``
+       - ``[[3, 1]]``
+       - formamide, ``[NH:3][CH:1]=O``
+     * - epoxide
+       - ``[CH:2]1[O:3][CH2:1]1``
+       - ``[[3, 1]]``
+       - alcohol plus methyl, ``[CH:2]([OH:3])[CH3:1]``
+
+  For an epoxide, pair the ring O with the carbon the nucleophile attacks.  A label used only in ``activate``, like the isocyanate N above, need not appear in ``reactive_atoms``; that atom keeps its element name.  Written in the same atom order, the real form gives exactly the structure the hand-drawn active form does.
+
+  A group the cure leaves unreacted is still in its active form at the end -- an ethyl, not a vinyl.  For each bond ``activate`` opens, ``htpolynet`` therefore writes the ``cap`` reaction that restores it (named ``<NAME>-restore-<A>-<B>``, making ``<NAME>-capped-<A>-<B>``), so you need not write one.  It does so only when both atoms are named in ``reactive_atoms``.  A ``cap`` reaction you write yourself on the same constituent and atoms replaces the generated one, and ``cap_activated: false`` turns them off for that constituent.
 
 * **OpenBabel index path** (no Python extras).  Provide ``smiles`` and a ``rename_atoms`` map keyed by 1-based mol2 atom index::
 

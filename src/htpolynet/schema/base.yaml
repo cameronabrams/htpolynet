@@ -168,6 +168,31 @@ attributes:
           `required: false` because `external/smiles_input.py:60` selects the
           RDKit path on this key being *present*; an injected empty map would
           take that path with nothing in it.
+      - name: activate
+        type: list
+        required: false
+        text: >
+          Lets the `smiles` describe the monomer as it really is -- styrene,
+          not ethylbenzene -- by naming the bonds the cure consumes, as pairs
+          of atom-map labels: `[[1, 2]]` for a vinyl drawn `[CH:1]=[CH2:2]`.
+          Each named bond loses one order (a ring single bond is removed,
+          opening the ring) and each of its atoms gains the sacrificial H a
+          cure reaction deletes, which is the active form htpolynet needs.
+          Vinyl `[C:1]=[C:2]`, isocyanate `[N:1]=[C:2]=O` and epoxide
+          `[C:1]1[O:2]C1` (pair the attacked carbon with the ring O) are the
+          usual cases.  A label used here need not appear in
+          `reactive_atoms`.  Needs the RDKit path (atom-mapped `smiles` plus
+          `reactive_atoms`).
+      - name: cap_activated
+        type: bool
+        text: >
+          Whether htpolynet writes, for each bond `activate` opens, the cap
+          reaction that restores it on groups the cure left unreacted (C=C,
+          N=C, the epoxide ring).  Only bonds whose two atoms are both named
+          in `reactive_atoms` get one, and a hand-written cap reaction on the
+          same constituent and atoms replaces it.  Set false to leave every
+          unreacted group in its active form.
+        default: true
       - name: rename_atoms
         type: dict
         value_type: str

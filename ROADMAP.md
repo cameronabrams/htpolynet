@@ -2112,6 +2112,24 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Example depot
 
+- **Switch the examples and tutorials to real-form monomers (`activate`).**
+  Since `activate` shipped, no example needs its monomers drawn in the active
+  form, but all of them still are, and tutorials 0-5 teach it ("Styrene is
+  described as ethylbenzene").  Cameron chose (2026-11-12) to make the active
+  form never required of the user; switching the examples is what shows it.
+  `tests/unit/test_activate.py` already holds the real SMILES for STY, HIE, DGE,
+  FDE and IPD and proves each writes the shipped mol2 byte for byte, so the
+  swap does not change any structure or parameterization.
+
+  What does change: deleting a hand-written cap reaction in favor of the
+  generated one renames its product (`STYCC` becomes `STY-capped-C1-C2`), so
+  template file names and logged reaction names differ from the recorded
+  tutorial outputs. Either keep the hand-written caps for now (no visible change)
+  or delete them when tutorials 2-6 are re-recorded at the new box size anyway.
+  IPD's isocyanate N is unnamed, so it gets no generated cap, which matches
+  example 5 today (it ships no IPD cap). Not done yet because htpolynet-sweep
+  is mid-way through the big-box runs of examples 2-6 from the current configs.
+
 - **Example 6's postcure anneal peaks too close to *T*:sub:`g` to relax the
   network, and the fix is not simply "run it longer".** Measured on four
   independent BPA builds: the postcure NPT plateau gives 1.1712 ± 0.0029

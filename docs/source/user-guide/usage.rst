@@ -664,7 +664,7 @@ with ``gmx trjconv -sep``.
 ``htpolynet setup-claude``
 !!!!!!!!!!!!!!!!!!!!!!!!!!
 
-``setup-claude`` installs the skill bundled with the package, which teaches Claude Code how to drive ``htpolynet``: start from the nearest example, describe monomers in their active form, check a config before spending compute, and recognize the failure modes that are known rather than mysterious.
+``setup-claude`` installs the skill bundled with the package, which teaches Claude Code how to drive ``htpolynet``: start from the nearest example, describe monomers in their real or active form, check a config before spending compute, and recognize the failure modes that are known rather than mysterious.
 
 .. code-block:: console
 
