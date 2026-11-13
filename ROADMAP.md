@@ -1596,6 +1596,30 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Configuration
 
+- **Gasteiger is the default charge model; decide whether it should stay so,
+  and quote AM1-BCC's measured cost in the docs.**  Cameron, 2026-11-13 (relayed by
+  htpolynet-sweep): "we should update the example docs to reflect this so users
+  know". The docs now say it (tutorials index note, `ambertools` reference). Still
+  open:
+
+  - *The measured cost.* The docs say only that `bcc` runs one `sqm` per molecule
+    and reaction template. htpolynet-sweep is timing one example 6 replica at
+    `bcc` (picotte job 26759506, 2026-11-13); put its wall-clock number next to that
+    sentence, and whether density/Tg/modulus moved.
+  - *Two defaults disagree.* `external/ambertools.py`'s `AMBERTOOLS_DEFAULTS` says
+    `bcc`, but the schema (`schema/base.yaml`, since dde81f8) and the runtime
+    defaults in `core/runtime.py` say `gas`, and the schema fills the key into every
+    config, so `bcc` is reached only by API calls that pass no `ambertools` dict.
+    Make them agree once the default is decided.
+  - *Whether examples or the default switch to `bcc`* is Cameron's call: slower
+    tutorials against numbers on the force-field pairing the cyanate-ester
+    validation was done at. Middle option: keep `gas` in tutorials and document a
+    production profile.
+  - *GAFF2.* The docs say only to pick a charge model fitted for GAFF2. ABCG2 (He
+    et al., J. Chem. Phys. 2020) is the literature candidate, but htpolynet-sweep
+    found no Amber statement making it a recommended default, so it is not named
+    in the docs yet.
+
 - **Three config sections have no user documentation**: `ncpu`, `ring_cure` and
   `postcure_repair`.  `docs/source/user-guide/configs/configs-for-run.rst` opens by
   saying a run config has "at most ten distinct sections"; the schema has fourteen.  A

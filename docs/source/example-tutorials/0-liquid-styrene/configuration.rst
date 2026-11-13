@@ -26,8 +26,9 @@ A block-by-block walk-through:
 
 ``ambertools``
    Selects the partial-charge method for ``antechamber``; ``gas`` is
-   Gasteiger and is fast and good enough for a non-reactive
-   densification.
+   Gasteiger, which is fast.  It is not the charge model GAFF was
+   parameterized with, so every example's numbers are tutorial numbers; see
+   the note on :ref:`the tutorials page <example_tutorials>`.
 
 ``constituents``
    Declares the molecular species in the box.  Here, one species

@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The docs now say that the examples, and htpolynet's default, use Gasteiger
+  charges.**  Every shipped example sets `charge_method: gas` with GAFF1, which is
+  also what any config gets when it does not choose.  The tutorials page and the
+  `ambertools` reference now explain that this is a speed choice: GAFF is meant to
+  be paired with AM1-BCC (`bcc`), Gasteiger is not a validated pairing, and the
+  tutorials' numbers are not for comparison with experiment.  Tutorial 0 no longer
+  calls Gasteiger "good enough".
 - **Tutorials 2-6 pull more slowly for Young's modulus.**  Each pull runs
   160 ps at 0.00025 ps^-1 instead of 40 ps at 0.001, reaching the same 4 %
   strain with four times as many frames inside the 0.1-3 % fit window, at a few

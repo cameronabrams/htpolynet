@@ -57,7 +57,9 @@ In this section we show all subdirectives for each of the five main directives i
     ``atom_type``                            string          atom-type set used by ``antechamber``, ``parmchk2`` and ``tleap`` (default ``gaff``)
     =====================================    ==============  =====================
 
-    For now, you can choose any charging method compatible with ``antechamber``.  The ``antechamber`` directive is optional.
+    You can choose any charge method ``antechamber`` accepts; the value is passed through unchanged.  The ``ambertools`` directive is optional.
+
+    The default, ``gas`` (Gasteiger), is chosen for speed, not accuracy, and every shipped example uses it.  GAFF's parameters were fitted alongside RESP charges, and AM1-BCC (``bcc``) is the standard inexpensive substitute for RESP, so ``bcc`` with ``gaff`` is the combination GAFF is meant to be used with; Gasteiger charges do not attempt to reproduce RESP.  The cost of ``bcc`` is one semi-empirical ``sqm`` calculation per molecule parameterized, which includes every reaction template, not just the monomers.  Use ``bcc`` for any build whose numbers you will compare with experiment.  If you set ``atom_type: gaff2``, choose a charge model fitted for GAFF2 rather than assuming the GAFF1 pairing carries over.
 
     These three directives determine the parameters ``antechamber`` produces, so each parameterization records them in a ``.parm`` file checked into the library alongside its ``gro``, ``top``, ``itp``, ``tpx`` and ``grx`` files.  Because the library is keyed on molecule name, that record is the only thing distinguishing a molecule parameterized one way from the same molecule parameterized another.  A run whose directives disagree with the record re-parameterizes rather than reusing the cached files, and says which directives differed.
 

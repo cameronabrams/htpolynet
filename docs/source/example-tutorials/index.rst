@@ -22,6 +22,31 @@ We present here a series of tutorials to help illustrate usage of ``htpolynet``.
    :ref:`the converge subdirective <configuration_run>` for what the criterion
    is and how to loosen or tighten it.
 
+.. note::
+
+   **Every example uses Gasteiger partial charges, which is a speed choice, not
+   a modeling one.**  Each example's ``ambertools`` block sets
+   ``charge_method: gas``, and none sets ``atom_type``, so all of them run
+   GAFF (``gaff``, i.e. GAFF1) with Gasteiger charges.  That is also what
+   ``htpolynet`` does for any configuration that does not say otherwise:
+   ``gas`` is the default.
+
+   GAFF's Lennard-Jones and bonded parameters were fitted alongside RESP
+   charges, and AM1-BCC (``charge_method: bcc``) exists to reproduce RESP
+   cheaply; that is the pairing GAFF is meant to be used with.  Gasteiger
+   charges are not designed to reproduce RESP, so GAFF with Gasteiger is not a
+   validated combination.  The examples use it because AM1-BCC runs a
+   semi-empirical (``sqm``) calculation for every monomer and every reaction
+   template, which makes a tutorial build much slower.
+
+   So the densities, glass transitions and moduli these tutorials report are
+   the ones their ``gas`` builds give, and are not meant to be compared with
+   experiment.  For numbers you intend to publish or compare with measured
+   data, set ``charge_method: bcc`` (see :ref:`the ambertools directive
+   <configuration_run>`).  Note that a parameterization already in your
+   library is reused only if it was made with the same ``charge_method``; see
+   the same section for what happens to older library entries.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
