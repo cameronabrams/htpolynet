@@ -1596,16 +1596,15 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Configuration
 
-- **Gasteiger is the default charge model; decide whether it should stay so,
-  and quote AM1-BCC's measured cost in the docs.**  Cameron, 2026-11-13 (relayed by
+- **Gasteiger is the default charge model; decide whether it should stay so.**  Cameron, 2026-11-13 (relayed by
   htpolynet-sweep): "we should update the example docs to reflect this so users
-  know". The docs now say it (tutorials index note, `ambertools` reference). Still
+  know". The docs now say it (tutorials index note, `ambertools` reference),
+  with AM1-BCC's measured cost for example 6: 17m53s on 16 CPU cores for its two
+  molecules (picotte job 26759506, 2026-11-13). htpolynet-study saw 28-47 min per
+  template on TMB triples, so larger template sets cost much more. Whether example
+  6's density/Tg/modulus move at `bcc` is htpolynet-sweep's build 26759567. Still
   open:
 
-  - *The measured cost.* The docs say only that `bcc` runs one `sqm` per molecule
-    and reaction template. htpolynet-sweep is timing one example 6 replica at
-    `bcc` (picotte job 26759506, 2026-11-13); put its wall-clock number next to that
-    sentence, and whether density/Tg/modulus moved.
   - *Two defaults disagree.* `external/ambertools.py`'s `AMBERTOOLS_DEFAULTS` says
     `bcc`, but the schema (`schema/base.yaml`, since dde81f8) and the runtime
     defaults in `core/runtime.py` say `gas`, and the schema fills the key into every
