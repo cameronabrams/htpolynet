@@ -1601,9 +1601,14 @@ Coverage as of the last measurement: **38.8%** overall.
   know". The docs now say it (tutorials index note, `ambertools` reference),
   with AM1-BCC's measured cost for example 6: 17m53s on 16 CPU cores for its two
   molecules (picotte job 26759506, 2026-11-13). htpolynet-study saw 28-47 min per
-  template on TMB triples, so larger template sets cost much more. Whether example
-  6's density/Tg/modulus move at `bcc` is htpolynet-sweep's build 26759567. Still
-  open:
+  template on TMB triples, so larger template sets cost much more. The effect, from
+  htpolynet-sweep's one `bcc` build of example 6 against its five `gas` builds
+  (2026-11-14, cure extent matched; drop `htpolynet-sweep-bcc-result-20261114.md`):
+  density at 300 K +13.2 kg/m3 (+1.1%, 8.8 sd), onto the Snow & Armistead value;
+  modulus 2979 vs 2493 MPa (+19.5%, 5.1 sigma); crossing Tg +17.4 K (0.79 sd), i.e.
+  no shift; neither charge model gives a rubbery plateau by 800 K. The `bcc` heating
+  hyperbola's Tg (800 K) is a fit railing at the edge of the data; do not quote it.
+  The docs now state the density and modulus effect. Still open:
 
   - *Two defaults disagree.* `external/ambertools.py`'s `AMBERTOOLS_DEFAULTS` says
     `bcc`, but the schema (`schema/base.yaml`, since dde81f8) and the runtime
