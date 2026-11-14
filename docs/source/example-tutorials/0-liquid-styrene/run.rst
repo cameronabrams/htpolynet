@@ -19,9 +19,10 @@ This kicks off the full workflow:
    for ``initial_density: 300 kg/m³``.
 3. **Densification.**  The cascade under ``densification`` runs:
    minimization, 10 ps NVT, then 200 ps NPT at 10 bar *repeated until the
-   density settles*.  On a 24-core run that took two extra segments, so
-   600 ps of NPT rather than 200, and densification as a whole took about
-   5.5 minutes.
+   density settles*.  On a 24-core run of the earlier version of this
+   example (1000 ethylbenzenes, 18,000 atoms, rather than today's 1000
+   styrenes, 16,000 atoms) that took two extra segments, so 600 ps of NPT
+   rather than 200, and densification as a whole took about 5.5 minutes.
 4. **Anneal cascade.**  The cascade under ``precure`` runs:
    pre-equilibration, two 300/600 K cycles, post-equilibration.
 
