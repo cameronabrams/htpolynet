@@ -5,8 +5,9 @@ Reactions
 
 The YAML has three groups of reactions: two ``param``-stage reactions that
 assemble bisGMA from BPA + 2×HIE at runtime, four ``cure``-stage reactions
-that polymerize STY and HIE radicals, and two ``cap``-stage reactions that
-restore vinyl double bonds on any monomer that did not react.
+that polymerize STY and HIE radicals, and two ``cap``-stage reactions,
+written by ``htpolynet`` itself, that restore vinyl double bonds on any
+monomer that did not react.
 
 Building bisGMA at runtime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +20,7 @@ Building bisGMA at runtime
 
       - .. figure:: pics/HIE.png
 
-           2-hydroxypropyl isopropyl ester (HIE)
+           HIE (glycidyl methacrylate), active form
 
       - .. figure:: pics/GMA.png
 
@@ -117,15 +118,20 @@ Cap reactions
 ^^^^^^^^^^^^^
 
 Any STY or HIE monomer that didn't react during CURE still carries its
-saturated "active" form.  The cap reactions convert the leftover ``C1–C2``
-single bonds back to the natural double bond:
+saturated active form.  Cap reactions convert the leftover ``C1–C2``
+single bonds back to the natural double bond.  The configuration does
+not contain them: ``htpolynet`` writes one for each bond an ``activate``
+key opens whose two atoms are both named, so STY's ``[[1, 2]]`` and HIE's
+``[2, 1]`` each give one, equivalent to these.  HIE's other pair,
+``[5, 4]``, gives none, because its O is unnamed, and needs none: every
+HIE epoxide is opened building GMA.
 
 .. code-block:: yaml
 
-  - name:         styCC
+  - name:         STY-restore-C1-C2
     stage:        cap
     reactants:    {1: STY}
-    product:      STYCC
+    product:      STY-capped-C1-C2
     probability:  1.0
     atoms:
       A: {reactant: 1, resid: 1, atom: C1, z: 1}
@@ -133,14 +139,14 @@ single bonds back to the natural double bond:
     bonds:
       - atoms: [A, B]
         order: 2
-  - name:         hieCC
+  - name:         HIE-restore-C2-C1
     stage:        cap
     reactants:    {1: HIE}
-    product:      HIECC
+    product:      HIE-capped-C2-C1
     probability:  1.0
     atoms:
-      A: {reactant: 1, resid: 1, atom: C1, z: 1}
-      B: {reactant: 1, resid: 1, atom: C2, z: 1}
+      A: {reactant: 1, resid: 1, atom: C2, z: 1}
+      B: {reactant: 1, resid: 1, atom: C1, z: 1}
     bonds:
       - atoms: [A, B]
         order: 2

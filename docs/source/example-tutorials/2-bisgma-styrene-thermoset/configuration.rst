@@ -20,23 +20,37 @@ The ``Title``, ``gromacs``, ``ambertools``, ``precure``, ``CURE``, and
 
    constituents:
      STY:
-       smiles: "c1ccccc1[CH2:1][CH3:2]"
+       smiles: "c1ccccc1[CH:1]=[CH2:2]"     # styrene
        reactive_atoms: {1: C1, 2: C2}
+       activate: [[1, 2]]                 # the C=C the cure consumes
        count: 1200
      BPA:
        smiles: "CC(c1ccc([OH:1])cc1)(c1ccc([OH:2])cc1)C"
        reactive_atoms: {1: O1, 2: O2}
      HIE:
-       smiles: "[CH3:2][CH:1]([CH3])C(=O)OC[CH:3](O)[CH3:4]"
+       # Glycidyl methacrylate.  `activate` opens the methacrylate C=C (2-1) and
+       # the epoxide's O-C4 bond (5-4), where a BPA hydroxyl attacks.
+       smiles: "[CH2:2]=[C:1]([CH3])C(=O)OC[CH:3]1[O:5][CH2:4]1"
        reactive_atoms: {1: C1, 2: C2, 3: C3, 4: C4}
+       activate: [[2, 1], [5, 4]]
        stereocenters:
          - C1
          - C3
      GMA:
        count: 600
 
-Four species, three of them generated from SMILES.  Three things worth
-noting:
+Four species, three of them generated from SMILES.  STY and HIE are
+written as they really are, styrene and glycidyl methacrylate, and each
+has an ``activate`` key naming the bonds the cure consumes; ``htpolynet``
+derives their active forms from that (see :ref:`example 1 <ps_monomer>`).
+HIE has two: its methacrylate C=C, and the epoxide bond a BPA hydroxyl
+opens to build GMA.  Its epoxide O carries a label (``:5``) only so
+``activate`` can name it; it is not in ``reactive_atoms``.  Four things
+worth noting:
+
+* **HIE's active form is the old HIE.**  With both bonds opened, HIE is a
+  2-hydroxypropyl ester of isobutyric acid, the molecule earlier versions
+  of this example wrote out by hand, atom for atom.
 
 * **BPA and HIE have no ``count``.**  That's because they're consumed by
   the ``param``-stage reactions to assemble GMA; they don't appear in the
@@ -59,14 +73,17 @@ noting:
 A note on the HIE SMILES
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The HIE SMILES uses ``[CH:1]`` (with an explicit ``H``) rather than
-``[C:1]``.  This matters: SMILES bracket atoms without an explicit
-hydrogen count default to **zero** implicit H, which would leave atom
-``C1`` at valence 3.  ``antechamber`` then mistypes it as ``c2`` (sp2),
-mistypes the adjacent carbonyl carbon as ``c2`` instead of ``c``, and
-``tleap`` later fails with "no angle parameter for o-c2-os".  Writing
-``[CH:1]`` keeps the valence at 4 and the typing correct.  The same
-applies to ``[CH:3]``.
+SMILES bracket atoms take an **explicit** hydrogen count: an atom written
+without one, like ``[C:1]``, has **zero** implicit H.  In HIE's real form
+that is right for ``C1``, which is the sp2 carbon of the C=C and carries
+no H; ``activate`` then adds the one it has in the active form.  It is
+wrong for ``C3``, the epoxide CH, which must be written ``[CH:3]``.  When
+an active form is written by hand, the same rule bites the other way:
+earlier versions of this example wrote ``[CH:1]``, because ``[C:1]`` would
+have left the saturated ``C1`` at valence 3, ``antechamber`` would have
+typed it ``c2`` (sp2) and the adjacent carbonyl carbon ``c2`` instead of
+``c``, and ``tleap`` would have failed with "no angle parameter for
+o-c2-os".
 
 ``densification``
 ^^^^^^^^^^^^^^^^^

@@ -2,9 +2,12 @@
 #
 # Self-contained config: the styrene monomer is generated from SMILES by
 # htpolynet itself.  The two reactive vinyl carbons are identified inline in
-# the SMILES with atom-map labels [CH2:1] and [CH:2]; the `reactive_atoms`
+# the SMILES with atom-map labels [CH:1] and [CH2:2]; the `reactive_atoms`
 # block maps those labels to the atom names (C1, C2) referenced by the
-# reactions below.  RDKit is a required runtime dependency and is pulled
+# reactions below.  The SMILES is styrene as it really is; `activate` names the
+# C=C the cure consumes, and htpolynet derives the active form (ethylbenzene)
+# it parameterizes and writes the cap reaction that restores the C=C on any
+# styrene left unreacted.  RDKit is a required runtime dependency and is pulled
 # in by any normal htpolynet install.
 #
 #   htpolynet run -diag diagnostics.log 1-polystyrene.yaml
@@ -22,8 +25,9 @@ ambertools:
   charge_method: gas
 constituents:
   STY:
-    smiles: "c1ccccc1[CH2:1][CH3:2]"
+    smiles: "c1ccccc1[CH:1]=[CH2:2]"     # styrene
     reactive_atoms: {1: C1, 2: C2}
+    activate: [[1, 2]]                 # the C=C the cure consumes
     count: 1000
 densification:
   initial_density: 300.0  # kg/m3
@@ -146,25 +150,5 @@ reactions:
           - A
           - B
         order: 1
-  - name:         styCC
-    stage:        cap
-    reactants:
-      1: STY
-    product:      STYCC
-    probability:  1.0
-    atoms:
-      A:
-        reactant: 1
-        resid: 1
-        atom: C1
-        z: 1
-      B:
-        reactant: 1
-        resid: 1
-        atom: C2
-        z: 1
-    bonds:
-      - atoms:
-          - A
-          - B
-        order: 2
+  # No cap reactions: each `activate` above has htpolynet write the one that
+  # restores the group on monomers the cure left unreacted.

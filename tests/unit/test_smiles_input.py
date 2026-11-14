@@ -108,3 +108,25 @@ def test_unparseable_smiles_raises(tmp_path):
     spec = {'BAD': {'smiles': '[CH2:1]=[[[', 'reactive_atoms': {1: 'C1'}}}
     with pytest.raises(Exception):
         materialize_smiles_inputs(spec, inputs_dir=str(tmp_path))
+
+
+# --- a kept mol2 that no longer matches its config ---------------------------
+
+@needs_obabel
+def test_a_kept_mol2_from_a_different_smiles_is_warned_about(tmp_path, caplog):
+    """Examples 0 and 1 both name a molecule STY: real styrene in 0, activated in 1."""
+    real = {'smiles': 'c1ccccc1[CH:1]=[CH2:2]', 'reactive_atoms': {1: 'C1', 2: 'C2'}}
+    activated = dict(real, activate=[[1, 2]])
+    assert materialize_smiles_inputs({'STY': real}, inputs_dir=str(tmp_path)) == ['STY']
+    with caplog.at_level('WARNING'):
+        assert materialize_smiles_inputs({'STY': activated}, inputs_dir=str(tmp_path)) == []
+    assert any('was generated from' in r.message for r in caplog.records)
+
+
+@needs_obabel
+def test_a_kept_mol2_from_the_same_smiles_is_not_warned_about(tmp_path, caplog):
+    spec = {'smiles': 'c1ccccc1[CH:1]=[CH2:2]', 'reactive_atoms': {1: 'C1', 2: 'C2'}, 'activate': [[1, 2]]}
+    materialize_smiles_inputs({'STY': spec}, inputs_dir=str(tmp_path))
+    with caplog.at_level('WARNING'):
+        materialize_smiles_inputs({'STY': spec}, inputs_dir=str(tmp_path))
+    assert not [r for r in caplog.records if r.levelname == 'WARNING']

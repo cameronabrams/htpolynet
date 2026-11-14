@@ -91,16 +91,18 @@ Capping
 ^^^^^^^
 
 After CURE converges, any DGEBA carbon that still has a sacrificial H
-left needs to revert to its closed-epoxide form.  The cap reaction:
+left needs to revert to its closed-epoxide form.  The configuration has
+no cap reaction for this: ``htpolynet`` writes it from DGE's
+``activate`` key, and it is equivalent to this:
 
 .. image:: pics/r3.png
 
 .. code-block:: yaml
 
-   - name:        'Oxirane-formation'
+   - name:        DGE-restore-O1-C1
      reactants:
        1: DGE
-     product:     DGEC
+     product:     DGE-capped-O1-C1
      stage:       cap
      probability: 1.0
      atoms:
@@ -113,7 +115,11 @@ left needs to revert to its closed-epoxide form.  The cap reaction:
 This is an intra-monomer bond: ``A`` and ``B`` are both on residue 1 of
 reactant 1.  It closes the three-membered C–O–C ring by forming a new
 C–O bond between the hydroxyl oxygen and the still-unreacted carbon,
-removing the two leftover sacrificial Hs in the process.
+removing the two leftover sacrificial Hs in the process.  The two
+``activate`` pairs are related by ``symmetry_equivalent_atoms``, so
+``htpolynet`` writes one cap reaction, not two; it generates the
+symmetric copy for ``O2``/``C2`` the same way it does for every other
+reaction.
 
 With these three directives in place, ``htpolynet`` knows everything it
 needs about the chemistry.  The next page covers how

@@ -142,7 +142,9 @@ After the last cure iteration, ``htpolynet`` looks for any unreacted
 
 At 95% conversion in this run, all radicals had paired up — but on a
 build that hits ``max_iterations`` before reaching ``desired_conversion``,
-expect the cap reactions ``styCC`` and ``hieCC`` to do non-trivial work.
+expect the cap reactions (``STY-restore-C1-C2`` and ``HIE-restore-C2-C1``;
+the recorded run above predates them and called them ``styCC`` and
+``hieCC``) to do non-trivial work.
 
 Postcure runs two more 300/600 K annealing cycles plus a 100 ps NPT at
 300 K, then ``htpolynet`` writes ``final.gro``, ``final.top``,

@@ -56,16 +56,18 @@ Cap reaction
 
 Once CURE finishes, any monomer that did not react still carries its
 two sacrificial hydrogens and its ``C1–C2`` atoms are in the saturated
-(ethylbenzene-like) "active" form.  The cap reaction converts these
-back to the true ``C=C`` double bond:
+(ethylbenzene-like) active form.  A cap reaction converts these back to
+the true ``C=C`` double bond.  The configuration does not contain one:
+because ``STY`` declares ``activate: [[1, 2]]``, ``htpolynet`` writes it,
+and it is equivalent to this:
 
 .. code-block:: yaml
 
-   - name:         styCC
+   - name:         STY-restore-C1-C2
      stage:        cap
      reactants:
        1: STY
-     product:      STYCC
+     product:      STY-capped-C1-C2
      probability:  1.0
      atoms:
        A:
@@ -84,7 +86,9 @@ back to the true ``C=C`` double bond:
 
 The ``stage: cap`` label is what tells ``htpolynet`` to defer this
 reaction until after CURE has converged; the bond ``order: 2`` is what
-restores the double bond and strips the two sacrificial Hs.
+restores the double bond and strips the two sacrificial Hs.  A cap
+reaction you write yourself on the same constituent and atoms replaces
+the generated one.
 
 The next page walks through the full
 :ref:`configuration file <ps_configuration>`.

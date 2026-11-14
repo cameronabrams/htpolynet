@@ -1,7 +1,8 @@
 # htpolynet -- Example 4 -- DFDA/FDE Furan-based Epoxy Thermoset
 #
 # Self-contained config: DFA (difurfuryl diamine) and FDE (furfuryl diepoxide)
-# are generated from SMILES via the RDKit atom-mapping path.  The original
+# are generated from SMILES via the RDKit atom-mapping path.  FDE is written as
+# it really is; `activate` opens its epoxides into the active form.  The original
 # shell script for this example wrote PDB rather than mol2 inputs because mol2
 # atom-numbering was unpredictable for the fused heterocycles; switching to
 # atom-mapped SMILES eliminates that concern, so we generate mol2 like the
@@ -22,8 +23,9 @@ ambertools:
   charge_method: gas
 constituents:
   FDE:
-    smiles: "N(Cc1occc1)(C[CH:3]([OH:5])[CH3:1])C[CH:4]([OH:6])[CH3:2]"
+    smiles: "N(Cc1occc1)(C[CH:3]1[O:5][CH2:1]1)C[CH:4]1[O:6][CH2:2]1"
     reactive_atoms: {1: C1, 2: C2, 3: C3, 4: C4, 5: O1, 6: O2}
+    activate: [[5, 1], [6, 2]]         # each epoxide's O-CH2 bond, opened by an amine
     count: 1600
     symmetry_equivalent_atoms: [[C1, C2], [C3, C4], [O1, O2]]
     stereocenters: [C3]
@@ -172,23 +174,5 @@ reactions:
     bonds:
       - atoms: [A, B]
         order: 1
-  - name:        'Oxirane-formation'
-    reactants:
-      1: FDE
-    product:     FDEC
-    stage:       cap
-    probability: 1.0
-    atoms:
-      A:
-        reactant: 1
-        resid: 1
-        atom: O1
-        z: 1
-      B:
-        reactant: 1
-        resid: 1
-        atom: C1
-        z: 1
-    bonds:
-      - atoms: [A, B]
-        order: 1
+  # No cap reactions: each `activate` above has htpolynet write the one that
+  # restores the group on monomers the cure left unreacted.

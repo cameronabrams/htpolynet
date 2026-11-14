@@ -10,10 +10,10 @@
 # isocyanates.
 #
 # Active-form notes:
-#   - IPDI isocyanates -N=C=O are drawn as their hydrated/formamide form
-#     -N(H)-C(H)=O so each formyl carbon owns a sacrificial H.  The
-#     urethane reaction removes that H along with the hydroxyl H on TBO
-#     to form the C-O bond.
+#   - IPDI is written as the real diisocyanate; `activate` turns each
+#     -N=C=O into the formamide -N(H)-C(H)=O, so each formyl carbon owns a
+#     sacrificial H.  The urethane reaction removes that H along with the
+#     hydroxyl H on TBO to form the C-O bond.
 #   - The 2-butene and 1-butene units are drawn as-is; chain extension
 #     consumes one methyl H from each side.
 #
@@ -59,12 +59,16 @@ constituents:
     smiles: "[OH:5][CH2:1]/[CH:2]=[CH:3]/[CH3:4]"
     reactive_atoms: {1: C1, 2: C2, 3: C3, 4: C4, 5: O1}
   IPD:
-    # Isophorone diisocyanate in its urethane-active form: each -N=C=O is
-    # drawn as -N(H)-C(H)=O so the formyl carbons (C1, C2) each carry a
-    # sacrificial H.  C3 is the ring stereocenter (the CH bearing the
-    # directly-attached formamide).
-    smiles: "CC1(CN[CH:2]=O)C[CH:3](N[CH:1]=O)CC(C)(C)C1"
+    # Isophorone diisocyanate, as it really is.  `activate` opens each N=C
+    # (labels 11-1 and 12-2) into the urethane-active formamide
+    # -N(H)-C(H)=O, so the formyl carbons (C1, C2) each carry a sacrificial
+    # H.  The N labels are there only for `activate`; with no names, the Ns
+    # keep their element names and get no cap reaction, so isocyanates left
+    # unreacted stay formamides, as they always have in this example.  C3 is
+    # the ring stereocenter (the CH bearing the directly-attached N).
+    smiles: "CC1(C[N:12]=[C:2]=O)C[CH:3]([N:11]=[C:1]=O)CC(C)(C)C1"
     reactive_atoms: {1: C1, 2: C2, 3: C3}
+    activate: [[12, 2], [11, 1]]
     stereocenters:
       - C3
     count: 250  # (2*(DHT count) + 3*(THT count)) / 2

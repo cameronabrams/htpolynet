@@ -29,8 +29,9 @@ What's chemically new here is the epoxy + amine step-growth mechanism:
   two nitrogens; each DGEBA can tether up to two amines through its two
   reactive carbons.
 
-In the active form supplied to ``htpolynet``, both oxiranes on DGEBA are
-already "opened" into a primary alcohol + sacrificial methyl
+DGEBA is written as it really is, and its ``activate`` key has
+``htpolynet`` work with its active form, in which both oxiranes are
+already "opened" into a secondary alcohol + sacrificial methyl
 configuration, so each reactive carbon carries a sacrificial H that gets
 removed when a new C–N bond forms.  The :ref:`monomer page <pde_monomers>`
 walks through this in detail.

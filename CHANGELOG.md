@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A warning when a kept molecule no longer matches its SMILES.**  A generated
+  `lib/molecules/inputs/NAME.mol2` is reused, not regenerated, so two configs
+  run in one directory that give one name to different molecules -- examples 0
+  and 1 both call theirs `STY` -- silently built the second from the first's
+  molecule.  htpolynet now records the SMILES and `activate` beside each mol2 it
+  generates and warns when a config asks for something else.
 - **Monomers can be written as they really are.**  A constituent's `activate`
   key names the bonds the cure consumes, as pairs of SMILES atom-map labels, and
   htpolynet derives the active form from the real monomer: styrene
@@ -20,7 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   form; this is tested for every active-form monomer the examples ship.  For each
   opened bond whose atoms are named in `reactive_atoms`, htpolynet also writes the
   `cap` reaction that restores it on groups left unreacted, unless the config has
-  its own cap on those atoms or sets `cap_activated: false`.  Configs that spell
+  its own cap on those atoms or sets `cap_activated: false`.  Bonds related by
+  `symmetry_equivalent_atoms` get one cap, whose symmetric copies htpolynet
+  writes as it does for any reaction.  Configs that spell
   out the active form work as before.
 - **`CURE.controls.min_bond_fraction_per_iteration`**, the pairwise cure's
   per-iteration floor as a fraction of the bonds at 100 % conversion; the larger of
@@ -37,6 +45,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The examples and tutorials write their monomers as they really are.**
+  Examples 1-5 give styrene, glycidyl methacrylate (HIE), DGEBA, FDE and IPDI
+  as real SMILES with `activate`, and no longer write their cap reactions,
+  which htpolynet now generates.  Every monomer structure they produce is
+  byte-identical to before, and so is their expanded reaction set; only the cap
+  reactions' names change (`styCC` making `STYCC` becomes `STY-restore-C1-C2`
+  making `STY-capped-C1-C2`, and likewise for HIE, DGE and FDE).  The tutorials
+  and user guide now teach the real form first and the active form as what
+  htpolynet derives from it.
+- **Example 0 now simulates liquid styrene.**  It used to simulate
+  ethylbenzene: it took the active form, which with no cure never became styrene
+  again, while its tutorial compared the result with liquid styrene's density.
+  It now gives real styrene and nothing to activate; the box has 16,000 atoms
+  instead of 18,000, and its density changes.
 - **The docs now say that the examples, and htpolynet's default, use Gasteiger
   charges.**  Every shipped example sets `charge_method: gas` with GAFF1, which is
   also what any config gets when it does not choose.  The tutorials page and the

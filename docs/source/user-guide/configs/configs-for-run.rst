@@ -497,7 +497,7 @@ A simple YAML ``htpolynet run`` configuration file that encodes this description
       reactants:
         1: STY
         2: STY
-      product:     STY~C1-C2~STY,
+      product:     STY~C1-C2~STY
       probability: 1.0
       atoms:
         A:
@@ -513,12 +513,12 @@ A simple YAML ``htpolynet run`` configuration file that encodes this description
       bonds:
         - atoms: [A, B]
           order: 1
-    - name:         styCC,
-      stage:        cap,
+    - name:         styCC
+      stage:        cap
       reactants:
         1: STY
-      product:      STYCC,
-      probability:  1.0,
+      product:      STYCC
+      probability:  1.0
       atoms:
         A:
           reactant: 1
@@ -543,4 +543,4 @@ using first an energy minimzation, then an NVT MD simulation at 300 K for 10 pic
 
 Prebond dragging is permitted if any newly identified bond is more than 0.6 nm in length, and the dragging happens in increments of 0.08 nm and each increment involves an energy minimization, an NVT MD simulation, and an NPT MD simulation, all at 600 K. (I find curing at elevated temperature keeps the system from jamming up, but don't feel forced to use this temperature.)  Bond relaxation takes place using a similar series of MD stages.  Remember that dragging is performed on the system **before** bonds are formed and atoms deleted, while bond relaxation occurs **after** the bonds are formed and the sacrificial, valence-conserving H atoms are deleted.  Finally, when all new bonds are relaxed, a single NPT MD simulation is performed to end an iteration.  Postcure involves an annealing simulation much like the precure stage, followed by an NPT MD simulation.
 
-Finally, we stipulate the reactions.  In this system, there is really only one reaction: the one in which the C1 of one styrene bonds to the C2 of another.  The reaction named ``sty1_1`` specifies this reaction, and causes ``htpolynet`` to parameterize the dimeric product named ``STY~C1-C2~STY``.  This molecule provides a template for atom types, charges, and new bonded interactions that must be merged into a system if such a bond forms.  The other reaction, ``styCC``, specifies a ``cap`` reaction that reverts any unreacted styrene back to its proper form (with the C-C double bond). Capping reactions are 100\% optional; don't feel forced to use them.
+Finally, we stipulate the reactions.  In this system, there is really only one reaction: the one in which the C1 of one styrene bonds to the C2 of another.  The reaction named ``sty1_1`` specifies this reaction, and causes ``htpolynet`` to parameterize the dimeric product named ``STY~C1-C2~STY``.  This molecule provides a template for atom types, charges, and new bonded interactions that must be merged into a system if such a bond forms.  The other reaction, ``styCC``, specifies a ``cap`` reaction that reverts any unreacted styrene back to its proper form (with the C-C double bond). Capping reactions are 100\% optional; don't feel forced to use them.  This configuration reads ``STY`` from an active-form ``mol2``, so it has to write its own cap reaction.  A constituent given as a SMILES of the real monomer with an ``activate`` key, as in :ref:`example 1 <ps_monomer>`, has its cap reactions written by ``htpolynet`` instead; see :ref:`writing the real monomer <real_form_smiles>`.

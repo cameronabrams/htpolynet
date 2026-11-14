@@ -34,9 +34,9 @@ What's chemically new here is the two-tier construction:
   — no new ``antechamber`` runs at build-stage.
 * **Stage 2 — urethane cure.**  Each chain's terminal hydroxyl
   (``TBO.O1``) reacts with one of IPDI's two non-equivalent
-  isocyanate carbons (``C1`` or ``C2`` of the active-form ``IPD``
-  monomer; see the :ref:`monomers page <htpb_monomers>` for what
-  "active form" means here).  The result is a urethane bond
+  isocyanate carbons (``C1`` or ``C2`` of ``IPD``, which ``htpolynet``
+  cures in its active form; see the :ref:`monomers page <htpb_monomers>`
+  for what "active form" means here).  The result is a urethane bond
   ``-O-C(=O)-N(H)-`` connecting the HTPB end to an IPDI residue.  IPD
   is bifunctional, so each IPD bridges two HTPB hydroxyls (potentially
   on different chains) and the network grows.

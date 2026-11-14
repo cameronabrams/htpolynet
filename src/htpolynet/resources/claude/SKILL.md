@@ -68,10 +68,17 @@ constituents:
 ```
 
 For an epoxide, pair the ring O with the carbon that is attacked:
-`[CH:2]1[O:3][CH2:1]1` with `activate: [[3, 1]]`. The bundled examples still
-spell the active form out (`c1ccccc1[CH2:1][CH3:2]`), which also works; a
-generated cap reaction is skipped when the config has its own cap on the same
-atoms.
+`[CH:2]1[O:3][CH2:1]1` with `activate: [[3, 1]]`. The bundled examples all
+write their monomers this way. A SMILES that spells the active form out
+(`c1ccccc1[CH2:1][CH3:2]`) still works, and a generated cap reaction is skipped
+when the config has its own cap on the same atoms (or their symmetric
+equivalents).
+
+Run each example, and each system, in its own directory. A generated
+`lib/molecules/inputs/NAME.mol2` is reused rather than regenerated, and
+examples 0 and 1 both call their molecule `STY` (real styrene in 0,
+activated in 1); htpolynet warns when a kept file came from a different
+SMILES.
 
 In SMILES bracket atoms the hydrogen count is explicit: `[C:1]` means *zero*
 implicit hydrogens. For an sp³ carbon you almost always want `[CH2:1]` or

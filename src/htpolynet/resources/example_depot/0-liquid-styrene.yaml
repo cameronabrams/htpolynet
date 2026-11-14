@@ -5,8 +5,9 @@
 #
 #   htpolynet run -diag diagnostics.log 0-liquid-styrene.yaml
 #
-# This example produces a densified liquid of "active" styrene monomers
-# (no curing).  After the run completes you can compute properties with
+# This example produces a densified liquid of styrene monomers (no curing).
+# Styrene is given as it really is, vinyl group and all: with no cure, there is
+# nothing to activate.  After the run completes you can compute properties with
 # `htpolynet analyze` -- save the following as `ck.yaml` and invoke
 # `htpolynet analyze -cfg ck.yaml -ocfg 0-liquid-styrene.yaml -proj proj-0`:
 #
@@ -40,7 +41,7 @@ ambertools:
   charge_method: gas
 constituents:
   STY:
-    smiles: "c1ccccc1[CH2:1][CH3:2]"
+    smiles: "c1ccccc1[CH:1]=[CH2:2]"     # styrene
     reactive_atoms: {1: C1, 2: C2}
     count: 1000
 densification:

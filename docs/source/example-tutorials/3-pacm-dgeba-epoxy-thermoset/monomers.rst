@@ -16,28 +16,36 @@ bisphenol A with each phenolic oxygen extended into a glycidyl
 
    CC(C)(C1=CC=C(C=C1)OCC2CO2)C3=CC=C(C=C3)OCC4CO4
 
-But ``htpolynet`` needs the **active** form: every reactive atom carries
-a sacrificial hydrogen that is deleted when a new bond forms.  For
-epoxy-amine chemistry, the amine donates its H to the oxirane oxygen and
-the epoxide C–O bond breaks to form the new C–N bond.  So the epoxide
-ring has to be pre-opened in our input structure into a methyl +
-hydroxyl pair: ``CC(O)`` replaces each oxirane ring.
-
-In SMILES that becomes::
-
-   CC(C)(c1ccc(OC[CH:3]([OH:5])[CH3:1])cc1)c1ccc(OC[CH:4]([OH:6])[CH3:2])cc1
-
-with atom-mapping tokens picking out the four reactive atoms.  This is
-exactly what the YAML's ``constituents.DGE`` block contains:
+The YAML's ``constituents.DGE`` block writes exactly that molecule, with
+atom-mapping tokens picking out the atoms ``htpolynet`` needs to name:
 
 .. code-block:: yaml
 
    DGE:
-     smiles: "CC(C)(c1ccc(OC[CH:3]([OH:5])[CH3:1])cc1)c1ccc(OC[CH:4]([OH:6])[CH3:2])cc1"
+     smiles: "CC(C)(c1ccc(OC[CH:3]2[O:5][CH2:1]2)cc1)c1ccc(OC[CH:4]2[O:6][CH2:2]2)cc1"
      reactive_atoms: {1: C1, 2: C2, 3: C3, 4: C4, 5: O1, 6: O2}
+     activate: [[5, 1], [6, 2]]         # each epoxide's O-CH2 bond, opened by an amine
      count: 1600
      symmetry_equivalent_atoms: [[C1, C2], [C3, C4], [O1, O2]]
      stereocenters: [C3]
+
+``htpolynet`` itself cures the **active** form, in which every reactive
+atom carries a sacrificial hydrogen that is deleted when a new bond
+forms.  For epoxy-amine chemistry, the amine donates its H to the
+oxirane oxygen and the epoxide C–O bond breaks to form the new C–N bond.
+So in the active form each epoxide ring is pre-opened into a methyl +
+hydroxyl pair, ``CC(O)``:
+
+.. code-block:: text
+
+   CC(C)(c1ccc(OC[CH:3]([OH:5])[CH3:1])cc1)c1ccc(OC[CH:4]([OH:6])[CH3:2])cc1
+
+You do not write that; ``activate`` derives it.  Each pair names a bond
+the cure breaks, the ring O with the CH2 carbon an amine attacks.
+``htpolynet`` removes that bond and gives each of its two atoms one
+hydrogen: the methyl's sacrificial H and the hydroxyl's H.  (Earlier
+versions of this example wrote the active form directly; that still
+works and gives exactly the same structure.)
 
 Six atoms get explicit names:
 
@@ -49,9 +57,10 @@ Six atoms get explicit names:
   hydroxyl).  Opening the oxirane creates a chiral centre; we declare
   ``C3`` and ``htpolynet`` produces the appropriate diastereomer pool
   via ``symmetry_equivalent_atoms``.
-* **O1, O2** — the two hydroxyl oxygens.  They get explicit names
-  because the cap reaction re-forms an epoxide three-ring (``O–C``
-  bond) on any unreacted carbon.
+* **O1, O2** — the two epoxide oxygens (hydroxyl oxygens in the active
+  form).  They get explicit names because the cap reaction re-forms an
+  epoxide three-ring (``O–C`` bond) on any unreacted carbon, and a cap
+  reaction can only name named atoms.
 
 PACM
 ^^^^

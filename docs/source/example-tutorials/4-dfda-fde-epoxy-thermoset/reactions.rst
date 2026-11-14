@@ -60,12 +60,16 @@ slower than primary-to-secondary.
 Oxirane-formation cap
 ^^^^^^^^^^^^^^^^^^^^^
 
+The configuration contains no cap reaction; ``htpolynet`` writes this
+one from FDE's ``activate`` key (one for the pair of symmetric
+epoxides, whose copy it generates as it does any symmetric reaction):
+
 .. code-block:: yaml
 
-   - name:        'Oxirane-formation'
+   - name:        FDE-restore-O1-C1
      reactants:
        1: FDE
-     product:     FDEC
+     product:     FDE-capped-O1-C1
      stage:       cap
      probability: 1.0
      atoms:
@@ -84,7 +88,7 @@ How these expand
 ^^^^^^^^^^^^^^^^
 
 Through the ``symmetry_equivalent_atoms`` declarations on
-:ref:`the constituents <dfe_configuration>`, these three directives
+:ref:`the constituents <dfe_configuration>`, these three reactions
 expand into:
 
 * 4 primary-to-secondary cure templates (``FDE.{C1,C2} × DFA.{N1,N2}``);

@@ -1,7 +1,7 @@
 # htpolynet -- Example 3 -- PACM/DGEBA Epoxy Thermoset
 #
-# Self-contained config: DGE (DGEBA, the active form of bisphenol-A diglycidyl
-# ether) and PAC (PACM, 4,4'-methylenebis(cyclohexylamine)) are generated from
+# Self-contained config: DGE (DGEBA, bisphenol-A diglycidyl ether, written as it
+# really is; `activate` opens its epoxides into the active form) and PAC (PACM, 4,4'-methylenebis(cyclohexylamine)) are generated from
 # SMILES via the RDKit atom-mapping path.  Run with:
 #
 #   htpolynet run -diag diagnostics.log 3-pacm-dgeba-epoxy-thermoset.yaml
@@ -19,8 +19,9 @@ ambertools:
   charge_method: gas
 constituents:
   DGE:
-    smiles: "CC(C)(c1ccc(OC[CH:3]([OH:5])[CH3:1])cc1)c1ccc(OC[CH:4]([OH:6])[CH3:2])cc1"
+    smiles: "CC(C)(c1ccc(OC[CH:3]2[O:5][CH2:1]2)cc1)c1ccc(OC[CH:4]2[O:6][CH2:2]2)cc1"
     reactive_atoms: {1: C1, 2: C2, 3: C3, 4: C4, 5: O1, 6: O2}
+    activate: [[5, 1], [6, 2]]         # each epoxide's O-CH2 bond, opened by an amine
     count: 1600
     symmetry_equivalent_atoms: [[C1, C2], [C3, C4], [O1, O2]]
     stereocenters: [C3]
@@ -173,23 +174,5 @@ reactions:
     bonds:
       - atoms: [A, B]
         order: 1
-  - name:        'Oxirane-formation'
-    reactants:
-      1: DGE
-    product:     DGEC
-    stage:       cap
-    probability: 1.0
-    atoms:
-      A:
-        reactant: 1
-        resid: 1
-        atom: O1
-        z: 1
-      B:
-        reactant: 1
-        resid: 1
-        atom: C1
-        z: 1
-    bonds:
-      - atoms: [A, B]
-        order: 1
+  # No cap reactions: each `activate` above has htpolynet write the one that
+  # restores the group on monomers the cure left unreacted.

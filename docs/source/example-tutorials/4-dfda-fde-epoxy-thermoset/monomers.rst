@@ -10,32 +10,35 @@ FDE — *furfurylmethylenediepoxide*, name ``FDE`` — is the diepoxide
 hardener.  Its skeleton is a tertiary nitrogen with three arms:
 
 * one furfuryl arm (a furan ring with a methylene bridge to the N);
-* two opened-oxirane arms (each a ``-CH2-CH(OH)-CH3`` chain).
+* two glycidyl arms (each a ``-CH2-`` oxirane, the three-membered
+  ``C-O-C`` ring).
 
-The native, *closed* oxirane form would have each arm end in a
-three-membered ``C-O-C`` ring.  As in :ref:`example 3 <pde_monomers>`,
-``htpolynet`` expects the **active** form with the oxirane already
-opened into ``-CH(OH)-CH3``, so each reactive carbon carries a
-sacrificial H that gets removed when a new C–N bond forms.  The YAML's
-``constituents.FDE`` block carries that active-form SMILES with
+The YAML's ``constituents.FDE`` block writes FDE as it really is, with
 atom-mapping tokens:
 
 .. code-block:: yaml
 
    FDE:
-     smiles: "N(Cc1occc1)(C[CH:3]([OH:5])[CH3:1])C[CH:4]([OH:6])[CH3:2]"
+     smiles: "N(Cc1occc1)(C[CH:3]1[O:5][CH2:1]1)C[CH:4]1[O:6][CH2:2]1"
      reactive_atoms: {1: C1, 2: C2, 3: C3, 4: C4, 5: O1, 6: O2}
+     activate: [[5, 1], [6, 2]]         # each epoxide's O-CH2 bond, opened by an amine
      count: 1600
      symmetry_equivalent_atoms: [[C1, C2], [C3, C4], [O1, O2]]
      stereocenters: [C3]
 
+As in :ref:`example 3 <pde_monomers>`, ``activate`` has ``htpolynet``
+cure FDE's **active** form, with each oxirane opened into
+``-CH(OH)-CH3`` so each reactive carbon carries a sacrificial H that
+gets removed when a new C–N bond forms.
+
 The six named atoms map one-for-one onto the DGE atoms from
 :ref:`tutorial 3 <pde_monomers>`:
 
-* **C1, C2** — the two reactive (sacrificial-methyl) carbons.
-* **C3, C4** — the two stereocenters (the carbons bearing the
-  hydroxyl).
-* **O1, O2** — the two hydroxyl oxygens, used by the cap reaction to
+* **C1, C2** — the two reactive carbons (sacrificial methyls in the
+  active form).
+* **C3, C4** — the two stereocenters (the ring CH carbons, which bear
+  the hydroxyl in the active form).
+* **O1, O2** — the two epoxide oxygens, used by the cap reaction to
   re-form the oxirane ring on any unreacted carbon.
 
 The ``symmetry_equivalent_atoms`` and ``stereocenters`` declarations

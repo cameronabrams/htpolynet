@@ -3,6 +3,9 @@
 # Self-contained config: STY, BPA, and HIE monomers are generated from SMILES
 # (RDKit path via the atom-mapping syntax).  Bis-GMA (GMA) is assembled at
 # runtime from BPA + 2 HIE via the two param-stage reactions defined below.
+# STY and HIE (glycidyl methacrylate) are written as they really are; their
+# `activate` keys name the bonds the cure consumes, and htpolynet derives the
+# active forms and writes the cap reactions that restore unreacted C=C.
 # Run with:
 #
 #   htpolynet run -diag diagnostics.log 2-bisgma-styrene-thermoset.yaml
@@ -20,8 +23,9 @@ ambertools:
   charge_method: gas
 constituents:
   STY:
-    smiles: "c1ccccc1[CH2:1][CH3:2]"
+    smiles: "c1ccccc1[CH:1]=[CH2:2]"     # styrene
     reactive_atoms: {1: C1, 2: C2}
+    activate: [[1, 2]]                 # the C=C the cure consumes
     count: 1200
   BPA:
     smiles: "CC(c1ccc([OH:1])cc1)(c1ccc([OH:2])cc1)C"
@@ -32,8 +36,14 @@ constituents:
     # confuses antechamber into typing it as `c2` (sp2) and the adjacent
     # carbonyl as `c2` instead of `c`, breaking tleap with "no angle parameter
     # for o - c2 - os".
-    smiles: "[CH3:2][CH:1]([CH3])C(=O)OC[CH:3](O)[CH3:4]"
+    # Glycidyl methacrylate.  `activate` opens the methacrylate C=C (2-1) and
+    # the epoxide's O-C4 bond (5-4), where a BPA hydroxyl attacks.  The epoxide
+    # O is labeled only so `activate` can name it; with no name in
+    # `reactive_atoms`, it gets no cap reaction, and none is needed: every
+    # epoxide is consumed building GMA.
+    smiles: "[CH2:2]=[C:1]([CH3])C(=O)OC[CH:3]1[O:5][CH2:4]1"
     reactive_atoms: {1: C1, 2: C2, 3: C3, 4: C4}
+    activate: [[2, 1], [5, 4]]
     stereocenters:
       - C1
       - C3
@@ -260,44 +270,5 @@ reactions:
     bonds:
       - atoms: [A, B]
         order: 1
-  # Capping reactions
-  - name:         styCC
-    stage:        cap
-    reactants:
-      1: STY
-    product:      STYCC
-    probability:  1.0
-    atoms:
-      A:
-        reactant: 1
-        resid: 1
-        atom: C1
-        z: 1
-      B:
-        reactant: 1
-        resid: 1
-        atom: C2
-        z: 1
-    bonds:
-      - atoms: [A, B]
-        order: 2
-  - name:         hieCC
-    stage:        cap
-    reactants:
-      1: HIE
-    product:      HIECC
-    probability:  1.0
-    atoms:
-      A:
-        reactant: 1
-        resid: 1
-        atom: C1
-        z: 1
-      B:
-        reactant: 1
-        resid: 1
-        atom: C2
-        z: 1
-    bonds:
-      - atoms: [A, B]
-        order: 2
+  # No cap reactions: each `activate` above has htpolynet write the one that
+  # restores the group on monomers the cure left unreacted.

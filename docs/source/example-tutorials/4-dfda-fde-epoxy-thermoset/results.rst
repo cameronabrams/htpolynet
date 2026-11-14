@@ -41,8 +41,9 @@ Diagnostic-log plots:
    ``Secondary-to-tertiary-amine``) feed one intermediate
    (``DFA~N1-C1~FDE``) and one final crosslink product
    (``DFA~N1-C1~FDE-C1~FDE``); the cap reaction
-   (``Oxirane-formation``) re-forms unreacted oxirane rings
-   into ``FDEC``.
+   (``Oxirane-formation`` in this recorded run, ``FDE-restore-O1-C1``
+   now) re-forms unreacted oxirane rings into ``FDEC``
+   (``FDE-capped-O1-C1`` now).
 
 For end-to-end traces:
 

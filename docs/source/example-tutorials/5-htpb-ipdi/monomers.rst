@@ -72,24 +72,34 @@ build); ``O1`` is the cure site (bonds to an ``IPD.C1`` or
 on each terminus, so linear ``DHT`` has 2 hydroxyls and branched
 ``THT`` has 3.
 
-IPD: isophorone diisocyanate (active form)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+IPD: isophorone diisocyanate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 `Isophorone diisocyanate
 <https://en.wikipedia.org/wiki/Isophorone_diisocyanate>`_ is a
 cyclohexyl ring carrying two non-equivalent ``-N=C=O`` isocyanate
-groups.  htpolynet needs an active form where each reactive carbon
-carries a sacrificial H, so the YAML draws each ``-N=C=O`` as the
-hydrated/formamide ``-N(H)-C(H)=O``:
+groups.  The YAML writes it as it really is:
 
 .. code-block:: yaml
 
    IPD:
-     smiles: "CC1(CN[CH:2]=O)C[CH:3](N[CH:1]=O)CC(C)(C)C1"
+     smiles: "CC1(C[N:12]=[C:2]=O)C[CH:3]([N:11]=[C:1]=O)CC(C)(C)C1"
      reactive_atoms: {1: C1, 2: C2, 3: C3}
+     activate: [[12, 2], [11, 1]]
      stereocenters:
        - C3
      count: 250
+
+htpolynet cures an active form in which each reactive carbon carries a
+sacrificial H.  The ``activate`` key derives it: each pair names an
+``N=C`` bond, which drops to a single bond while its N and C each gain a
+hydrogen, turning each ``-N=C=O`` into the formamide ``-N(H)-C(H)=O``.
+The N atoms carry labels (``:11``, ``:12``) only so ``activate`` can name
+them; they are not in ``reactive_atoms``, so they keep their element
+names, and no cap reaction is written for them.  An isocyanate the cure
+leaves unreacted therefore stays a formamide, as it always has in this
+example.  (Earlier versions of the example wrote the formamide form
+directly; that still works and gives exactly the same structure.)
 
 * ``C1, C2`` — the two formyl carbons.  Each loses its sacrificial H
   when forming a urethane bond with a ``TBO.O1``.  The two are

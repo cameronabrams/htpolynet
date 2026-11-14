@@ -22,25 +22,33 @@ from rdkit.Chem import AllChem  # noqa: E402
 
 DEPOT = os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'htpolynet', 'resources', 'example_depot')
 
-# (example file, constituent, real SMILES, activate) -- the real SMILES is written in
-# the atom order of the shipped active one, and labels on atoms the shipped SMILES
-# leaves unmapped (the epoxide O of HIE, the isocyanate N of IPD) are ones it lacks.
+# Each example monomer the depot shipped in its active form, until the examples were
+# switched to real form: (example file, constituent, the active SMILES it shipped, the
+# real SMILES plus `activate` it ships now).  The real SMILES is written in the atom
+# order of the active one, and labels on atoms the active SMILES left unmapped (the
+# epoxide O of HIE, the isocyanate N of IPD) are ones it lacked.
 REAL = [
-    ('1-polystyrene.yaml', 'STY', 'c1ccccc1[CH:1]=[CH2:2]', [[1, 2]]),
-    ('0-liquid-styrene.yaml', 'STY', 'c1ccccc1[CH:1]=[CH2:2]', [[1, 2]]),
-    ('2-bisgma-styrene-thermoset.yaml', 'STY', 'c1ccccc1[CH:1]=[CH2:2]', [[1, 2]]),
-    ('2-bisgma-styrene-thermoset.yaml', 'HIE', '[CH2:2]=[C:1]([CH3])C(=O)OC[CH:3]1[O:5][CH2:4]1', [[2, 1], [5, 4]]),
+    ('1-polystyrene.yaml', 'STY', 'c1ccccc1[CH2:1][CH3:2]',
+     'c1ccccc1[CH:1]=[CH2:2]', [[1, 2]]),
+    ('2-bisgma-styrene-thermoset.yaml', 'STY', 'c1ccccc1[CH2:1][CH3:2]',
+     'c1ccccc1[CH:1]=[CH2:2]', [[1, 2]]),
+    ('2-bisgma-styrene-thermoset.yaml', 'HIE', '[CH3:2][CH:1]([CH3])C(=O)OC[CH:3](O)[CH3:4]',
+     '[CH2:2]=[C:1]([CH3])C(=O)OC[CH:3]1[O:5][CH2:4]1', [[2, 1], [5, 4]]),
     ('3-pacm-dgeba-epoxy-thermoset.yaml', 'DGE',
+     'CC(C)(c1ccc(OC[CH:3]([OH:5])[CH3:1])cc1)c1ccc(OC[CH:4]([OH:6])[CH3:2])cc1',
      'CC(C)(c1ccc(OC[CH:3]2[O:5][CH2:1]2)cc1)c1ccc(OC[CH:4]2[O:6][CH2:2]2)cc1', [[5, 1], [6, 2]]),
     ('4-dfda-fde-epoxy-thermoset.yaml', 'FDE',
+     'N(Cc1occc1)(C[CH:3]([OH:5])[CH3:1])C[CH:4]([OH:6])[CH3:2]',
      'N(Cc1occc1)(C[CH:3]1[O:5][CH2:1]1)C[CH:4]1[O:6][CH2:2]1', [[5, 1], [6, 2]]),
-    ('5-htpb-ipdi.yaml', 'IPD', 'CC1(C[N:12]=[C:2]=O)C[CH:3]([N:11]=[C:1]=O)CC(C)(C)C1', [[12, 2], [11, 1]]),
+    ('5-htpb-ipdi.yaml', 'IPD', 'CC1(CN[CH:2]=O)C[CH:3](N[CH:1]=O)CC(C)(C)C1',
+     'CC1(C[N:12]=[C:2]=O)C[CH:3]([N:11]=[C:1]=O)CC(C)(C)C1', [[12, 2], [11, 1]]),
 ]
+IDS = [f'{e[:1]}-{n}' for e, n, _, _, _ in REAL]
 
 
-def _shipped(example, name):
+def _constituent(example, name):
     with open(os.path.join(DEPOT, example)) as f:
-        return yaml.safe_load(f)['constituents'][name]['smiles']
+        return yaml.safe_load(f)['constituents'][name]
 
 
 def _structure(mol):
@@ -55,18 +63,25 @@ def _structure(mol):
     return Chem.MolToMolBlock(mol)
 
 
-@pytest.mark.parametrize('example,name,real,activate', REAL, ids=[f'{e[:1]}-{n}' for e, n, _, _ in REAL])
-def test_real_form_reproduces_the_shipped_active_form_exactly(example, name, real, activate):
-    assert _structure(activate_mol(name, real, activate)) == _structure(_shipped(example, name))
+@pytest.mark.parametrize('example,name,active,real,activate', REAL, ids=IDS)
+def test_the_example_ships_the_real_form(example, name, active, real, activate):
+    spec = _constituent(example, name)
+    assert spec['smiles'] == real
+    assert spec['activate'] == activate
+
+
+@pytest.mark.parametrize('example,name,active,real,activate', REAL, ids=IDS)
+def test_real_form_reproduces_the_former_active_form_exactly(example, name, active, real, activate):
+    assert _structure(activate_mol(name, real, activate)) == _structure(active)
 
 
 @pytest.mark.skipif(shutil.which('obabel') is None, reason='obabel not on PATH')
-@pytest.mark.parametrize('example,name,real,activate', REAL, ids=[f'{e[:1]}-{n}' for e, n, _, _ in REAL])
-def test_real_form_writes_the_shipped_mol2_byte_for_byte(tmp_path, example, name, real, activate):
-    with open(os.path.join(DEPOT, example)) as f:
-        shipped = yaml.safe_load(f)['constituents'][name]
-    materialize_smiles_inputs({name: shipped}, inputs_dir=str(tmp_path / 'active'))
-    materialize_smiles_inputs({name: dict(shipped, smiles=real, activate=activate)}, inputs_dir=str(tmp_path / 'real'))
+@pytest.mark.parametrize('example,name,active,real,activate', REAL, ids=IDS)
+def test_real_form_writes_the_former_mol2_byte_for_byte(tmp_path, example, name, active, real, activate):
+    spec = _constituent(example, name)
+    former = {k: v for k, v in spec.items() if k != 'activate'}
+    materialize_smiles_inputs({name: dict(former, smiles=active)}, inputs_dir=str(tmp_path / 'active'))
+    materialize_smiles_inputs({name: spec}, inputs_dir=str(tmp_path / 'real'))
     assert filecmp.cmp(tmp_path / 'active' / f'{name}.mol2', tmp_path / 'real' / f'{name}.mol2', shallow=False)
 
 
@@ -121,36 +136,67 @@ def test_activated_bonds_reports_the_order_a_cap_restores():
 
 # --- generated cap reactions ------------------------------------------------
 
-def _caps(example):
-    with open(os.path.join(DEPOT, example)) as f:
-        cfg = yaml.safe_load(f)
-    return cfg, [r for r in cfg['reactions'] if r.get('stage') == 'cap']
+def test_symmetric_epoxides_get_one_cap():
+    spec = {'smiles': 'N(C[CH:3]1[O:5][CH2:1]1)C[CH:4]1[O:6][CH2:2]1',
+            'reactive_atoms': {1: 'C1', 2: 'C2', 3: 'C3', 4: 'C4', 5: 'O1', 6: 'O2'},
+            'symmetry_equivalent_atoms': [['C1', 'C2'], ['C3', 'C4'], ['O1', 'O2']],
+            'activate': [[5, 1], [6, 2]]}
+    gen = activation_cap_reactions({'EPX': spec}, [])
+    assert [{a['atom'] for a in g['atoms'].values()} for g in gen] == [{'O1', 'C1'}]
 
 
-@pytest.mark.parametrize('example,name,real,activate', [
-    ('1-polystyrene.yaml', 'STY', 'c1ccccc1[CH:1]=[CH2:2]', [[1, 2]]),
-    ('4-dfda-fde-epoxy-thermoset.yaml', 'FDE', 'N(Cc1occc1)(C[CH:3]1[O:5][CH2:1]1)C[CH:4]1[O:6][CH2:2]1', [[5, 1], [6, 2]]),
+def test_a_hand_written_cap_on_the_symmetric_partner_suppresses_the_generated_one():
+    spec = {'smiles': 'N(C[CH:3]1[O:5][CH2:1]1)C[CH:4]1[O:6][CH2:2]1',
+            'reactive_atoms': {1: 'C1', 2: 'C2', 3: 'C3', 4: 'C4', 5: 'O1', 6: 'O2'},
+            'symmetry_equivalent_atoms': [['C1', 'C2'], ['C3', 'C4'], ['O1', 'O2']],
+            'activate': [[5, 1], [6, 2]]}
+    hand = {'stage': 'cap', 'reactants': {1: 'EPX'}, 'product': 'EPXC',
+            'atoms': {'A': {'reactant': 1, 'resid': 1, 'atom': 'O2', 'z': 1},
+                      'B': {'reactant': 1, 'resid': 1, 'atom': 'C2', 'z': 1}}}
+    assert activation_cap_reactions({'EPX': spec}, [hand]) == []
+
+
+# the hand-written caps the examples shipped before they were switched to real form,
+# which the generated ones replace
+SHIPPED_CAPS = {
+    'STY': ('styCC', {'C1': 1, 'C2': 1}, 2),
+    'HIE': ('hieCC', {'C1': 1, 'C2': 1}, 2),
+    'DGE': ('Oxirane-formation', {'O1': 1, 'C1': 1}, 1),
+    'FDE': ('Oxirane-formation', {'O1': 1, 'C1': 1}, 1),
+}
+
+
+@pytest.mark.parametrize('example,name', [
+    ('1-polystyrene.yaml', 'STY'), ('2-bisgma-styrene-thermoset.yaml', 'STY'),
+    ('2-bisgma-styrene-thermoset.yaml', 'HIE'), ('3-pacm-dgeba-epoxy-thermoset.yaml', 'DGE'),
+    ('4-dfda-fde-epoxy-thermoset.yaml', 'FDE'),
 ])
-def test_generated_cap_matches_the_hand_written_one(example, name, real, activate):
-    cfg, written = _caps(example)
-    spec = dict(cfg['constituents'][name], smiles=real, activate=activate)
-    gen = activation_cap_reactions({name: spec}, [])
-    mine = [r for r in written if list(r['reactants'].values()) == [name]]
-    assert mine, 'the example ships a cap reaction for this constituent'
-    for hand in mine:
-        hand_atoms = {a['atom']: a['z'] for a in hand['atoms'].values()}
-        same = [g for g in gen if {a['atom'] for a in g['atoms'].values()} == set(hand_atoms)]
-        assert len(same) == 1
-        g = same[0]
-        assert {a['atom']: a['z'] for a in g['atoms'].values()} == hand_atoms
-        assert g['bonds'][0]['order'] == hand['bonds'][0]['order']
-        assert g['stage'] == 'cap' and g['reactants'] == {1: name}
+def test_generated_cap_matches_the_one_the_example_used_to_write(example, name):
+    """The configs no longer write these caps, so what they generate must be what they wrote."""
+    spec = _constituent(example, name)
+    with open(os.path.join(DEPOT, example)) as f:
+        written = yaml.safe_load(f)['reactions']
+    assert not [r for r in written if r['stage'] == 'cap' and list(r['reactants'].values()) == [name]]
+    gen = activation_cap_reactions({name: spec}, written)
+    _, atoms, order = SHIPPED_CAPS[name]
+    assert len(gen) == 1
+    g = gen[0]
+    assert {a['atom']: a['z'] for a in g['atoms'].values()} == atoms
+    assert g['bonds'][0]['order'] == order
+    assert g['stage'] == 'cap' and g['reactants'] == {1: name}
+
+
+def test_example_5_isocyanate_gets_no_cap_as_before():
+    spec = _constituent('5-htpb-ipdi.yaml', 'IPD')
+    assert activation_cap_reactions({'IPD': spec}, []) == []
 
 
 def test_a_hand_written_cap_suppresses_the_generated_one():
-    cfg, written = _caps('1-polystyrene.yaml')
-    spec = dict(cfg['constituents']['STY'], smiles='c1ccccc1[CH:1]=[CH2:2]', activate=[[1, 2]])
-    assert activation_cap_reactions({'STY': spec}, cfg['reactions']) == []
+    spec = _constituent('1-polystyrene.yaml', 'STY')
+    hand = {'stage': 'cap', 'reactants': {1: 'STY'}, 'product': 'STYCC',
+            'atoms': {'A': {'reactant': 1, 'resid': 1, 'atom': 'C1', 'z': 1},
+                      'B': {'reactant': 1, 'resid': 1, 'atom': 'C2', 'z': 1}}}
+    assert activation_cap_reactions({'STY': spec}, [hand]) == []
 
 
 def test_cap_activated_false_writes_none():
@@ -177,16 +223,9 @@ def test_a_product_name_collision_is_refused():
         activation_cap_reactions({'PRO': spec, 'PRO-capped-C1-C2': {}}, [])
 
 
-def test_configuration_appends_the_generated_caps(tmp_path):
+def test_configuration_appends_the_generated_caps():
     from htpolynet.core.configuration import Configuration
-    with open(os.path.join(DEPOT, '1-polystyrene.yaml')) as f:
-        cfg = yaml.safe_load(f)
-    cfg['constituents']['STY']['smiles'] = 'c1ccccc1[CH:1]=[CH2:2]'
-    cfg['constituents']['STY']['activate'] = [[1, 2]]
-    cfg['reactions'] = [r for r in cfg['reactions'] if r['stage'] != 'cap']
-    p = tmp_path / 'native.yaml'
-    p.write_text(yaml.safe_dump(cfg, sort_keys=False))
-    C = Configuration.read(str(p))
+    C = Configuration.read(os.path.join(DEPOT, '1-polystyrene.yaml'))
     caps = [r for r in C.reaction_specs if str(r['stage']) == 'cap']
     assert [r['product'] for r in caps] == ['STY-capped-C1-C2']
     assert caps[0]['bonds'][0]['order'] == 2

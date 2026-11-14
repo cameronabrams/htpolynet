@@ -19,47 +19,54 @@ those two carbons by name in the ``reactions`` block, so they get
 explicit labels (``C1`` and ``C2``); the remaining atoms keep generic
 names.
 
-Valence-conservation and the active form
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-As described in the :ref:`user guide <molecular_structure_inputs>`,
-``htpolynet`` requires each reactive atom to carry a *sacrificial
-hydrogen* that is deleted when a new bond forms.  The natural,
-"inactive" form of styrene has a C=C double bond and so the would-be
-reactive carbons don't have an H to spare:
-
-.. figure:: pics/STYCC.png
-   :scale: 50 %
-
-   Styrene (inactive form).
-
-The **active** form we hand to ``htpolynet`` is ethylbenzene, which
-carries two extra hydrogens on what will become the reactive carbons:
-
-.. figure:: pics/STY.png
-   :scale: 50 %
-
-   Ethylbenzene (active form of styrene, monomer name ``STY``).
-
 In-config SMILES generation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``constituents`` block of ``1-polystyrene.yaml`` carries the SMILES
-string and, via the SMILES atom-mapping syntax (``[CH2:1]``,
-``[CH3:2]``), the names of the two carbons referenced by the cure and
-cap reactions:
+The ``constituents`` block of ``1-polystyrene.yaml`` gives styrene as it
+really is, and, via the SMILES atom-mapping syntax (``[CH:1]``,
+``[CH2:2]``), names the two carbons referenced by the cure reaction:
 
 .. code-block:: yaml
 
    constituents:
      STY:
-       smiles: "c1ccccc1[CH2:1][CH3:2]"
+       smiles: "c1ccccc1[CH:1]=[CH2:2]"     # styrene
        reactive_atoms: {1: C1, 2: C2}
+       activate: [[1, 2]]                 # the C=C the cure consumes
        count: 1000
 
-When ``htpolynet run`` starts, it sees the ``smiles`` key, invokes
-RDKit to generate ``lib/molecules/inputs/STY.mol2`` with atom names
-``C1`` and ``C2`` substituted at the mapped positions, then proceeds
+.. figure:: pics/STYCC.png
+   :scale: 50 %
+
+   Styrene, as written in the configuration.
+
+The active form
+^^^^^^^^^^^^^^^
+
+As described in the :ref:`user guide <molecular_structure_inputs>`,
+``htpolynet`` conserves valence: each reactive atom gives up a
+*sacrificial hydrogen* when it forms a new bond.  The vinyl carbons of
+styrene have no H to spare, so ``htpolynet`` works with styrene's
+**active** form, ethylbenzene, which carries one extra hydrogen on each
+of them:
+
+.. figure:: pics/STY.png
+   :scale: 50 %
+
+   Ethylbenzene, the active form of styrene that ``htpolynet``
+   parameterizes (monomer name ``STY``).
+
+You do not draw it.  The ``activate`` key names the C=C bond the cure
+consumes, by its two atom-map labels; ``htpolynet`` lowers that bond to a
+single bond and adds one hydrogen to each of its carbons before it
+generates any structure.  (Older configurations wrote the active form
+directly, as ``c1ccccc1[CH2:1][CH3:2]``; that still works and gives
+exactly the same structure.)
+
+When ``htpolynet run`` starts, it sees the ``smiles`` key, derives the
+active form, invokes RDKit to generate ``lib/molecules/inputs/STY.mol2``
+with atom names ``C1`` and ``C2`` substituted at the mapped positions,
+then proceeds
 with the usual AmberTools parameterization
 (``antechamber`` → ``parmchk2`` → ``tleap``).  The mol2 it writes
 looks something like this, with the two reactive carbons named:
