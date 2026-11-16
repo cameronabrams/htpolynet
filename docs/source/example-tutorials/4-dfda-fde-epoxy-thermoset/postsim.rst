@@ -80,8 +80,8 @@ Create ``postsim.yaml`` in the project base directory:
         replicas: 3
 
 The two ladders run from 100 to 800 K, 141 rungs of 100 ps each, so
-14.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
-``plots post`` to see past both ends of the transition.  The top is 800 K because the
+14.1 ns apiece.  That is wide enough for both of the two lines ``plots post`` fits for
+*T*:sub:`g` to sit beyond the transition.  The top is 800 K because the
 *T*:sub:`g` depends on it: five builds give a heating *T*:sub:`g` of 421 K on 700 K
 ladders and 402 K on 800 K ones, with cooling moving the same way (htpolynet-sweep,
 2026-11-06).  It keeps moving above 800 K: ladders run to 1000 K on three of the

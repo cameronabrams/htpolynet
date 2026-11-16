@@ -24,28 +24,36 @@ We present here a series of tutorials to help illustrate usage of ``htpolynet``.
 
 .. note::
 
-   **Every example uses Gasteiger partial charges, which is a speed choice, not
-   a modeling one.**  Each example's ``ambertools`` block sets
-   ``charge_method: gas``, and none sets ``atom_type``, so all of them run
-   GAFF (``gaff``, i.e. GAFF1) with Gasteiger charges.  That is also what
-   ``htpolynet`` does for any configuration that does not say otherwise:
-   ``gas`` is the default.
+   **Every example uses AM1-BCC partial charges** (``charge_method: bcc``)
+   with GAFF (``gaff``, i.e. GAFF1).  GAFF's Lennard-Jones and bonded
+   parameters were fitted alongside RESP charges, and AM1-BCC exists to
+   reproduce RESP cheaply, so this is the pairing GAFF is meant to be used
+   with.  It costs a semi-empirical (``sqm``) calculation for every monomer
+   and every reaction template before the build starts: 18 minutes on 16 CPU
+   cores for example 6's two molecules, and more for examples with more or
+   larger templates.  ``sqm`` does not use a GPU.
 
-   GAFF's Lennard-Jones and bonded parameters were fitted alongside RESP
-   charges, and AM1-BCC (``charge_method: bcc``) exists to reproduce RESP
-   cheaply; that is the pairing GAFF is meant to be used with.  Gasteiger
-   charges are not designed to reproduce RESP, so GAFF with Gasteiger is not a
-   validated combination.  The examples use it because AM1-BCC runs a
-   semi-empirical (``sqm``) calculation for every monomer and every reaction
-   template, which makes a tutorial build much slower.
+   Through htpolynet 2.17 the examples used Gasteiger charges
+   (``charge_method: gas``), which are fast but are not designed to reproduce
+   RESP.  On example 6 the switch raised the density at 300 K by about 1.1 %
+   and Young's modulus by about 20 %, and did not change *T*:sub:`g`.  **The
+   results recorded on these pages, and their timings, are still from the
+   Gasteiger builds** and will be re-recorded; expect your own densities and
+   moduli to come out higher.  ``gas`` remains ``htpolynet``'s default for a
+   configuration that does not set ``charge_method``.  A parameterization
+   already in your library is reused only if it was made with the same
+   ``charge_method``; see :ref:`the ambertools directive <configuration_run>`.
 
-   So the densities, glass transitions and moduli these tutorials report are
-   the ones their ``gas`` builds give, and are not meant to be compared with
-   experiment.  For numbers you intend to publish or compare with measured
-   data, set ``charge_method: bcc`` (see :ref:`the ambertools directive
-   <configuration_run>`).  Note that a parameterization already in your
-   library is reused only if it was made with the same ``charge_method``; see
-   the same section for what happens to older library entries.
+.. note::
+
+   **The** *T*:sub:`g` **to quote is the two-line crossing**, the ``Tg =``
+   line of the ``plots post`` log, with the per-build spread on the line
+   after it when there is more than one build.  ``plots post`` also logs a
+   whole-curve hyperbola fit, as a diagnostic only: its *T*:sub:`g` depends
+   on whether density, its logarithm or the specific volume is fitted, and
+   drifts as the ladder's top changes.  Some *T*:sub:`g` values on these
+   pages come from that fit and will be replaced when the pages are
+   re-recorded.
 
 .. toctree::
    :maxdepth: 2

@@ -36,7 +36,7 @@ gromacs:
   mdrun_options:
     gpu_id: 0            # auto-stripped at runtime if gmx is not GPU-capable or no GPU is visible
 ambertools:
-  charge_method: gas
+  charge_method: bcc
 constituents:
   BDC:
     # Bisphenol-A dicyanate.  Each cyanate's C and N are reactive (z=1 each): the C of

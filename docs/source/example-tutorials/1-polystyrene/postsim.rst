@@ -50,8 +50,8 @@ Create ``postsim.yaml`` in the project base directory:
         warmup_ps: 10
 
 The two ladders run from 100 to 700 K, 121 rungs of 100 ps each, so
-12.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
-``plots post`` to see past both ends of the transition.
+12.1 ns apiece.  That is wide enough for both of the two lines ``plots post`` fits for
+*T*:sub:`g` to sit beyond the transition.
 
 The cooling ladder runs first, starting from the equilibrated structure, and the
 heating ladder starts from where it ends.  Run the other way round, the heating

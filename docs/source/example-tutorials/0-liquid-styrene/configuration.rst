@@ -25,9 +25,10 @@ A block-by-block walk-through:
    ``gmx`` build is not GPU-capable or no GPU is visible.
 
 ``ambertools``
-   Selects the partial-charge method for ``antechamber``; ``gas`` is
-   Gasteiger, which is fast.  It is not the charge model GAFF was
-   parameterized with, so every example's numbers are tutorial numbers; see
+   Selects the partial-charge method for ``antechamber``; ``bcc`` is
+   AM1-BCC, the inexpensive substitute for the RESP charges GAFF was
+   parameterized with.  It runs a semi-empirical calculation per molecule,
+   so it is slower than Gasteiger (``gas``), the default; see
    the note on :ref:`the tutorials page <example_tutorials>`.
 
 ``constituents``

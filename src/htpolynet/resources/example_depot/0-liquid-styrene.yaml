@@ -38,7 +38,7 @@ gromacs:
   mdrun_options:
     gpu_id: 0            # auto-stripped at runtime if gmx is not GPU-capable or no GPU is visible
 ambertools:
-  charge_method: gas
+  charge_method: bcc
 constituents:
   STY:
     smiles: "c1ccccc1[CH:1]=[CH2:2]"     # styrene

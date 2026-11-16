@@ -82,8 +82,8 @@ postsim.yaml
         replicas: 3
 
 The two ladders run from 100 to 700 K, 121 rungs of 100 ps each, so
-12.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
-``plots post`` to see past both ends of the transition.  Neither direction
+12.1 ns apiece.  That is wide enough for both of the two lines ``plots post`` fits for
+*T*:sub:`g` to sit beyond the transition.  Neither direction
 gives a reproducible *T*:sub:`g` for this network, as described below.
 
 The cooling ladder runs first, starting from the equilibrated structure, and the
@@ -188,9 +188,10 @@ pooled three builds whose own values spanned 390-543 K.  The same five structure
 again on 100-800 K ladders (2026-11-06) kept a different two, and the pool was refused
 at every ceiling from 650 to 800 K.  Heating was refused in both runs.  An earlier
 version of this page quoted the 478 K value; do not use it.  The problem here is the
-spread between builds, not the ladder's width.  For other systems, read the
-whole-curve line of the log, quote its uncertainty and how many builds it kept, and
-widen the ladder when it says the ladder does not reach past the transition.
+spread between builds, not the ladder's width.  For other systems, quote the
+two-line crossing (the ``Tg =`` line of the log) with its per-build spread, check the
+range it gives over fit windows, and widen the ladder when the log says the lines do
+not sit beyond the transition.
 
 When comparing with a DSC or DMA measurement, remember also that the ladder runs at
 0.05 K/ps, many orders of magnitude faster than any experiment, and a faster rate
@@ -264,6 +265,6 @@ This network is at 97.5 % cyanate conversion, built by the reaction that cures t
 real material.  Its 18 unreacted groups are intact -O-C#N end groups, which is what an
 incompletely cured BADCy contains, so nothing about its composition is an artifact of
 the model.  What remains model-dependent is the usual list for any simulated thermoset:
-the GAFF force field with ``gas`` charges, a box of 360 monomers, a cure protocol whose
+the GAFF force field (with ``gas`` charges in the builds recorded here), a box of 360 monomers, a cure protocol whose
 MD between iterations is far shorter than a real cure schedule, and properties measured
 at simulation rates.

@@ -204,7 +204,7 @@ class TestDoTgPlots(unittest.TestCase):
         result, log = self.run_tg(kinked(TEMPS), kinked(TEMPS, Tg=440.0))
         self.assertAlmostEqual(result['heating'], 450.0, delta=1.0)
         self.assertIn('over fit windows', log)
-        self.assertIn('heating Tg, whole-curve fit: 450.0 K', log)
+        self.assertIn('heating Tg, whole-curve hyperbola (diagnostic, not the reported Tg): 450.0 K', log)
         self.assertNotIn('WARNING', log)
         self.assertEqual(result['unquotable'], [])
 
@@ -230,10 +230,10 @@ class TestDoTgPlots(unittest.TestCase):
 
     def test_a_tg_that_follows_the_ladder_top_is_flagged(self):
         result, log = self.run_tg(still_bending(TEMPS), kinked(TEMPS))
-        self.assertIn('heating Tg, whole-curve fit with the top of the ladder cut away', log)
-        self.assertIn('the heating Tg moves', log)
+        self.assertIn('heating Tg, whole-curve hyperbola with the top of the ladder cut away', log)
+        self.assertIn('the heating whole-curve hyperbola Tg moves', log)
         self.assertIn('raise its top', log)
-        self.assertNotIn('the cooling Tg moves', log)
+        self.assertNotIn('the cooling whole-curve hyperbola Tg moves', log)
 
     def test_a_crashed_ladder_does_not_discard_the_finished_one(self):
         """Job 26725677: a heating ladder that died took its finished cooling ladder with it."""
@@ -260,6 +260,25 @@ class TestDoTgPlots(unittest.TestCase):
         self.assertAlmostEqual(result['heating'], 450.0, delta=2.0)
         self.assertIn('proj-0', log)
         self.assertIn('did this ladder finish', log)
+        # the crossing per build: two cooling builds give a spread, one heating build does not
+        cool_b, heat_b = result['per_build']
+        self.assertEqual(cool_b['n'], 2)
+        self.assertAlmostEqual(cool_b['mean'], 440.0, delta=2.0)
+        self.assertIsNotNone(cool_b['sd'])
+        self.assertEqual(heat_b['n'], 1)
+        self.assertIsNone(heat_b['sd'])
+        self.assertIn('cooling Tg, two-line crossing per build: 440', log)
+        self.assertNotIn('heating Tg, two-line crossing per build', log)
+
+    def test_the_reported_tg_is_the_crossing_not_the_hyperbola(self):
+        """Cameron, 2026-11-16: "for Tg, crossing, not hyperbole"."""
+        result, log = self.run_tg(smooth(TEMPS, Tg=450.0, width=40.0), kinked(TEMPS))
+        from htpolynet.analysis.utils import compute_tg
+        crossing = compute_tg(TEMPS, smooth(TEMPS, Tg=450.0, width=40.0))[0]
+        hyperbola = result['whole_curve'][0]['fit']['Tg']
+        self.assertGreater(abs(crossing - hyperbola), 3.0)   # the two estimators disagree here
+        self.assertAlmostEqual(result['heating'], crossing, delta=0.5)
+        self.assertIn('two-line crossing of the mean curve', log)
 
     def test_a_ladder_no_build_finished_is_skipped(self):
         h = {'ladder': dict(LADDER, subdir='heat')}

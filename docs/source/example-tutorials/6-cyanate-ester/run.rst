@@ -19,8 +19,10 @@ Setup
 ^^^^^
 
 ``htpolynet`` parameterizes the two templates, BDC and BDC3 (three monomers, 105
-atoms), discussed on the :ref:`reactions page <badcy_reactions>`.  With ``gas``
-charges the whole setup stage takes seconds.  Because the only cure reaction closes a
+atoms), discussed on the :ref:`reactions page <badcy_reactions>`.  With ``bcc``
+charges the setup stage takes about 18 minutes on 16 CPU cores, nearly all of it in
+``sqm``; the Gasteiger (``gas``) charges this example used through htpolynet 2.17
+took seconds.  Because the only cure reaction closes a
 ring, the log says that conversion is counted by the ring cure rather than quoting a
 bond count::
 

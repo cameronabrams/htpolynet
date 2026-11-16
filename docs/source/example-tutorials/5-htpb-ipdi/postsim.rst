@@ -82,8 +82,8 @@ postsim.yaml
         replicas: 3
 
 The two ladders run from 50 to 500 K, 91 rungs of 100 ps each, so
-9.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
-``plots post`` to see past both ends of the transition.  This elastomer's
+9.1 ns apiece.  That is wide enough for both of the two lines ``plots post`` fits for
+*T*:sub:`g` to sit beyond the transition.  This elastomer's
 *T*:sub:`g` is near 200-220 K, so it is the bottom of the ladder that matters here:
 an earlier 250 K floor sat inside the transition.
 

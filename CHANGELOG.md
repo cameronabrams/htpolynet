@@ -59,13 +59,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   again, while its tutorial compared the result with liquid styrene's density.
   It now gives real styrene and nothing to activate; the box has 16,000 atoms
   instead of 18,000, and its density changes.
-- **The docs now say that the examples, and htpolynet's default, use Gasteiger
-  charges.**  Every shipped example sets `charge_method: gas` with GAFF1, which is
-  also what any config gets when it does not choose.  The tutorials page and the
-  `ambertools` reference now explain that this is a speed choice: GAFF is meant to
-  be paired with AM1-BCC (`bcc`), Gasteiger is not a validated pairing, and the
-  tutorials' numbers are not for comparison with experiment.  Tutorial 0 no longer
-  calls Gasteiger "good enough".
+- **Every example now uses AM1-BCC charges** (`charge_method: bcc`), the
+  pairing GAFF is meant to be used with, instead of Gasteiger (`gas`).  On
+  example 6, one AM1-BCC build against five Gasteiger builds raised the density at
+  300 K by about 1.1 %, onto the experimental value, and Young's modulus by about
+  20 %, and did not change Tg.  The cost is a semi-empirical `sqm` calculation per
+  monomer and reaction template before the build: 18 minutes on 16 CPU cores for
+  example 6, more for examples with more or larger templates.  The tutorials'
+  recorded results are still from the Gasteiger builds until they are re-recorded,
+  and the pages say so.  `gas` remains the default for a config that does not set
+  `charge_method`; the docs explain the pairing and what Gasteiger costs in accuracy.
+- **`plots post` reports Tg as the two-line crossing, and calls the whole-curve
+  fit a diagnostic.**  The hyperbola's Tg depends on whether density, its logarithm
+  or the specific volume is fitted (441, 472 and 508 K on the same example-3 data)
+  and drifts with the ladder's top.  The log now names the crossing as the reported
+  Tg, adds each build's own crossing as a mean and standard deviation when there is
+  more than one build (also returned as `per_build`), and labels every hyperbola
+  line and warning as a diagnostic.  The tutorials and usage guide say to quote the
+  crossing.
 - **Tutorials 2-6 pull more slowly for Young's modulus.**  Each pull runs
   160 ps at 0.00025 ps^-1 instead of 40 ps at 0.001, reaching the same 4 %
   strain with four times as many frames inside the 0.1-3 % fit window, at a few

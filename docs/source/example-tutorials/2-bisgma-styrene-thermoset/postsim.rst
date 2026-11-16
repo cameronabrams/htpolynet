@@ -80,8 +80,8 @@ Create ``postsim.yaml`` in the project base directory:
         replicas: 3
 
 The two ladders run from 100 to 850 K, 151 rungs of 100 ps each, so
-15.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
-``plots post`` to see past both ends of the transition.  The heating
+15.1 ns apiece.  That is wide enough for both of the two lines ``plots post`` fits for
+*T*:sub:`g` to sit beyond the transition.  The heating
 fit needs the top this high: on a 700 K ladder it was refused, and on 850 K ladders
 five builds give 464 +/- 16 K, four of them on their own, with the transition ending
 near 750 K (htpolynet-sweep, 2026-11-06).  Above about 700 K the ladder is beyond where the force field was checked for this chemistry,

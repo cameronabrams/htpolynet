@@ -1596,7 +1596,9 @@ Coverage as of the last measurement: **38.8%** overall.
 
 ## Configuration
 
-- **Gasteiger is the default charge model; decide whether it should stay so.**  Cameron, 2026-11-13 (relayed by
+- **Gasteiger is still the default charge model; the examples moved to AM1-BCC.**  Cameron, 2026-11-16: "yes, all
+  examples move to am1-bcc, which will need a new sweep". The default itself was not
+  decided. Earlier, Cameron, 2026-11-13 (relayed by
   htpolynet-sweep): "we should update the example docs to reflect this so users
   know". The docs now say it (tutorials index note, `ambertools` reference),
   with AM1-BCC's measured cost for example 6: 17m53s on 16 CPU cores for its two
@@ -1615,10 +1617,12 @@ Coverage as of the last measurement: **38.8%** overall.
     defaults in `core/runtime.py` say `gas`, and the schema fills the key into every
     config, so `bcc` is reached only by API calls that pass no `ambertools` dict.
     Make them agree once the default is decided.
-  - *Whether examples or the default switch to `bcc`* is Cameron's call: slower
-    tutorials against numbers on the force-field pairing the cyanate-ester
-    validation was done at. Middle option: keep `gas` in tutorials and document a
-    production profile.
+  - *Whether the default also switches to `bcc`* is Cameron's call: every config
+    that does not set `charge_method` gets `gas`.
+  - *Re-record tutorials 0-6 from the AM1-BCC sweep*, with the size re-recording
+    below, and remove the "still from the Gasteiger builds" note on the tutorials
+    index. Check each example's parameterization time then: only example 6's (two
+    molecules) has been measured.
   - *GAFF2.* The docs say only to pick a charge model fitted for GAFF2. ABCG2 (He
     et al., J. Chem. Phys. 2020) is the literature candidate, but htpolynet-sweep
     found no Amber statement making it a recommended default, so it is not named
@@ -1819,9 +1823,11 @@ Coverage as of the last measurement: **38.8%** overall.
     ex4 builds run twice, the expansivity step differs by -20.0 (heating) and -23.0 K
     (cooling) where the hyperbola differs by +4.8 and +7.1.  The step fit holds steady
     as the top moves but not between runs, and the hyperbola is the reverse;
-    neither measures these Tgs to better than about 20 K.  If the step fit ships,
-    it goes beside the current fit with the run-to-run spread quoted.  Waits on
-    Cameron.
+    neither measures these Tgs to better than about 20 K.  **Decided** by Cameron,
+    2026-11-16: "for Tg, crossing, not hyperbole".  `plots post` now reports the
+    two-line crossing with its per-build spread and calls the hyperbola a
+    diagnostic; the step fit is not shipping.  Tutorial Tg values that came from
+    the hyperbola are replaced when the tutorials are re-recorded.
   - **Tutorial 2 runs to 850 K** with GAFF unchecked there for its chemistry;
     the page says to look at the top rungs.  Examples 3 and 4 were checked to
     1000 K (above) and hold.

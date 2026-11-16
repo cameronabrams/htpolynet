@@ -667,6 +667,15 @@ def build_plots(args):
             # dist_bw_xlinks_plot(am,os.path.join(p,"dist_bw_xlinks.png"))
 
 def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[10,20]):
+    """Tg from each ladder's density curve, by the two-line crossing.
+
+    The reported Tg is the two-line crossing (:func:`compute_tg`) of the curve averaged
+    over builds, with the crossing of each build's own curve giving the between-build
+    spread.  The whole-curve hyperbola fit (:func:`pooled_tg`) is still computed and
+    logged, but only as a diagnostic: its Tg depends on whether density, ln density or
+    specific volume is fitted, and drifts with the ladder's top (Cameron, 2026-11-16:
+    "for Tg, crossing, not hyperbole").
+    """
     res={}
     means={}
     stds={}
@@ -675,6 +684,7 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
     spread=[]
     span=[]
     whole=[]
+    per_build=[]
     for i,phase in enumerate(phases):
         p=phase['ladder']
         # a ladder that crashed leaves no ladder.csv; it must not take the finished
@@ -751,6 +761,7 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
         Tgs.append(Tg)
         spread.append(tg_window_range(m['Temperature'].values,m['Density'].values))
         curves=[(r['Temperature'].values,r['Density'].values) for r in res[v]]
+        per_build.append(_crossing_per_build(curves,n_points))
         w=pooled_tg(curves)
         if len(curves)==1 and w['fit'] is not None and not w['fit']['held_out']:
             w['fit']=fit_tg_hyperbola(*curves[0],n_synth=200)
@@ -776,8 +787,12 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
     # plan B on example 5, 2026-10-23)
     labels=['heating' if r>0 else 'cooling' for r in rate]
     logger.info(f'{outfile} created.')
-    for label,Tg,r in zip(labels,Tgs,rate):
-        logger.info(f'{label} Tg = {Tg:.2f} K ({(Tg-273.15):.2f} C) at {r:.5f} K/ps ({r*1.e12:.3e} K/s)')
+    for label,Tg,r,b in zip(labels,Tgs,rate,per_build):
+        logger.info(f'{label} Tg = {Tg:.2f} K ({(Tg-273.15):.2f} C) at {r:.5f} K/ps ({r*1.e12:.3e} K/s), '
+                    f'two-line crossing of the mean curve')
+        if b['sd'] is not None:
+            logger.info(f'{label} Tg, two-line crossing per build: {b["mean"]:.1f} +/- {b["sd"]:.1f} K '
+                        f'(mean and s.d. over {b["n"]} builds)')
     unquotable=[]
     for label,r,(lo,hi) in zip(labels,spread,span):
         if r is None:
@@ -791,9 +806,9 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
     for label,w in zip(labels,whole):
         f=w['fit']
         if f is None:
-            logger.info(f'{label} Tg, whole-curve fit: did not converge')
+            logger.info(f'{label} Tg, whole-curve hyperbola (diagnostic, not the reported Tg): did not converge')
         elif f['held_out']:
-            logger.info(f'{label} Tg, whole-curve fit: none ({f["reason"]})')
+            logger.info(f'{label} Tg, whole-curve hyperbola (diagnostic, not the reported Tg): none ({f["reason"]})')
         else:
             if w['Tg_boot_sd'] is not None:
                 err=(f'+/- {w["Tg_boot_sd"]:.0f} K (uncertainty of the mean, bootstrap over '
@@ -805,7 +820,7 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
                 err=f'+/- {f["Tg_synth_sd"]:.0f} K within this build'
             else:
                 err='no error bar'
-            logger.info(f'{label} Tg, whole-curve fit: {f["Tg"]:.1f} K {err}; tangents at the '
+            logger.info(f'{label} Tg, whole-curve hyperbola (diagnostic, not the reported Tg): {f["Tg"]:.1f} K {err}; tangents at the '
                         f'ladder ends cross at {f["Tg_tangents"]:.1f} K'
                         + ('; a sharp break' if f['sharp'] else ''))
             bar=w['Tg_boot_sd'] if w['Tg_boot_sd'] is not None else f.get('Tg_synth_sd')
@@ -814,18 +829,18 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
             bar=max(bar or 0.0,w['rung'])
             drift=w.get('ceiling_drift') or []
             if drift:
-                logger.info(f'{label} Tg, whole-curve fit with the top of the ladder cut away: '
+                logger.info(f'{label} Tg, whole-curve hyperbola with the top of the ladder cut away: '
                             + '; '.join(f'{d["ceiling"]:.0f} K top: '
                                         + (f'{d["Tg"]:.1f} K ({d["Tg"]-f["Tg"]:+.1f})'
                                            if d['Tg'] is not None else f'none ({d["reason"]})')
                                         for d in drift))
                 first_cut=drift[0]
                 if first_cut['Tg'] is None:
-                    logger.warning(f'the {label} Tg is lost when the top {first_cut["cut"]:.0f} K of '
+                    logger.warning(f'the {label} whole-curve hyperbola Tg is lost when the top {first_cut["cut"]:.0f} K of '
                                    f'the ladder is removed: the ladder only just reaches past this '
                                    f'transition, so raise its top')
                 elif abs(first_cut['Tg']-f['Tg'])>bar:
-                    logger.warning(f'the {label} Tg moves {first_cut["Tg"]-f["Tg"]:+.1f} K when the '
+                    logger.warning(f'the {label} whole-curve hyperbola Tg moves {first_cut["Tg"]-f["Tg"]:+.1f} K when the '
                                    f'top {first_cut["cut"]:.0f} K of the ladder is removed, more than '
                                    f'{bar:.1f} K, the larger of its error bar and one rung: the ladder is not tall enough for '
                                    f'this Tg to have settled, so raise its top')
@@ -838,7 +853,27 @@ def do_tg_plots(phases,projdirs,outfile='tg.png',save_data='data.csv',n_points=[
         logger.warning(f'heating and cooling Tg differ by {abs(hTg-cTg):.0f} K; more than rate '
                        f'hysteresis explains, so treat at least one as a failed fit')
     return {'heating':hTg,'cooling':cTg,'directions':labels,'window_range':spread,
-            'unquotable':unquotable,'whole_curve':whole}
+            'unquotable':unquotable,'per_build':per_build,'whole_curve':whole}
+
+def _crossing_per_build(curves,n_points):
+    """Two-line crossing Tg of each build's own curve: dict with 'Tgs', 'mean', 'sd', 'n'.
+
+    'sd' is None with fewer than two builds.  A build whose curve is too short for the
+    fit windows is left out.
+    """
+    tgs=[]
+    for T,y in curves:
+        o=np.argsort(T)
+        T,y=np.asarray(T)[o],np.asarray(y)[o]
+        if len(T)<n_points[0]+n_points[1]:
+            continue
+        try:
+            tgs.append(float(compute_tg(T,y,n_points=n_points)[0]))
+        except (RuntimeError,ValueError,TypeError):
+            continue
+    n=len(tgs)
+    return {'Tgs':tgs,'n':n,'mean':float(np.mean(tgs)) if n else None,
+            'sd':float(np.std(tgs,ddof=1)) if n>1 else None}
 
 def do_E_plots(phases,projdirs,outfile='e.png',save_data='E.csv',fit_strain=None):
     """Fits Young's modulus to the deform stages and plots the mean stress-strain curve.

@@ -16,7 +16,7 @@ gromacs:
   mdrun_options:
     gpu_id: 0            # auto-stripped at runtime if gmx is not GPU-capable or no GPU is visible
 ambertools:
-  charge_method: gas
+  charge_method: bcc
 constituents:
   DGE:
     smiles: "CC(C)(c1ccc(OC[CH:3]2[O:5][CH2:1]2)cc1)c1ccc(OC[CH:4]2[O:6][CH2:2]2)cc1"

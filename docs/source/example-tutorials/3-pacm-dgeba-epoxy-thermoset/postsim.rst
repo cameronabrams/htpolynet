@@ -105,8 +105,8 @@ In the project base directory, create the file ``postsim.yaml`` with these conte
 This file will instruct HTPolyNet to use Gromacs to conduct several MD simulations.  First, the final results of the build are annealed for two cycles between 300 and 600 K.  Then the result of the annealing is equilibrated at 300 K.  Following, a cooling and then a heating temperature ladder are run; in parallel (using the equilibrated output), three uniaxial deformations are run.
 
 The two ladders run from 100 to 800 K, 141 rungs of 100 ps each, so
-14.1 ns apiece.  That is wide enough for the whole-curve *T*:sub:`g` fit in
-``plots post`` to see past both ends of the transition.  The top
+14.1 ns apiece.  That is wide enough for both of the two lines ``plots post`` fits for
+*T*:sub:`g` to sit beyond the transition.  The top
 is 800 K because on a 700 K ladder only two of five builds gave a heating *T*:sub:`g`
 on their own.  The *T*:sub:`g` this ladder gives is set by its top, not measured.
 Ladders run to 1000 K on the same builds (htpolynet-sweep, 2026-11-06) give a
