@@ -1621,8 +1621,9 @@ Coverage as of the last measurement: **38.8%** overall.
     that does not set `charge_method` gets `gas`.
   - *Re-record tutorials 0-6 from the AM1-BCC sweep*, with the size re-recording
     below, and remove the "still from the Gasteiger builds" note on the tutorials
-    index. Check each example's parameterization time then: only example 6's (two
-    molecules) has been measured.
+    index. Parameterization times for examples 2-6 are measured (htpolynet-sweep,
+    job 26774043, 2026-11-16) and in the docs; example 1's and 0's are not, but
+    each is one or a few styrene-sized molecules.
   - *GAFF2.* The docs say only to pick a charge model fitted for GAFF2. ABCG2 (He
     et al., J. Chem. Phys. 2020) is the literature candidate, but htpolynet-sweep
     found no Amber statement making it a recommended default, so it is not named

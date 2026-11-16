@@ -28,10 +28,11 @@ We present here a series of tutorials to help illustrate usage of ``htpolynet``.
    with GAFF (``gaff``, i.e. GAFF1).  GAFF's Lennard-Jones and bonded
    parameters were fitted alongside RESP charges, and AM1-BCC exists to
    reproduce RESP cheaply, so this is the pairing GAFF is meant to be used
-   with.  It costs a semi-empirical (``sqm``) calculation for every monomer
-   and every reaction template before the build starts: 18 minutes on 16 CPU
-   cores for example 6's two molecules, and more for examples with more or
-   larger templates.  ``sqm`` does not use a GPU.
+   with.  It costs a semi-empirical (``sqm``) calculation for every distinct
+   molecule before the build starts, which on 16 CPU cores takes from under
+   5 minutes (example 5) to about 4 hours (example 3); molecule size, not the
+   number of templates, sets it.  ``sqm`` does not use a GPU, and the results
+   are kept in the library, so only the first build pays.
 
    Through htpolynet 2.17 the examples used Gasteiger charges
    (``charge_method: gas``), which are fast but are not designed to reproduce

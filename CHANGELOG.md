@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The docs give AM1-BCC's measured parameterization time for examples 2-6**, from
+  under 5 minutes (example 5) to about 4 hours (example 3) on 16 CPU cores, and say
+  that molecule size, not template count, sets it.  They had said cost grew with the
+  number of reaction templates; example 2 parameterizes 61 molecules in 2.5 hours and
+  example 3 only 16 in 4.2.
+
 ## [2.18.0] - 2026-11-16
 
 ### Added
