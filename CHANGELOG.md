@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.18.0] - 2026-11-16
+
 ### Added
 
 - **A warning when a kept molecule no longer matches its SMILES.**  A generated
