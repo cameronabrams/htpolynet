@@ -303,6 +303,41 @@ class TestDoTgPlots(unittest.TestCase):
         self.assertIn('differ by 56 K', log)
 
 
+class TestPostPlotsOnAPartialProject(unittest.TestCase):
+    """Ladders finished; anneal, equilibrate and deform listed but not run.  The ladder
+    output must be written and plots post must return normally (htpolynet-sweep,
+    2026-11-19: it raised after writing the ladder CSVs, so a harness gating on the
+    exit code discarded them)."""
+
+    def test_ladders_are_analyzed_and_nothing_raises(self):
+        import yaml
+        h = {'ladder': dict(LADDER, subdir='postsim/heat')}
+        c = {'ladder': dict(LADDER, subdir='postsim/cool', deltaT=-LADDER['deltaT'])}
+        phases = ([{'anneal': {'subdir': 'postsim/anneal'}},
+                   {'equilibrate': {'subdir': 'postsim/equilibrate'}}, c, h]
+                  + [{'deform': {'direction': a, 'subdir': f'postsim/deform-{a}'}} for a in 'xyz'])
+        with tempfile.TemporaryDirectory() as top:
+            proj = os.path.join(top, 'proj-0')
+            write_ladder(proj, 'postsim/heat', kinked(TEMPS))
+            write_ladder(proj, 'postsim/cool', kinked(TEMPS, Tg=440.0))
+            cfg = os.path.join(top, 'post.yaml')
+            with open(cfg, 'w') as f:
+                yaml.safe_dump(phases, f)
+            cwd = os.getcwd()
+            os.chdir(top)
+            try:
+                with self.assertLogs('htpolynet.analysis.plot', level='INFO') as logs:
+                    post_plots(types.SimpleNamespace(n_points=[10, 20], cfg=[cfg], proj=[proj]))
+                written = sorted(os.listdir(top))
+            finally:
+                os.chdir(cwd)
+        log = '\n'.join(logs.output)
+        self.assertIn('ladder0-data.csv', written)
+        self.assertIn('ladder1-data.csv', written)
+        self.assertIn('equilibrate.csv not found', log)
+        self.assertIn('no deform stage has run', log)
+
+
 class TestPostPlotsNeedsItsConfig(unittest.TestCase):
     def test_no_cfg_is_an_error_not_a_silent_success(self):
         args = types.SimpleNamespace(n_points=[10, 20], cfg=[], proj=['proj-0'])

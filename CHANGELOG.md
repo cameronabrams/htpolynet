@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`plots post` no longer fails on a project whose deform or anneal/equilibrate
+  stages have not run.**  With no deform directories it raised `ValueError: min()
+  iterable argument is empty` after the Tg ladder data had already been written, so
+  it exited nonzero with good output on disk, and a script that checks the exit code
+  threw that output away.  A config listing `anneal` and `equilibrate` whose CSVs
+  were missing raised before the ladders were even read.  Each missing stage is now
+  named in a warning and left out, and the stages that ran are analyzed as usual.
+
 ### Changed
 
 - **The docs give AM1-BCC's measured parameterization time for examples 2-6**, from

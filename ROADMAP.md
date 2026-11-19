@@ -1851,6 +1851,25 @@ Coverage as of the last measurement: **38.8%** overall.
   then remove the notes.  Check too whether 150 cure iterations and the cure
   timings still hold at 8x.
 
+- **Postsim ladders blow up near 800 K on example 2, and nothing tried fixes it.**
+  Within about 35 K of an 800 K ceiling, LINCS errors appear, coordinates
+  explode, and mdrun dies either with `Box={-nan,-nan,inf}`, "Can not fix pbc"
+  and SIGSEGV, or with CUDA error #700 (illegal address), which is the same event
+  seen downstream. It is chemistry-specific: example 2 lost 3 of 5 postsims in the
+  765-785 K band of the AM1-BCC sweep (job 26795870, replicas 0, 2 and 4, postsim
+  rc=1; checked here from the task logs). Example 4 lost 2 of 5 once and none
+  since, and examples 3 and 5 essentially never fail.
+  `lincs-iter = 2` is **not** a fix (htpolynet-sweep, 2026-11-19, retracting its
+  2026-11-10 conclusion). That conclusion rested on two retried cells that passed
+  with it, while plain retries were passing at about the same rate. The AM1-BCC
+  campaign then ran `lincs-iter 2` in all 24 tasks and still lost those three.
+  `-update cpu` is a separate, real fix for a different crash
+  (UpdateConstrainGpu) and is not in question. Telling a fix from luck here needs
+  about 10 cells per arm, a stability study rather than a measurement. Until
+  someone does one, the practical answer is to retry, or to cap example 2's
+  ladder lower. Tutorial 2 runs to 850 K because its heating fit needed that top,
+  and that is the band where it fails.
+
 - **grompp warns 8 times per example 2 build about two transposed hydrogens.**
   Surfaced by 2.15.0 relaying grompp's warnings (htpolynet-sweep, v2.15.0
   sweep): atoms 76/77 are H11/H12 in GMA.top and H12/H11 in the GMAS-N

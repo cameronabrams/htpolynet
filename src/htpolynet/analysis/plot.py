@@ -900,6 +900,7 @@ def do_E_plots(phases,projdirs,outfile='e.png',save_data='E.csv',fit_strain=None
         fit_strain=list(sorted(windows)[0])
     lo,hi=fit_strain
     curves=[]
+    missing=[]
     for p in phases:
         params={**PostSimDeform.default_params,**p['deform']}
         dir=params['direction']
@@ -912,12 +913,25 @@ def do_E_plots(phases,projdirs,outfile='e.png',save_data='E.csv',fit_strain=None
             if not found and os.path.isdir(os.path.join(d,params['subdir'])):
                 # a run from before replicas existed, or one with replicas: 1
                 found=[params['subdir']]
+            elif not found:
+                missing.append(f'{d}/{params["subdir"]}')
+                continue
             elif len(found)<len(subs):
                 logger.warning(f'{d}: found {len(found)} of {len(subs)} replica directories for '
                                f'{params["subdir"]}; fitting those')
             for sub in found:
                 df=pd.read_csv(os.path.join(d,sub,f'deform-{dir}.csv'),index_col=None,header=0)
                 curves.append((os.path.join(d,sub),pd.DataFrame({'strain':df[strain_name],'stress':(df[stress_name]*MPa_per_bar)})))
+    if not curves:
+        # no deform stage has run in any project; a ladder-only project is a normal
+        # state, and the Tg output already written must not be undone by an error
+        # here (htpolynet-sweep, 2026-11-19: min() of an empty list, after the ladder
+        # CSVs were written, made plots post exit nonzero)
+        logger.warning(f'no deform stage has run ({", ".join(missing)} not found); '
+                       f'skipping Young\'s modulus')
+        return None
+    if missing:
+        logger.warning(f'deform stages not found, left out of E: {", ".join(missing)}')
     reached=min(c['strain'].max() for _,c in curves)
     if reached<hi:
         logger.warning(f'the shortest pull reaches strain {reached:.4f}, short of the fit window\'s '
@@ -985,6 +999,14 @@ def post_plots(args):
     mdf=[]
     for p in args.proj:
         if 'anneal' in phasenames and 'equilibrate' in phasenames:
+            need=[os.path.join(p,'postsim',s,f'{s}.csv') for s in ('anneal','equilibrate')]
+            absent=[f for f in need if not os.path.exists(f)]
+            if absent:
+                # a stage that has not run is reported, not fatal: it used to raise
+                # here, before the ladders and pulls that had run were analyzed
+                logger.warning(f'{", ".join(absent)} not found; leaving {p} out of the '
+                               f'anneal/equilibrate density')
+                continue
             mdf.append(postsim_density_evolution(p))
     if mdf:
         multi_trace(mdf,xnames=['time(ps)']*len(mdf),ynames=['Density']*len(mdf),labels=args.proj,ylabel='Density [kg/m$^3$]',outfile='anneal-equil-density.png')

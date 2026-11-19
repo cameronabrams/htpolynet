@@ -44,6 +44,41 @@ class TestComputeEStrainWindow(unittest.TestCase):
             compute_E(np.array([0.0, 0.0001]), np.array([0.0, 1.0]), fit_strain=[0.001, 0.02])
 
 
+class TestMissingDeformStages(unittest.TestCase):
+    """htpolynet-sweep, 2026-11-19: no deform directories crashed with min() of an empty
+    list, after the ladder CSVs were written, so plots post exited nonzero."""
+
+    def run_in(self, writer, phases):
+        with tempfile.TemporaryDirectory() as d:
+            writer(d)
+            cwd = os.getcwd()
+            os.chdir(d)
+            try:
+                with self.assertLogs('htpolynet.analysis.plot', level='INFO') as logs:
+                    result = do_E_plots(phases, [d])
+                written = sorted(os.listdir(d))
+            finally:
+                os.chdir(cwd)
+        return result, '\n'.join(logs.output), written
+
+    def test_no_deform_stage_run_is_skipped_with_a_warning(self):
+        phases = TestDoEPlots.phases()
+        result, log, written = self.run_in(lambda d: None, phases)
+        self.assertIsNone(result)
+        self.assertIn('no deform stage has run', log)
+        self.assertIn('skipping Young', log)
+        self.assertNotIn('E.csv', written)
+
+    def test_one_missing_direction_is_named_and_the_others_fitted(self):
+        def w(root):
+            for i, ax in enumerate('xy'):
+                write_deform(root, f'postsim/deform-{ax}', ax, 3.0e4, 1.0, seed=i)
+        result, log, written = self.run_in(w, TestDoEPlots.phases())
+        self.assertEqual(result['n'], 2)
+        self.assertIn('left out of E', log)
+        self.assertIn('deform-z', log)
+
+
 class TestDoEPlots(unittest.TestCase):
     def run_E(self, phases, writer):
         with tempfile.TemporaryDirectory() as d:
