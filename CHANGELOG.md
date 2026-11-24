@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.18.1] - 2026-11-24
+
 ### Fixed
 
 - **Example 2's GMAS-4 to GMAS-15 templates were written with 24 of their 78
