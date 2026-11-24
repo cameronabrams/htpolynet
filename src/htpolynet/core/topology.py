@@ -358,16 +358,23 @@ class Topology:
             bmi = grobonds.set_index(['ai', 'aj']).index
             mol2bonds = self.D['mol2_bonds'].sort_values(by=['ai', 'aj'])
             mbmi = mol2bonds.set_index(['ai', 'aj']).index
-            check = all([x == y for x, y in zip(bmi, mbmi)])
-            # logger.debug(f'Result: {check}')
+            # zip() used to stop at the shorter list, so a mol2 missing only bonds that
+            # sort last compared equal and passed (htpolynet-sweep, 2026-11-24)
+            canon = lambda idx: {(min(int(a), int(b)), max(int(a), int(b))) for a, b in idx}
+            gset, mset = canon(bmi), canon(mbmi)
+            check = len(bmi) == len(mbmi) and gset == mset
             if not check:
-                logger.error(f'Gromacs/Mol2 bond inconsistency detected')
+                logger.error(f'Gromacs/Mol2 bond inconsistency detected: the topology has {len(bmi)} bonds and '
+                             f'the mol2 {len(mbmi)}; {len(gset - mset)} topology bonds are missing from the mol2 '
+                             f'and {len(mset - gset)} mol2 bonds are not in the topology')
                 logger.debug(f'GROMACS:')
                 logger.debug(grobonds[['ai','aj']].head().to_string())
                 logger.debug(f'MOL2:')
                 logger.debug(mol2bonds[['ai','aj']].head().to_string())
                 for x, y in zip(bmi, mbmi):
                     logger.debug(f'{x} {y} {x == y}')
+            return check
+        return None
 
     def shiftatomsidx(self, idxshift, directive, rows=[], idxlabels=[]):
         """Shifts all atom indexes in a topology directive dataframe.
@@ -1175,9 +1182,36 @@ class Topology:
         for t in L:
             self._myconcat(other, directive=t, drop_duplicates=True)
 
+    def _fill_missing_mol2_bonds(self, other):
+        """Before a merge, gives a mol2 bond table to whichever side has bonds but none.
+
+        ``_myconcat`` skips a directive the incoming side lacks, so merging a molecule
+        with no mol2 table into one that has one kept only the first's bonds: example 2's
+        GMAS-4..15 templates were written with 24 of their 78 bonds (htpolynet-sweep,
+        2026-11-24).  The reverse case adopted the incoming table without shifting its
+        atom indices.  The missing table is built from the GROMACS bonds, as single bonds
+        since a topology carries no bond orders, and the gap is logged.  Nothing happens
+        when neither side has a table, or when a side has no bonds at all (an empty
+        Topology about to receive its first molecule).
+        """
+        def has_bonds(T):
+            return 'bonds' in T.D and not T.D['bonds'].empty
+        sides = [(self, 'the molecule being built'), (other, 'the molecule merged into it')]
+        if not any('mol2_bonds' in T.D for T, _ in sides):
+            return
+        for T, label in sides:
+            if 'mol2_bonds' not in T.D and has_bonds(T):
+                b = T.D['bonds'][['ai', 'aj']].reset_index(drop=True)
+                T.D['mol2_bonds'] = pd.DataFrame({'bondIdx': range(1, len(b) + 1), 'ai': b['ai'].astype(int),
+                                                  'aj': b['aj'].astype(int), 'order': '1'})
+                logger.warning(f'{label} has no mol2 bond table; using its {len(b)} topology bonds, '
+                               f'as single bonds, so the merged table is complete')
+
     def merge_ex(self, other):
         logger.debug(f'   extensive merging...')
         ''' merge EXTENSIVE quantities '''
+        # before any concat: _myconcat shifts the incoming side's indices in place
+        self._fill_missing_mol2_bonds(other)
         idxshift = 0 if 'atoms' not in self.D else len(self.D['atoms'])
         rdxshift = 0 if 'atoms' not in self.D else self.D['atoms'].iloc[-1]['resnr']
         if 'atoms' in other.D:

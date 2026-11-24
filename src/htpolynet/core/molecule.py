@@ -547,7 +547,14 @@ class Molecule:
         else:
             if self.name != self.parentname:
                 logger.info(f'Built {self.name} using topology of {self.parentname}; copying {self.parentname}.top to {self.name}.top')
-                self.load_top_gro(f'{self.parentname}.top', f'{self.name}.gro', tpxfilename=f'{self.parentname}.tpx', wrap_coords=False)
+                # Read back the mol2 this molecule just wrote, for its bond table only
+                # (coordinates stay from the gro).  Without it the molecule has no
+                # mol2_bonds, and a later template that merges it in -- GMAS-4..15 merge
+                # GM1S-k -- kept only its other reactant's bonds: 24 of 78 in example 2
+                # (htpolynet-sweep, 2026-11-24).  Reading it also runs the bond check now.
+                own_mol2 = f'{self.name}.mol2' if os.path.exists(f'{self.name}.mol2') else ''
+                self.load_top_gro(f'{self.parentname}.top', f'{self.name}.gro', tpxfilename=f'{self.parentname}.tpx',
+                                  mol2filename=own_mol2, wrap_coords=False)
                 shutil.copy(f'{self.parentname}.top', f'{self.name}.top')
                 shutil.copy(f'{self.parentname}.grx', f'{self.name}.grx')
                 shutil.copy(f'{self.parentname}.tpx', f'{self.name}.tpx')

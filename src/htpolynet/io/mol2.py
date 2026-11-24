@@ -170,7 +170,10 @@ def write(filename, A, mol2_bonds, metadat, name,
     with open(filename, 'w') as f:
         f.write('@<TRIPOS>MOLECULE\n')
         f.write(f'{molname if molname else name}\n')
-        f.write('{:>6d}{:>6d}{:>3d}{:>3d}{:>3d}\n'.format(
+        # each field is a space plus the old width, so the line is byte-identical
+        # whenever a value fits; the old fixed widths ran 100+ residues into the
+        # bond count ('  3600  3600200') and the header could not be read back
+        f.write(' {:>5d} {:>5d} {:>2d} {:>2d} {:>2d}\n'.format(
             N, nBonds, nSubs,
             metadat.get('nFeatures', 0),
             metadat.get('nSets', 0),

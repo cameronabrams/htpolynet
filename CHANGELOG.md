@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Example 2's GMAS-4 to GMAS-15 templates were written with 24 of their 78
+  bonds.**  Each is a stereoisomer of GMA built from a stereoisomer of GM1, and that
+  GM1 isomer, built on GM1's topology, carried no mol2 bond table; merging it in
+  silently kept only the other reactant's bonds plus the new one.  A stereoisomer
+  built on its parent's topology now reads its own mol2's bonds, and a merge where
+  one side has no mol2 bond table builds one from its topology bonds and says so,
+  instead of dropping them.  Simulations were not affected: GROMACS takes its bonds
+  from the topology, which was complete.  Regenerated, all fifteen match GMA's 78
+  bonds and bond orders.  Library entries written before this fix keep their short
+  tables, and now say so when loaded; rebuild them with `--force-parameterization
+  --force-checkin`.  Found by htpolynet-sweep.
+- **The mol2/topology bond check could pass a short mol2.**  It compared the two
+  sorted lists with `zip`, which stops at the shorter, so a mol2 missing only the
+  bonds that sort last passed.  It now compares the sets and reports how many
+  bonds each source has and how many are missing from each.
+- **A mol2 with 100 or more residues could not be read back.**  The MOLECULE line's
+  counts were written at fixed widths with no separator, so 200 residues ran into
+  the bond count (`  3600  3600200`).  Each count now has a space before it; files
+  whose counts fit the old widths are byte-identical.
 - **`plots post` no longer fails on a project whose deform or anneal/equilibrate
   stages have not run.**  With no deform directories it raised `ValueError: min()
   iterable argument is empty` after the Tg ladder data had already been written, so
